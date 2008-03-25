@@ -36,8 +36,6 @@ int main ()
     cout << mp->encodeToStr () << endl;
     cout << "----------------------" << endl;
 
-    cout << "testing string" << endl;
     delete mp;
-
     return 0;
 }
