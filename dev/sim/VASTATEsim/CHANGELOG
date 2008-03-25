@@ -1,0 +1,28 @@
+2006-09-27 Cavour
+	vastatesim:
+		Modification:
+			* The probability of food creation is refered to food count at that time.
+			
+2006-09-24 Cavour
+	vastatesim:
+		Modification:
+			* Food creation process will done at beginning of simulation.
+		Adds:
+			* Renew record file module, store food creation also in record file.
+		
+2006-09-20 Cavour
+	vastatesim:
+		Fix:
+			* While eating a inexistent food, vastatesim crashs.
+			
+		Known Bugs/Future works:
+			* Store also food creation in action record file.
+			
+	vastatesim_gui:
+		Adds:
+			* A new define, "STEP_TIME_INTERVAL", which means time delay 
+		  	  between simulation steps.
+			* A new option which switchs food object id showing and behavior
+			  register in game detail. (key: f)
+		  
+	

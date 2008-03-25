@@ -1,0 +1,67 @@
+VASTATE ver. 0.2
+
+Other modification note
+-----------
+-   object::decode_pos will make a mark_deleted object back to lived again.
+
+New operating model pseudo code
+-----------
+
+Process message
+    Handling message
+    Update arbitratos
+    validate_objects ()
+    Process event
+    Send updates
+    Check owner transfer
+
+Handling message
+    receive EVENT
+        push in _unforwarded event queue_
+        
+    receive OBJECT,STATE
+        just apply the update
+        
+    receive TRANSFER
+        if (i am new Owner)
+            send OBJECT,STATE to all my enclosing arbitrator(s)
+        else if (i am NOT new Owner's enclosing neighbor (i don't know new arbitrator) )
+            obj.mark_deleted ();
+        else
+            /* nothing to do */
+
+Process event
+    for each item in _unforwarded event queue_
+        if (from Peer)
+            forward event to all related arbitrator(s)
+            (refer to current position of sender object, and system aoi)
+        if (from other enclosing arbitrator)
+            save in arbitrator_event_queue[id of arbitrator]
+        
+    find smallest runnable timestamp in all arbitrators' event queue
+    get all events before the timestamp from event queue
+    serialize Event(s) and process
+    
+Update arbitratos
+    check changes of enclosing arbitrator
+    if (new enclosing)
+        send *all owned objects* to the arbitrator
+        send all un-processed and relating to the arbitrator event(s) in my event queue to the arbitrator
+    else if (become not enclosing)
+        send DELETE to all I owned objects to the arbitrator
+    
+Send updates
+    for all dirty objects
+        check if has expire objects (too long has no update)
+        send OBJECT,STATE to peers are interesting in
+        if (i am owner of the object)
+            send OBJECT,STATE to enclosing arbitrators
+
+Check owner transfer
+    for all owned objects
+        if (not containing in my region anymore)
+            send TRANSFER(new owner) to enclosing arbitrators
+
+BUG Check
+----------
+Can't running under Release mode..

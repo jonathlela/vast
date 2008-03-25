@@ -1,0 +1,101 @@
+<html>
+<body>
+<pre>
+<h1>Build Log</h1>
+<h3>
+--------------------Configuration: VAST - Win32 Release--------------------
+</h3>
+<h3>Command Lines</h3>
+Creating temporary file "C:\DOCUME~1\syhu\LOCALS~1\Temp\RSPDA.tmp" with contents
+[
+/nologo /MT /W3 /GX /O2 /I "..\include" /I "..\ACE_wrappers" /I "..\zlib\include" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /D "_USRDLL" /D "VAST_EXPORTS" /Fp"Release/VAST.pch" /YX /Fo"Release/" /Fd"Release/" /FD /c 
+"D:\vast-0.3.1\VAST\net_ace.cpp"
+"D:\vast-0.3.1\VAST\net_ace_handler.cpp"
+"D:\vast-0.3.1\VAST\net_emu.cpp"
+"D:\vast-0.3.1\VAST\net_emubridge.cpp"
+"D:\vast-0.3.1\VAST\vast_dc.cpp"
+"D:\vast-0.3.1\VAST\vast_fo.cpp"
+"D:\vast-0.3.1\VAST\vastverse.cpp"
+"D:\vast-0.3.1\VAST\vor_SF.cpp"
+"D:\vast-0.3.1\VAST\vor_SF_algorithm.cpp"
+]
+Creating command line "cl.exe @C:\DOCUME~1\syhu\LOCALS~1\Temp\RSPDA.tmp" 
+Creating temporary file "C:\DOCUME~1\syhu\LOCALS~1\Temp\RSPDB.tmp" with contents
+[
+ace.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib zdll.lib /nologo /dll /incremental:no /pdb:"..\lib/VAST.pdb" /machine:I386 /out:"..\lib/VAST.dll" /implib:"..\lib/VAST.lib" /libpath:"..\ACE_wrappers\lib.vc6" /libpath:"..\zlib\lib" 
+".\Release\net_ace.obj"
+".\Release\net_ace_handler.obj"
+".\Release\net_emu.obj"
+".\Release\net_emubridge.obj"
+".\Release\vast_dc.obj"
+".\Release\vast_fo.obj"
+".\Release\vastverse.obj"
+".\Release\vor_SF.obj"
+".\Release\vor_SF_algorithm.obj"
+]
+Creating command line "link.exe @C:\DOCUME~1\syhu\LOCALS~1\Temp\RSPDB.tmp"
+<h3>Output Window</h3>
+Compiling...
+net_ace.cpp
+net_ace_handler.cpp
+net_emu.cpp
+net_emubridge.cpp
+vast_dc.cpp
+vast_fo.cpp
+vastverse.cpp
+vor_SF.cpp
+vor_SF_algorithm.cpp
+Linking...
+   Creating library ..\lib/VAST.lib and object ..\lib/VAST.exp
+<h3>
+--------------------Configuration: VASTsim - Win32 Release--------------------
+</h3>
+<h3>Command Lines</h3>
+Creating temporary file "C:\DOCUME~1\syhu\LOCALS~1\Temp\RSPDF.tmp" with contents
+[
+/nologo /MT /W3 /GX /O2 /I "..\..\include" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /D "_USRDLL" /D "VASTSIM_EXPORTS" /Fp"Release/VASTsim.pch" /YX /Fo"Release/" /Fd"Release/" /FD /c 
+"D:\vast-0.3.1\SIM\VASTsim\vastsim.cpp"
+]
+Creating command line "cl.exe @C:\DOCUME~1\syhu\LOCALS~1\Temp\RSPDF.tmp" 
+Creating temporary file "C:\DOCUME~1\syhu\LOCALS~1\Temp\RSPE0.tmp" with contents
+[
+kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /dll /incremental:no /pdb:"..\..\lib/VASTsim.pdb" /machine:I386 /out:"..\..\lib/VASTsim.dll" /implib:"..\..\lib/VASTsim.lib" 
+".\Release\vastsim.obj"
+"\vast-0.3.1\lib\VAST.lib"
+]
+Creating command line "link.exe @C:\DOCUME~1\syhu\LOCALS~1\Temp\RSPE0.tmp"
+<h3>Output Window</h3>
+Compiling...
+vastsim.cpp
+Linking...
+   Creating library ..\..\lib/VASTsim.lib and object ..\..\lib/VASTsim.exp
+<h3>
+--------------------Configuration: VASTsim_gui - Win32 Release--------------------
+</h3>
+<h3>Command Lines</h3>
+Creating temporary file "C:\DOCUME~1\syhu\LOCALS~1\Temp\RSPE4.tmp" with contents
+[
+/nologo /ML /W3 /GX /O2 /I "..\..\include" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /Fp"Release/VASTsim_gui.pch" /YX /Fo"Release/" /Fd"Release/" /FD /c 
+"D:\vast-0.3.1\sim\VASTsim_gui\VASTsim_gui.cpp"
+]
+Creating command line "cl.exe @C:\DOCUME~1\syhu\LOCALS~1\Temp\RSPE4.tmp" 
+Creating temporary file "C:\DOCUME~1\syhu\LOCALS~1\Temp\RSPE5.tmp" with contents
+[
+kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:windows /incremental:no /pdb:"..\..\bin/VASTsim_gui.pdb" /machine:I386 /out:"..\..\bin/VASTsim_gui.exe" 
+".\Release\VASTsim_gui.obj"
+"\vast-0.3.1\lib\VASTsim.lib"
+]
+Creating command line "link.exe @C:\DOCUME~1\syhu\LOCALS~1\Temp\RSPE5.tmp"
+<h3>Output Window</h3>
+Compiling...
+VASTsim_gui.cpp
+Linking...
+   Creating library ..\..\bin/VASTsim_gui.lib and object ..\..\bin/VASTsim_gui.exp
+
+
+
+<h3>Results</h3>
+VASTsim_gui.exe - 0 error(s), 0 warning(s)
+</pre>
+</body>
+</html>

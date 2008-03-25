@@ -1,0 +1,60 @@
+<html>
+<head>
+<META HTTP-EQUIV="Content-Type" content="text/html; charset=big5">
+</head>
+<body>
+<pre>
+<table width=100% bgcolor=#CFCFE5><tr> <td> <font face=新細明體 size=+3>
+建置記錄
+</font></table><table width=* cellspacing=0 cellpadding=0><tr><td width=0 bgcolor=#EDEDF5>&nbsp;</td><td width=0 bgcolor=#FFFFFF>&nbsp;</td><td width=*><pre>
+<h3>------- 開始建置: 專案: test_VASTATE, 設定: Debug|Win32 -------
+</h3>
+</pre></table><table width=100% bgcolor=#DFDFE5><tr><td><font face=新細明體 size=+2>
+命令列
+</font></table><table width=* cellspacing=0 cellpadding=0><tr><td width=0 bgcolor=#EDEDF5>&nbsp;</td><td width=0 bgcolor=#FFFFFF>&nbsp;</td><td width=*><pre>正在建立暫存檔 "C:\DOCUME~1\Cc\LOCALS~1\Temp\RSP00002D.rsp"，內容為
+[
+/Od /I "D:\dev-vast\vastate\dev-2008-03-17-003\\include" /D "WIN32" /D "_DEBUG" /D "_CONSOLE" /D "_MBCS" /Gm /EHsc /RTC1 /MLd /Fo"..\build\test_VASTATE\Debug\/" /Fd"..\build\test_VASTATE\Debug\/vc70.pdb" /W3 /c /Wp64 /ZI /TP
+".\main.cpp"
+]
+正在建立命令列 "cl.exe @C:\DOCUME~1\Cc\LOCALS~1\Temp\RSP00002D.rsp /nologo"
+</pre></table><table width=100% bgcolor=#DFDFE5><tr><td><font face=新細明體 size=+2>
+輸出視窗
+</font></table><table width=* cellspacing=0 cellpadding=0><tr><td width=0 bgcolor=#EDEDF5>&nbsp;</td><td width=0 bgcolor=#FFFFFF>&nbsp;</td><td width=*><pre>正在編譯...
+main.cpp
+d:\dev-vast\vastate\dev-2008-03-17-003\include\shared.h(262) : error C2678: 二元運算子 '[' : 找不到使用左方運算元型別 'const std::map<_Kty,_Ty>' 的運算子 (或是沒有可接受的轉換)
+        with
+        [
+            _Kty=VAST::MContainer::short_index_t,
+            _Ty=VAST::MValue *
+        ]
+d:\dev-vast\vastate\dev-2008-03-17-003\include\shared.h(298) : error C2244: 'VAST::MValue::getValue' : 函式定義不符合現有的宣告
+        d:\dev-vast\vastate\dev-2008-03-17-003\include\shared.h(165) : 請參閱 'VAST::MValue::getValue' 的宣告
+d:\dev-vast\vastate\dev-2008-03-17-003\include\shared.h(300) : error C2143: 語法錯誤 : 遺漏 ';' (在 '&' 之前)
+d:\dev-vast\vastate\dev-2008-03-17-003\include\shared.h(300) : error C2501: 'MValue' : 遺漏儲存類別或型別規範
+d:\dev-vast\vastate\dev-2008-03-17-003\include\shared.h(300) : error C2143: 語法錯誤 : 遺漏 ';' (在 '<' 之前)
+d:\dev-vast\vastate\dev-2008-03-17-003\include\shared.h(300) : error C2501: 'MSimpleValue' : 遺漏儲存類別或型別規範
+d:\dev-vast\vastate\dev-2008-03-17-003\include\shared.h(300) : error C2530: 'VAST::MSimpleValue' : 參考必須初始化
+d:\dev-vast\vastate\dev-2008-03-17-003\include\shared.h(300) : error C2039: '=' : 不是 'operator``global namespace''' 的成員
+d:\dev-vast\vastate\dev-2008-03-17-003\include\shared.h(301) : error C2143: 語法錯誤 : 遺漏 ';' (在 '{' 之前)
+d:\dev-vast\vastate\dev-2008-03-17-003\include\shared.h(301) : error C2447: '{' : 遺漏函式標頭 (舊樣式型式清單?)
+d:\dev-vast\vastate\dev-2008-03-17-003\include\shared.h(306) : error C2653: 'MContainer' : 不是類別或命名空間名稱
+d:\dev-vast\vastate\dev-2008-03-17-003\include\shared.h(306) : error C2065: 'short_index_t' : 未宣告的識別項
+d:\dev-vast\vastate\dev-2008-03-17-003\include\shared.h(306) : error C2146: 語法錯誤 : 遺漏 ')' (在識別項 'index' 之前)
+d:\dev-vast\vastate\dev-2008-03-17-003\include\shared.h(306) : error C2059: 語法錯誤 : ')'
+d:\dev-vast\vastate\dev-2008-03-17-003\include\shared.h(307) : error C2143: 語法錯誤 : 遺漏 ';' (在 '{' 之前)
+d:\dev-vast\vastate\dev-2008-03-17-003\include\shared.h(307) : error C2447: '{' : 遺漏函式標頭 (舊樣式型式清單?)
+d:\dev-vast\vastate\dev-2008-03-17-003\include\shared.h(317) : error C2988: 無法辨認的樣板宣告/定義
+d:\dev-vast\vastate\dev-2008-03-17-003\include\shared.h(317) : error C2059: 語法錯誤 : '<'
+d:\dev-vast\vastate\dev-2008-03-17-003\include\shared.h(349) : error C2504: 'MContainer' : 基底類別未定義
+d:\dev-vast\vastate\dev-2008-03-17-003\include\shared.h(354) : error C2588: '::~MBaseObject' : 不合法的全域解構函式
+d:\dev-vast\vastate\dev-2008-03-17-003\include\shared.h(354) : error C2575: 'MBaseObject' : 只有成員函式和基底可以是虛擬
+d:\dev-vast\vastate\dev-2008-03-17-003\include\shared.h(357) : error C2575: 'encodeToStr' : 只有成員函式和基底可以是虛擬
+d:\dev-vast\vastate\dev-2008-03-17-003\include\shared.h(358) : error C2653: 'MContainer' : 不是類別或命名空間名稱
+d:\dev-vast\vastate\dev-2008-03-17-003\include\shared.h(358) : error C3861: 'encodeToStr': 找不到識別項，即使是使用與引數相關的查閱也一樣
+d:\dev-vast\vastate\dev-2008-03-17-003\include\shared.h(360) : fatal error C1506: 無法回復的區塊範圍錯誤
+</pre></table><table width=100% bgcolor=#DFDFE5><tr><td><font face=新細明體 size=+2>
+結果
+</font></table><table width=* cellspacing=0 cellpadding=0><tr><td width=0 bgcolor=#EDEDF5>&nbsp;</td><td width=0 bgcolor=#FFFFFF>&nbsp;</td><td width=*><pre>
+已將建置記錄儲存於 "file://d:\dev-vast\vastate\dev-2008-03-17-003\test\build\test_VASTATE\Debug\\BuildLog.htm"
+test_VASTATE - 25 個錯誤，0 個警告</pre></table><table   width=100% height=20 bgcolor=#CFCFE5><tr><td><font face=新細明體 size=+2>
+</font></table></body></html>

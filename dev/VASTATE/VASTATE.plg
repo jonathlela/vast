@@ -1,0 +1,113 @@
+<html>
+<body>
+<pre>
+<h1>Build Log</h1>
+<h3>
+--------------------Configuration: errout - Win32 Release--------------------
+</h3>
+<h3>Command Lines</h3>
+Creating temporary file "H:\DOCUME~1\syhu\LOCALS~1\Temp\RSP149.tmp" with contents
+[
+/nologo /MT /W3 /GX /O2 /I "..\include" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /D "_USRDLL" /D "ERROUT_EXPORTS" /Fp"Release/errout.pch" /YX /Fo"Release/" /Fd"Release/" /FD /c 
+"G:\Projects\VAST\dev\errout\errout.cpp"
+]
+Creating command line "cl.exe @H:\DOCUME~1\syhu\LOCALS~1\Temp\RSP149.tmp" 
+Creating temporary file "H:\DOCUME~1\syhu\LOCALS~1\Temp\RSP14A.tmp" with contents
+[
+kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /dll /incremental:no /pdb:"..\bin/errout.pdb" /machine:I386 /out:"..\bin/errout.dll" /implib:"..\bin/errout.lib" 
+.\Release\errout.obj
+]
+Creating command line "link.exe @H:\DOCUME~1\syhu\LOCALS~1\Temp\RSP14A.tmp"
+<h3>Output Window</h3>
+Compiling...
+errout.cpp
+Linking...
+   Creating library ..\bin/errout.lib and object ..\bin/errout.exp
+<h3>
+--------------------Configuration: VAST - Win32 Release--------------------
+</h3>
+<h3>Command Lines</h3>
+Creating temporary file "H:\DOCUME~1\syhu\LOCALS~1\Temp\RSP14E.tmp" with contents
+[
+/nologo /MT /W3 /GX /O2 /I "..\include" /I "..\ACE_wrappers" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /D "_USRDLL" /D "VAST_EXPORTS" /Fp"Release/VAST.pch" /YX /Fo"Release/" /Fd"Release/" /FD /c 
+"G:\Projects\VAST\dev\VAST\net_ace.cpp"
+"G:\Projects\VAST\dev\VAST\net_ace_handler.cpp"
+"G:\Projects\VAST\dev\VAST\net_emu.cpp"
+"G:\Projects\VAST\dev\VAST\net_emubridge.cpp"
+"G:\Projects\VAST\dev\VAST\vast_dc.cpp"
+"G:\Projects\VAST\dev\VAST\vastverse.cpp"
+"G:\Projects\VAST\dev\VAST\vor_SF.cpp"
+"G:\Projects\VAST\dev\VAST\vor_SF_algorithm.cpp"
+]
+Creating command line "cl.exe @H:\DOCUME~1\syhu\LOCALS~1\Temp\RSP14E.tmp" 
+Creating temporary file "H:\DOCUME~1\syhu\LOCALS~1\Temp\RSP14F.tmp" with contents
+[
+kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib ace.lib /nologo /dll /incremental:no /pdb:"..\bin/VAST.pdb" /machine:I386 /out:"..\bin/VAST.dll" /implib:"..\bin/VAST.lib" /libpath:"..\ACE_wrappers\lib.vc++6" 
+.\Release\net_ace.obj
+.\Release\net_ace_handler.obj
+.\Release\net_emu.obj
+.\Release\net_emubridge.obj
+.\Release\vast_dc.obj
+.\Release\vastverse.obj
+.\Release\vor_SF.obj
+.\Release\vor_SF_algorithm.obj
+]
+Creating command line "link.exe @H:\DOCUME~1\syhu\LOCALS~1\Temp\RSP14F.tmp"
+<h3>Output Window</h3>
+Compiling...
+net_ace.cpp
+net_ace_handler.cpp
+net_emu.cpp
+net_emubridge.cpp
+vast_dc.cpp
+vastverse.cpp
+vor_SF.cpp
+vor_SF_algorithm.cpp
+Linking...
+   Creating library ..\bin/VAST.lib and object ..\bin/VAST.exp
+<h3>
+--------------------Configuration: VASTATE - Win32 Release--------------------
+</h3>
+<h3>Command Lines</h3>
+Creating temporary file "H:\DOCUME~1\syhu\LOCALS~1\Temp\RSP153.tmp" with contents
+[
+/nologo /MT /W3 /GX /O2 /I "..\include" /I "..\errout" /D "WIN32" /D "NDEBUG" /D "_WINDOWS" /D "_MBCS" /D "_USRDLL" /D "VASTATE_EXPORTS" /Fp"Release/VASTATE.pch" /YX /Fo"Release/" /Fd"Release/" /FD /c 
+"G:\Projects\VAST\dev\VASTATE\arbitrator_impl.cpp"
+"G:\Projects\VAST\dev\VASTATE\peer_impl.cpp"
+"G:\Projects\VAST\dev\VASTATE\server.cpp"
+"G:\Projects\VAST\dev\VASTATE\shared.cpp"
+"G:\Projects\VAST\dev\VASTATE\vastate_impl.cpp"
+"G:\Projects\VAST\dev\VASTATE\vastory.cpp"
+]
+Creating command line "cl.exe @H:\DOCUME~1\syhu\LOCALS~1\Temp\RSP153.tmp" 
+Creating temporary file "H:\DOCUME~1\syhu\LOCALS~1\Temp\RSP154.tmp" with contents
+[
+kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /dll /incremental:no /pdb:"..\bin/VASTATE.pdb" /machine:I386 /out:"..\bin/VASTATE.dll" /implib:"..\bin/VASTATE.lib" 
+.\Release\arbitrator_impl.obj
+.\Release\peer_impl.obj
+.\Release\server.obj
+.\Release\shared.obj
+.\Release\vastate_impl.obj
+.\Release\vastory.obj
+\Projects\VAST\dev\bin\errout.lib
+\Projects\VAST\dev\bin\VAST.lib
+]
+Creating command line "link.exe @H:\DOCUME~1\syhu\LOCALS~1\Temp\RSP154.tmp"
+<h3>Output Window</h3>
+Compiling...
+arbitrator_impl.cpp
+peer_impl.cpp
+server.cpp
+shared.cpp
+vastate_impl.cpp
+vastory.cpp
+Linking...
+   Creating library ..\bin/VASTATE.lib and object ..\bin/VASTATE.exp
+
+
+
+<h3>Results</h3>
+VASTATE.dll - 0 error(s), 0 warning(s)
+</pre>
+</body>
+</html>

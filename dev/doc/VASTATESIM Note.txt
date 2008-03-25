@@ -1,0 +1,97 @@
+﻿Improvement for VASTATESIM
+-----------------------------
+
+1) adaptively pos update freq.
+  (pos update sends in a variable fequency,
+   if there's no update in a time slice, fequency down to 0 at the last.)
+2) 每隔 maybe a few steps resend a hold new version to replica(s)
+
+Simulation modification note
+--------------------------------
+("-" - for TODOs, "v" for done already, "**" for important items)
+
+-   promotion just adds a count value in potential_arbitrators list
+    so let peer will be promoted more then one times, if needed.
+
+-   VASTATESIM console version
+
+s   owner transfer need a EXTRA confirm
+
+s   peer will re ENTER and JOIN while current arbitrator disconnected/left
+
+-   node failure mode, 隨機 | 全都 arbitrator
+
+-   Calculate rate of actions done by peers every step
+
+-   position record file and viewer (for review movement)
+
+-   statistics
+    check for node failure
+    ref: actions performed by each node and total, rating popularity of area
+        colyseus, senction 4.1
+    recovery steps counting
+    # of lost objects after node failure
+    count of overload/underload
+    v   bandwidth 統計方式加上對 server 的
+    v   Consistency 改參考 God view
+    v   node density in small area (Avg/Max/Min)
+        加 over sampling
+
+**  Local view of client
+    統一查詢介面?
+
+-   net_emu and net_bridge
+    v 增加 access from vastory
+    ** 支援斷線模式
+    end-to-end delay support
+
+    
+v   VASTATESIM 記錄檔內容檢查
+    至少在非 simulation running (for the purpose of debugging) 可以正常記錄
+
+v   overload/underload 的呼叫
+    + peer 內的流量統計 
+
+v   insertion arbitrator on cross line with map boundary
+
+v   gaving a system parameter with map boundary and current system aoi
+    to check if position and arbitrator position correctness
+    
+v   object un-update countdown, too long to update will incur a deletion
+    const: THRESHOLD_EXPIRING_OBJECT
+    every THRESHOLD_EXPIRING_OBJECT/2 steps owner will send a pos_update (OBJECT)
+    until THRESHOLD_EXPIRING_OBJECT steps has no update will delete the object
+    
+God store construction Note
+------------
+Stores at
+    arbitrator_reg::god_store
+    arbitrator_reg::arbitrators
+Update when
+    simgame_node::processmsg, update _arbitrator_'s position at every step
+
+    
+Known BUGs
+------------
+-   Forward current event forwarding model,
+    event forwarding refers CURRENT state (not state at event been executed), this 
+    may incur an incorrect forwarding of event.
+    For example, 
+        a peer made two MOVEs and one BOMB to the direction move to.
+        These three event may not be forwarded to other enclosing arbitrator(s) (since 
+        aoi of the object of the peer doesn't cover out of manaing arbitrator's region 
+        at the time receiving the event). After two moves, aoi of the object of the 
+        peer may touch an enclosing arbitrator's region, but following BOMB event are 
+        not known by new touched enclosing arbitrator.
+        
+-   Sometimes, DELETE triggered by changing of enclosing arbitrator will not 
+    received by all enclsing arbitrators normally. In other words, object expiring 
+    countdown will be trigger.
+    
+-   After someone is leaving my enclosing arbitrator list, I will send a lot of 
+    DELETE to him, but this sending successful rely on VAST don't disconnect to him
+    immediately.
+
+-   Sometimes, arbitrator receives a TRANSFER of a unknown object.
+
+-   Voronoi 圖會在地圖大小外有交集造成 enclsoing neighbor 增加, 會浪費

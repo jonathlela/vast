@@ -1,0 +1,45 @@
+
+VAST Coding Convention:
+
+1. all indentions are 4 spaces (do NOT use tabs)
+
+2. add spaces before and after parenthesis, Ex. 
+    
+        my_obj->my_func ();         // correct
+        my_obj->my_func();          // incorrect
+        
+3. brackets are aligned directly under the function name. Ex. 
+    
+    void foo (void)
+    {
+        ...
+    }
+    
+4. start all private variables with a "_". Ex. 
+
+    private:                            
+        int _var1;          // correct            
+        int var1;           // incorrect
+        
+5. add spaces around all comparisons, assignments. Ex.
+
+    if (width < 3 && height > 5)
+        ...
+        ...
+    
+6. when designing structures, make sure all data fields are "padded" and "aligned" to 
+   8 bytes, for cross-platform compatibility. Ex.
+   
+        struct {
+            short   a;      // 2 bytes
+            int     i;      // 4 bytes
+        };
+   
+   should be
+   
+        struct {
+            short   a;      // 2 bytes
+            short   pad;    // 2 bytes
+            int     i;      // 4 bytes
+        };
+   

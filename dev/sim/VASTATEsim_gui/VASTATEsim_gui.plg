@@ -1,0 +1,169 @@
+<html>
+<body>
+<pre>
+<h1>Build Log</h1>
+<h3>
+--------------------Configuration: errout - Win32 Debug--------------------
+</h3>
+<h3>Command Lines</h3>
+Creating temporary file "H:\DOCUME~1\syhu\LOCALS~1\Temp\RSP483.tmp" with contents
+[
+/nologo /MTd /W3 /Gm /GX /ZI /Od /I "..\include" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /D "_USRDLL" /D "ERROUT_EXPORTS" /Fp"Debug/errout.pch" /YX /Fo"Debug/" /Fd"Debug/" /FD /GZ /c 
+"G:\Projects\VAST\dev\errout\errout.cpp"
+]
+Creating command line "cl.exe @H:\DOCUME~1\syhu\LOCALS~1\Temp\RSP483.tmp" 
+Creating temporary file "H:\DOCUME~1\syhu\LOCALS~1\Temp\RSP484.tmp" with contents
+[
+kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /dll /incremental:yes /pdb:"..\bin/errout.pdb" /debug /machine:I386 /out:"..\bin/errout.dll" /implib:"..\bin/errout.lib" /pdbtype:sept 
+.\Debug\errout.obj
+]
+Creating command line "link.exe @H:\DOCUME~1\syhu\LOCALS~1\Temp\RSP484.tmp"
+<h3>Output Window</h3>
+Compiling...
+errout.cpp
+Linking...
+   Creating library ..\bin/errout.lib and object ..\bin/errout.exp
+<h3>
+--------------------Configuration: VAST - Win32 Debug--------------------
+</h3>
+<h3>Command Lines</h3>
+Creating temporary file "H:\DOCUME~1\syhu\LOCALS~1\Temp\RSP488.tmp" with contents
+[
+/nologo /MTd /W3 /Gm /GX /ZI /Od /I "..\include" /I "..\ACE_wrappers" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /D "_USRDLL" /D "VAST_EXPORTS" /Fp"Debug/VAST.pch" /YX /Fo"Debug/" /Fd"Debug/" /FD /GZ /c 
+"G:\Projects\VAST\dev\VAST\net_ace.cpp"
+"G:\Projects\VAST\dev\VAST\net_ace_handler.cpp"
+"G:\Projects\VAST\dev\VAST\net_emu.cpp"
+"G:\Projects\VAST\dev\VAST\net_emubridge.cpp"
+"G:\Projects\VAST\dev\VAST\vast_dc.cpp"
+"G:\Projects\VAST\dev\VAST\vastverse.cpp"
+"G:\Projects\VAST\dev\VAST\vor_SF.cpp"
+"G:\Projects\VAST\dev\VAST\vor_SF_algorithm.cpp"
+]
+Creating command line "cl.exe @H:\DOCUME~1\syhu\LOCALS~1\Temp\RSP488.tmp" 
+Creating temporary file "H:\DOCUME~1\syhu\LOCALS~1\Temp\RSP489.tmp" with contents
+[
+kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib aced.lib /nologo /dll /incremental:yes /pdb:"..\bin/VASTd.pdb" /debug /machine:I386 /out:"..\bin/VASTd.dll" /implib:"..\bin/VASTd.lib" /pdbtype:sept /libpath:"..\ACE_wrappers\lib.vc++6" 
+.\Debug\net_ace.obj
+.\Debug\net_ace_handler.obj
+.\Debug\net_emu.obj
+.\Debug\net_emubridge.obj
+.\Debug\vast_dc.obj
+.\Debug\vastverse.obj
+.\Debug\vor_SF.obj
+.\Debug\vor_SF_algorithm.obj
+]
+Creating command line "link.exe @H:\DOCUME~1\syhu\LOCALS~1\Temp\RSP489.tmp"
+<h3>Output Window</h3>
+Compiling...
+net_ace.cpp
+net_ace_handler.cpp
+net_emu.cpp
+net_emubridge.cpp
+vast_dc.cpp
+vastverse.cpp
+vor_SF.cpp
+vor_SF_algorithm.cpp
+Linking...
+   Creating library ..\bin/VASTd.lib and object ..\bin/VASTd.exp
+<h3>
+--------------------Configuration: VASTATE - Win32 Debug--------------------
+</h3>
+<h3>Command Lines</h3>
+Creating temporary file "H:\DOCUME~1\syhu\LOCALS~1\Temp\RSP48D.tmp" with contents
+[
+/nologo /MTd /W3 /Gm /GX /ZI /Od /I "..\include" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /D "_USRDLL" /D "VASTATE_EXPORTS" /Fp"Debug/VASTATE.pch" /YX /Fo"Debug/" /Fd"Debug/" /FD /GZ /c 
+"G:\Projects\VAST\dev\VASTATE\arbitrator_impl.cpp"
+"G:\Projects\VAST\dev\VASTATE\peer_impl.cpp"
+"G:\Projects\VAST\dev\VASTATE\server.cpp"
+"G:\Projects\VAST\dev\VASTATE\shared.cpp"
+"G:\Projects\VAST\dev\VASTATE\vastate_impl.cpp"
+"G:\Projects\VAST\dev\VASTATE\vastory.cpp"
+]
+Creating command line "cl.exe @H:\DOCUME~1\syhu\LOCALS~1\Temp\RSP48D.tmp" 
+Creating temporary file "H:\DOCUME~1\syhu\LOCALS~1\Temp\RSP48E.tmp" with contents
+[
+kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /dll /incremental:yes /pdb:"..\bin/VASTATEd.pdb" /debug /machine:I386 /out:"..\bin/VASTATEd.dll" /implib:"..\bin/VASTATEd.lib" /pdbtype:sept 
+.\Debug\arbitrator_impl.obj
+.\Debug\peer_impl.obj
+.\Debug\server.obj
+.\Debug\shared.obj
+.\Debug\vastate_impl.obj
+.\Debug\vastory.obj
+\Projects\VAST\dev\bin\errout.lib
+\Projects\VAST\dev\bin\VASTd.lib
+]
+Creating command line "link.exe @H:\DOCUME~1\syhu\LOCALS~1\Temp\RSP48E.tmp"
+<h3>Output Window</h3>
+Compiling...
+arbitrator_impl.cpp
+peer_impl.cpp
+server.cpp
+shared.cpp
+vastate_impl.cpp
+vastory.cpp
+Linking...
+   Creating library ..\bin/VASTATEd.lib and object ..\bin/VASTATEd.exp
+<h3>
+--------------------Configuration: VASTATEsim - Win32 Debug--------------------
+</h3>
+<h3>Command Lines</h3>
+Creating temporary file "H:\DOCUME~1\syhu\LOCALS~1\Temp\RSP492.tmp" with contents
+[
+/nologo /MTd /W3 /Gm /GX /ZI /Od /I "..\..\include" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /D "_USRDLL" /D "VASTATESIM_EXPORTS" /Fp"Debug/VASTATEsim.pch" /YX /Fo"Debug/" /Fd"Debug/" /FD /GZ /c 
+"G:\Projects\VAST\dev\SIM\VASTATEsim\behavior.cpp"
+"G:\Projects\VAST\dev\SIM\VASTATEsim\simgame.cpp"
+"G:\Projects\VAST\dev\SIM\VASTATEsim\statistics.cpp"
+"G:\Projects\VAST\dev\SIM\VASTATEsim\vastatesim.cpp"
+]
+Creating command line "cl.exe @H:\DOCUME~1\syhu\LOCALS~1\Temp\RSP492.tmp" 
+Creating temporary file "H:\DOCUME~1\syhu\LOCALS~1\Temp\RSP493.tmp" with contents
+[
+kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /dll /incremental:yes /pdb:"..\..\bin/VASTATEsimd.pdb" /debug /machine:I386 /out:"..\..\bin/VASTATEsimd.dll" /implib:"..\..\bin/VASTATEsimd.lib" /pdbtype:sept 
+.\Debug\behavior.obj
+.\Debug\simgame.obj
+.\Debug\statistics.obj
+.\Debug\vastatesim.obj
+\Projects\VAST\dev\bin\VASTATEd.lib
+\Projects\VAST\dev\bin\errout.lib
+\Projects\VAST\dev\bin\VASTd.lib
+]
+Creating command line "link.exe @H:\DOCUME~1\syhu\LOCALS~1\Temp\RSP493.tmp"
+<h3>Output Window</h3>
+Compiling...
+behavior.cpp
+simgame.cpp
+statistics.cpp
+vastatesim.cpp
+Linking...
+   Creating library ..\..\bin/VASTATEsimd.lib and object ..\..\bin/VASTATEsimd.exp
+<h3>
+--------------------Configuration: VASTATEsim_gui - Win32 Debug--------------------
+</h3>
+<h3>Command Lines</h3>
+Creating temporary file "H:\DOCUME~1\syhu\LOCALS~1\Temp\RSP497.tmp" with contents
+[
+/nologo /MLd /W3 /Gm /GX /ZI /Od /I "..\VASTATEsim" /I "..\..\include" /D "WIN32" /D "_DEBUG" /D "_WINDOWS" /D "_MBCS" /FR"Debug/" /Fp"Debug/VASTATEsim_gui.pch" /YX /Fo"Debug/" /Fd"Debug/" /FD /GZ /c 
+"G:\Projects\VAST\dev\sim\VASTATEsim_gui\VASTATEsim_gui.cpp"
+]
+Creating command line "cl.exe @H:\DOCUME~1\syhu\LOCALS~1\Temp\RSP497.tmp" 
+Creating temporary file "H:\DOCUME~1\syhu\LOCALS~1\Temp\RSP498.tmp" with contents
+[
+kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /nologo /subsystem:windows /incremental:yes /pdb:"..\..\bin/VASTATEsim_gui.pdb" /debug /machine:I386 /out:"..\..\bin/VASTATEsim_gui.exe" /pdbtype:sept 
+.\Debug\VASTATEsim_gui.obj
+\Projects\VAST\dev\bin\errout.lib
+\Projects\VAST\dev\bin\VASTATEsimd.lib
+]
+Creating command line "link.exe @H:\DOCUME~1\syhu\LOCALS~1\Temp\RSP498.tmp"
+<h3>Output Window</h3>
+Compiling...
+VASTATEsim_gui.cpp
+Linking...
+   Creating library ..\..\bin/VASTATEsim_gui.lib and object ..\..\bin/VASTATEsim_gui.exp
+
+
+
+<h3>Results</h3>
+VASTATEsim_gui.exe - 0 error(s), 0 warning(s)
+</pre>
+</body>
+</html>

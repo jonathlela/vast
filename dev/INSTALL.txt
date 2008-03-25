@@ -1,0 +1,120 @@
+
+*********
+IMPORTANT  
+*********
+
+ACE is required for using the real network layer (as opposed to an emulated one 
+for simulation purposes). Please see the instructions below:
+
+    Win32
+    -----
+    You need to copy the appropriate ACE libraries from the directory 
+    "/ACE_wrappers" into "/bin". 
+
+    "ACE.dll"  is for the Release Build and 
+    "ACEd.dll" is for the Debug Build. 
+
+    You may simply run "addDLL-VC8.bat" (VC++ 2005) or
+                       "addDLL-VC7.bat" (VC++ 2003)
+    to copy the respective libraries to the /bin directory.
+
+
+    Linux
+    -----
+    NOTE: you will need to build ACE for your own platform to run . First obtain 
+    copy of ACE 5.5 or later at: http://deuce.doc.wustl.edu/Download.html
+    
+    If you just want to run "VASTsim_console" (simulator only), 
+    you can define the flag ACE_DISABLED in "/include/config.h"
+    and simply type "make noace" to build
+        
+    after unzipping ACE to a local directory, do the following 
+    under that directory:
+        
+        mkdir build     (to create a temporary work directory)
+        cd build
+        ../configure    (to configure ACE for your platform automatically)
+        make            (build ACE and store it in "lib")
+        make install    (install ACE to "usr/local/lib")
+
+        set LD_LIBRARY_PATH to point to where ACE is installed 
+        (by default: "usr/local/lib")
+
+
+
+Win32 Instructions
+------------------
+
+To build VAST in Win32, simply click on "VAST.sln" for VC++ 2003
+then choose the appropriate projects. All compiled binaries are put 
+into the "bin" directory. We also support the free version 
+of VC++ 2005 (the "Express" version, by clicking "VAST-vc8.sln"), 
+which can be downloaded at:
+
+http://msdn.microsoft.com/vstudio/express/visualc/ 
+
+Also, note that you will need to first install the Microsoft Platform SDK
+to include support for the networking libraries. See the following
+for more details:
+
+http://msdn2.microsoft.com/en-us/express/aa700755.aspx
+
+make sure that all instructions for modifying the setting in VC++ 2005 
+are followed.
+
+VC++ 6.0 becomes unsupported since version 0.3.2. However, if you 
+still intend to build VAST with VC++ 6.0, you must apply SP5 or above 
+for VAST to build correctly. Otherwise you might receive the following 
+error:
+
+    fatal error C1001: INTERNAL COMPILER ERROR
+    
+Please see the following for additional information.
+
+http://support.microsoft.com/?scid=kb;en-us;890892&spid=3042&sid=10
+
+
+
+Linux Instructions
+------------------
+1. Unzip the source files into a work directory
+
+    unzip -a vast-c++-x.x.x.zip
+    
+    
+2. Build the static library of VAST
+
+    cd vast-x.x.x
+    make        (this should create "libvast.a" and "libvastsim.a" under the /lib directory)
+    
+    or
+    
+    make noace  (if you have turn on the ACE_DISABLED flag in /include/config.h)
+    
+    
+3. Build related library
+
+    ACE and zlib are required for VAST to build properly, please see the instructions 
+    above for how to obtain and build ACE. zlib may have already been installed on
+    your Linux system, if not, you can obtain a copy and build instructions at
+    http://www.zlib.net/
+    
+    
+4. Build demo programs
+
+    depend on which one you'd like to build, just go into the directory under 
+    /demo and type "make", the compiled binary will be placed under "/bin" 
+    
+    NOTE: currently, only "demo/demo_gateway" and "sim/VASTsim_console" have 
+    been tested under Linux
+ 
+    
+5. Execute the demo
+    
+    run the demo under /bin
+    
+    
+6. clean up the library
+
+    make TARGET=clean
+    
