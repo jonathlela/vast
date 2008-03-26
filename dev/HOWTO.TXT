@@ -1,0 +1,51 @@
+
+
+How to use VAST?
+================
+
+VAST is really just a networking library so it does not have a standalone
+program to run. The current VAST interface provides a few simple things you can
+do (defined in /include/vast.h)
+
+                                                        VAST functions
+                                                        --------------
+    1) set an initial position for your node            (join)
+    2) move the node                                    (move)
+    3) query a list of area of interest (AOI) neighbors (get_nodes)
+
+
+However, to faciliate the understanding of how VAST works, we have two demos for
+Win32. One is called "VASTsim_gui", a graphical view of a simulation of nodes;
+and the other is "demo_chatva", a simple chat client where users can see and
+talk to their AOI neighbors.
+
+To see the simulation, simply build the project "VASTsim_gui" and run the
+executable, the controls are:
+
+    ENTER:	                begin simulation
+    SPACE:	                toggle "step mode"
+    left-click	            select node to view
+    right-click	            show remote node's AOI
+    'F':	                toggle "follow mode"
+    'E':	                toggle "Voronoi edges"
+    'C':	                toggle "stop on inconsistency"
+    'O':	                restore viewport to origin
+    'W', 'S', 'A', 'D':	    move viewport
+    'Q':	                quit demo
+
+To run the simple chat program, build "demo_chatva". Then type
+
+demo_chatva [IP address]
+
+If [IP address] is empty, the node will run as a gateway. Otherwise [IP address]
+should be the address for the gateway. If you want to run a non-GUI gateway, simply build
+the project "demo_gateway", and execute with the command:
+
+demo_gateway {self IP} {AOI radius}
+
+where both parameters are required.
+
+***
+
+If you have any the questions, feel free to send them to:
+http://vast.sourceforge.net
