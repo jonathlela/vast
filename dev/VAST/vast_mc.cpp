@@ -90,7 +90,7 @@ namespace VAST
 		// this should be done in vastid::hanlemsg while receiving an ID from gateway
 		_net->register_id (id);
 
-		insert_node (_self, _net->getaddr (_self.id));
+		insert_node (_self); //, _net->getaddr (_self.id));
 
 		// the first node is automatically considered joined
 		if (id == NET_ID_GATEWAY)
@@ -98,12 +98,12 @@ namespace VAST
 		else
 		{
 			// send query to find acceptor if I'm a regular peer
-			Msg_Node info (_self, _net->getaddr (_self.id));
+			Msg_Query info (_self, _net->getaddr (_self.id));
 			if (_net->connect (NET_ID_GATEWAY, gateway) == (-1))
 				return false;
 
 			// NOTE: gateway will disconnect me immediately after receving	QUERY
-			_net->sendmsg (NET_ID_GATEWAY, MC_QUERY, (char *)&info, sizeof (Msg_Node), true, true);
+			_net->sendmsg (NET_ID_GATEWAY, MC_QUERY, (char *)&info, sizeof (Msg_Query), true, true);
 		}
 
 
@@ -213,14 +213,14 @@ namespace VAST
 		switch ((VAST_MC_Message)msgtype)
 		{
 		case MC_QUERY:
-			if (size == sizeof (Msg_Node))
+			if (size == sizeof (Msg_Query))
 			{
 
 #ifdef DEBUG_DETAIL
 			printf ("Node [%d] get QUERY from [%d] \n", (int)_self.id, (int)from_id);
 #endif
-				// create a Msg_Node n with given msg
-				Msg_Node n (msg);
+				// create a Msg_Query n with given msg
+				Msg_Query n (msg);
 				// let this msgnode be a new joiner
 				Node &joiner = n.node;
 				vector<id_t> list;
@@ -313,7 +313,7 @@ namespace VAST
 				{
 					memcpy (&newnode, p, sizeof (Msg_Node));
 					if (is_neighbor (newnode.node.id) == false)
-						insert_node (newnode.node, newnode.addr);
+						insert_node (newnode.node);//, newnode.addr);
 					else
 						update_node (newnode.node);
 
@@ -329,7 +329,7 @@ namespace VAST
 #endif
 
 				// prepare send REQNBR to get more neighbors
-				Msg_Node hello (_self, _net->getaddr (_self.id));
+				Msg_Node hello (_self); //, _net->getaddr (_self.id));
 				vector<id_t> EN_list = _voronoi->get_en (_self.id, 1);
 				int ENlist_size = EN_list.size ();
 				int info_count = 0;
@@ -342,7 +342,7 @@ namespace VAST
 				// add ENs to the list
 				for (i = 0; i < ENlist_size; i++)
 				{
-					newnode.set (_id2node[EN_list[i]], _net->getaddr (EN_list[i]));
+					newnode.set (_id2node[EN_list[i]]); //, _net->getaddr (EN_list[i]));
 					memcpy (q, &newnode, sizeof (Msg_Node));
 					info_count++;
 					q += sizeof (Msg_Node);
@@ -404,7 +404,7 @@ namespace VAST
 					if (is_neighbor (newnode.node.id))
 						update_node (newnode.node);
 					else
-						insert_node (newnode.node, newnode.addr);
+						insert_node (newnode.node); //, newnode.addr);
 
 					p += sizeof (Msg_Node);
 				}
@@ -422,7 +422,7 @@ namespace VAST
 					if (is_inlist (compare_list[i], from_list))
 						continue;
 
-					backnode.set (_id2node[compare_list[i]], _net->getaddr (compare_list[i]));
+					backnode.set (_id2node[compare_list[i]]); //, _net->getaddr (compare_list[i]));
 					memcpy (q, &backnode, sizeof (Msg_Node));
 					q += sizeof (Msg_Node);
 					info_count++;
@@ -468,7 +468,7 @@ namespace VAST
 					if (is_neighbor (newnode.node.id))
 						update_node (newnode.node);
 					else
-						insert_node (newnode.node, newnode.addr);
+						insert_node (newnode.node); //, newnode.addr);
 #ifdef DEBUG_DETAIL
 					printf ("  [%d]", (int)newnode.node.id);
 #endif
@@ -505,7 +505,7 @@ namespace VAST
 					char *q = _reqnbr_buf + 1;
 					for (i = 0; i < new_size; i++)
 					{
-						newnode.set (_id2node[new_en[i]], _net->getaddr (new_en[i]));
+						newnode.set (_id2node[new_en[i]]); //, _net->getaddr (new_en[i]));
 						memcpy (q, &newnode, sizeof (Msg_Node));
 						q += sizeof (Msg_Node);
 						info_count++;
@@ -595,7 +595,7 @@ namespace VAST
 				}
 				else
 				{
-					insert_node (newnode.node, newnode.addr);
+					insert_node (newnode.node); //, newnode.addr);
 				}
 			}
 			break;
@@ -633,7 +633,7 @@ namespace VAST
 					else if (is_neighbor (newnode.id))
 						update_node (newnode);
 					else
-						insert_node (newnode, _id2addr[newnode.id]);
+						insert_node (newnode); //, _id2addr[newnode.id]);
 				}
 #ifdef DEBUG_DETAIL
 			printf ("\n");
@@ -712,7 +712,7 @@ namespace VAST
 						return false;
 				}
 				else
-					insert_node ((*newnode).node, _id2addr[(*newnode).node.id]);
+					insert_node ((*newnode).node); //, _id2addr[(*newnode).node.id]);
 
 				// decide if continue relay the packet
 				if ((*newnode).dest_hop <= (*newnode).hop_count && (*newnode).dest_hop != 0)
@@ -899,7 +899,7 @@ namespace VAST
 			// to check connect and disconnect
 			// we only make ENs connect, the others will disconnect
 			Msg_Node hello;
-			hello.set (_self, _net->getaddr (_self.id));
+			hello.set (_self); //, _net->getaddr (_self.id));
 
 			vector<id_t> en_en_list;
 
@@ -991,7 +991,8 @@ namespace VAST
 		// NOTE: connection may already exist with remote node, in which case
 		//		 the insert_node process will continue (instead of aborting)
 		if (node.id != _self.id && _voronoi->is_enclosing (node.id))
-			if (_net->connect (node.id, addr) == (-1))
+            if ((addr.id != 0 && _net->connect (node.id, addr) == (-1)) ||
+                _net->connect (node.id) == (-1))
 				return false;
 		
 		return true;
@@ -1173,7 +1174,7 @@ namespace VAST
 		Msg_Node msgnode;
 		for (int i = 0; i < n; ++i, p += sizeof (Msg_Node))
 		{
-			msgnode.set (_id2node[list[i]], _net->getaddr (list[i]));
+			msgnode.set (_id2node[list[i]]); //, _net->getaddr (list[i]));
 			memcpy (p, (char *)&msgnode, sizeof (Msg_Node));
 #ifdef DEBUG_DETAIL
 			printf ("  [%d]", (int)msgnode.node.id);

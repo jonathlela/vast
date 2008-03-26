@@ -90,21 +90,49 @@ namespace VAST
 		}
 
 		// using this constructor will create a Msg_Node with initial value
-		Msg_Node (Node &n, Addr &a)
-			:node(n), addr(a)
+		Msg_Node (Node &n)//, Addr &a)
+			:node(n) //, addr(a)
 		{			
 		}
 
 		// setting a Msg_Node to point the given node and address
-		void set (Node const &node, Addr const &addr)
+		void set (Node const &node) //Addr const &addr
 		{
 			this->node = node;
-			this->addr = addr;
+			//this->addr = addr;
 		}
 
 		Node	node;
-		Addr	addr;
+		//Addr	addr;
 	};
+
+    class Msg_Query
+    {
+    public:
+        Msg_Query () 
+        {
+        }
+
+        Msg_Query (const char *p)
+        {
+            memcpy (this, p, sizeof (Msg_Query));
+        }
+
+        Msg_Query (Node &n, Addr &a)
+            : node (n), addr (a)
+        {
+        }
+
+        Msg_Query& operator= (const Msg_Query& m)
+        {
+            node = m.node;
+            addr = m.addr;
+        }
+
+        Node node;
+        Addr addr;
+    };
+    
 
 	// Considering... if create a new type of Position and Neighbor Exchange
 
@@ -163,7 +191,7 @@ namespace VAST
 		void post_processmsg ();
 
 		// neighbor maintainence
-		inline bool insert_node (Node &node, Addr &addr, bool refresh = false);
+		inline bool insert_node (Node &node, Addr &addr = Addr(), bool refresh = false);
 		inline bool delete_node (id_t id, bool disconnect = true);
 		inline bool update_node (Node &node);
 		inline vector<id_t> & select_next (Node &root_node);

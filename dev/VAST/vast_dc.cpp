@@ -241,7 +241,7 @@ namespace VAST
                     // TODO: what if joiner exceeds connection limit?
                     //       should remove closest to AOI
                     //
-                    insert_node (joiner, n.addr);
+                    insert_node (joiner, &n.addr);
                     int size = _neighbors.size (); 
                     for (int i=0; i<size; ++i)
                     {
@@ -731,6 +731,35 @@ namespace VAST
     //  private methods
     //
 
+    bool
+    vast_dc::insert_node (Node &node, Addr *addr)
+    {
+        // check for redundency
+        if (is_neighbor (node.id))     
+            return false;
+            
+        // avoid self-connection
+        // note: connection may already exist with remote node, in which case the
+        //       insert_node process will continue (instead of aborting..)
+        if (node.id != _self.id && !(_net->is_connected (node.id)))
+        {
+            int result = (addr != NULL ? _net->connect (*addr) : _net->connect (node.id));
+            if (result == (-1))
+                return false;
+        }
+
+        _voronoi->insert (node.id, node.pos);        
+        _id2node[node.id] = node;
+        _id2vel[node.id] = 0;
+        _neighbors.push_back (&_id2node[node.id]);
+        _neighbor_states[node.id] = new map<id_t, int>;        
+        _count_drop[node.id] = 0;
+
+        return true;
+    }
+
+
+/*
     // overloaded version for the node's address is prefetched
     bool
     vast_dc::insert_node (Node &node, Addr &addr)
@@ -762,7 +791,7 @@ namespace VAST
 
         return _post_insert_node (node);
     }
-        
+
     bool
     vast_dc::_post_insert_node (Node &node)
     {
@@ -775,6 +804,8 @@ namespace VAST
 
         return true;
     }
+
+*/
 
     bool 
     vast_dc::delete_node (id_t id, bool disconnect)

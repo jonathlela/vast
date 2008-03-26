@@ -150,10 +150,13 @@ namespace VAST
         void post_processmsg ();
 
         // neighbor maintainence
+        /*
                bool insert_node       (Node &node);
                bool insert_node       (Node &node, Addr &addr);
         inline bool _post_insert_node (Node &node);
+        */
 
+        inline bool insert_node (Node &node, Addr *addr = NULL);
         inline bool delete_node (id_t id, bool disconnect = true);
         inline bool update_node (Node &node);
 
