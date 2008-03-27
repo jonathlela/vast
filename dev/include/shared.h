@@ -33,7 +33,8 @@
 #endif
 
 #include "precompile.h"
-#include "vastverse.h"
+//#include "vastverse.h"
+#include "typedef.h"
 #include "vastutil.h"
 
 typedef unsigned char objecttype_t;
@@ -123,7 +124,6 @@ public:
     }
 };
 
-
 //// Game object model defination
 ///////////////////////////////////////
 /*
@@ -133,12 +133,13 @@ public:
 MValue -
         \ MContainer - MBaseObject - VEObject
 */
-
+class MContainer;
 class MValue
 {
 public:
-    const static objecttype_t T_UNKNOWN       = 0x00;
-    const static objecttype_t T_CONTAINER     = 0x01;
+    const static objecttype_t T_ERROR         = 0x00;
+    const static objecttype_t T_UNKNOWN       = 0x01;
+    const static objecttype_t T_CONTAINER     = 0x02;
     const static objecttype_t T_PREFIX_SIMPLE = 0x10;
     const static objecttype_t TS_INT          = T_PREFIX_SIMPLE | 0x01;
     const static objecttype_t TS_DOUBLE       = T_PREFIX_SIMPLE | 0x02;
@@ -162,19 +163,32 @@ public:
         return _type;
     }
 
-    virtual int getValue () 
-    {   return 0;   }
+    /*
+        getValue ()
+            operator T ()
+    */
+    virtual int& getValue_int ()    {_not_impl (); return 0;}
+    virtual operator int ()         {return getValue_int ();}
 
-    virtual int getItem  ()
-    {   return 0;   }
+    /*
+        getItem ()
+            operator []
+        add ()
+        remove ()
+    */
+    virtual MValue& getItem (short_index_t index)       {_not_impl (); return *this;}
+    virtual MValue& operator [] (short_index_t index)   {return getItem (index);}
+    virtual int add (short_index_t index, int value)    {_not_impl (); return 0;}
+    virtual int remove (short_index_t index)            {_not_impl (); return 0;}
 
-    virtual int add ()
-    {   return 0;   }
-    virtual int remove ()
-    {   return 0;   }
-
-    virtual MValue& operator= (const MValue & m)
-    {   return *this;    }
+    /*
+        assign ()
+            operator =
+    */
+    virtual MValue& assign (const int& m)           {_not_impl (); return *this;}
+    virtual MValue& assign (const MContainer& m)    {_not_impl (); return *this;}
+    virtual MValue& operator= (const int& m)        {return assign(m);}
+    virtual MValue& operator= (const MContainer& m) {return assign(m);}
 
     virtual std::string encodeToStr () const
     {
@@ -184,61 +198,67 @@ public:
     }
 
 protected:
-    objecttype_t _type;
+    objecttype_t _type;    
+
+    /* Debug functions */
+protected:
+    inline void _not_impl ()
+    {
+#ifdef DEBUG_DETAIL
+        printf ("MValue: not implements the function.\n");
+#endif
+    }
 };
 
 // Basic value define
-template<unsigned char v, class T>
-class MSimpleValue : public MValue
+///////////////////////////////////////
+class MSimpleValue_int : public MValue
 {
 public:
-//    MSimpleValue ()
-//        : MValue (v | T_PREFIX_SIMPLE), value (NULL)
-//    {}
-
-    MSimpleValue (T init_value)
-        : MValue (v | T_PREFIX_SIMPLE), value (init_value)
+    MSimpleValue_int (int init_value)
+        : MValue (MValue::TS_INT), _value (init_value)
     {}
 
-    MSimpleValue (const MSimpleValue& sv)
-        : MValue (v | T_PREFIX_SIMPLE), value (sv.value)
+    MSimpleValue_int (const MSimpleValue_int& sv)
+        : MValue (MValue::TS_INT), _value (sv._value)
     {}
 
-    virtual ~MSimpleValue ()
+    virtual ~MSimpleValue_int ()
     {}
 
-    operator T ()
+    int& getValue_int ()
     {
-        return value;
+        return _value;
     }
 
-    MValue& operator= (const T& m)
+    MValue& assign (const int& m)
     {
-        return (value=m.value);
-    }
-
-    void getValue (T& value)
-    {   
-        value = _value;
+        _value = m;
+        return *this;
     }
 
     string encodeToStr () const
     {
         std::ostringstream s;
         s << MValue::encodeToStr ();
-        s << value;
+        s << _value;
         return s.str ();
     }
 
 protected:
-    T _value;
+    int _value;
 };
 
+// Container
+///////////////////////////////////////
 class MContainer : public MValue
 {
 public:
     typedef unsigned short short_index_t;
     typedef std::map<short_index_t,MValue *> Box;
+
+protected:
+    Box _b;
 
 public:
     MContainer ()
@@ -252,15 +272,27 @@ public:
             delete it->second;
     }
 
-    template <unsigned char V, class T>
-    int& MContainer::add (short_index_t index, T value)
+    MValue& getItem (short_index_t index)
     {
-        if (_b.find (index) != b.end () && _b[index].getType == V)
-            return (_b[index] = value);
+        return *(_b[index]);
+    }
+    MValue& assign (short_index_t index, const int& m)
+    {
+        _b[index] = m;
+        return *this;
+    }
+    
+    MValue* add (short_index_t index, int value)
+    {
+        if (_b.find (index) != _b.end () && _b[index]->getType() == MValue::TS_INT)
+        {
+            *(_b[index]) = value;
+            return _b[index];
+        }
         else
         { 
             delete _b[index];
-            _b[index] = new MValue_int (value);
+            return (_b[index] = new MSimpleValue_int (value));
         }
     }
 
@@ -271,20 +303,14 @@ public:
     }
 
     inline 
-    MValue& get (short_index_t index) const
+    MValue& getItem (short_index_t index)
     {
         if (_b.find (index) == _b.end ())
-            return unknown_value;
+            return NULL;
 
-        return (*(_b[index]));
-        
+        return *(_b[index]);
     }
 
-    inline 
-    MValue& operator[] (short_index_t index)
-    {
-        return (*(_b[index]));
-    }
 
     std::string encodeToStr () const
     {
@@ -298,45 +324,7 @@ public:
         s << "}";
         return s.str ();
     }
-
-protected:
-    std::map<short_index_t,MValue *> _b;
 };
-
-// Basic type declare
-///////////////////////////////////////
-
-typedef class MSimpleValue<1,int> MValue_int;
-
-template class MSimpleValue<1,int>;
-
-/*
-#define DECLARE_SIMPLE_VALUE(V,T,S)                         \
-    template<> int MSimpleValue<V,T>::getValue (T& value)   \
-    {   value = _value;return 0;   }                        \
-    template<> MValue& MSimpleValue<V,T>::operator= (const T& m)  \
-    {   _value = m; return *this;   }                       \
-    int& MContainer::add (short_index_t index, T value)     \
-    {   if (_b.find (index) != b.end () && _b[index].getType == V)  \
-            return (_b[index] = value);                     \
-        else { delete _b[index];                            \
-            _b[index] = new MValue_##S(value);}             \
-    }                                                       \
-    template class MSimpleValue<V,T>;                       \
-    typedef class MSimpleValue<V,T> MValue_##S;
-
-DECLARE_SIMPLE_VALUE(1,int,"int")
-DECLARE_SIMPLE_VALUE(4,std::string,"string")
-*/
-/*
-typedef MSimpleValue<1, int> MValue_int;
-typedef MSimpleValue<4, std::string> MValue_string;
-
-template class MSimpleValue<1, int>;
-template class MSimpleValue<4, std::string>;
-*/
-/////////////////////
-
 
 
 class MBaseObject : public MContainer
@@ -358,13 +346,16 @@ class VEObject : public MBaseObject
 public:
     Coord3D pos;
 
+private:
+    id_t    _id;
+
 public:
-    MGameObject (const id_t &id, const Coord3D &init_pos)
+    VEObject (const id_t &id, const Coord3D &init_pos)
         : pos (init_pos), _id (id)
     {}
 
     virtual 
-    ~MGameObject () {}
+    ~VEObject () {}
     virtual
     std::string encodeToStr ()
     {
@@ -373,10 +364,7 @@ public:
 
     inline 
     id_t get_id () const
-    {   return _id;  };
-
-private:
-    id_t    _id;
+    {   return _id;  }
 };
 
 
@@ -602,389 +590,6 @@ namespace VAST
         id_t     new_owner;
         id_t     orig_owner;
     };
-
-
-    // a list of attributes used by an object or an event
-    class attributes
-    {
-    public:
-        attributes ()
-        {
-            type = 0;
-            dirty = false;
-            version = 0;            
-        }
-
-        virtual ~attributes ()
-        {
-        }
-
-        // return the size of the attribute list
-        virtual int size () = 0;
-        
-        // store a new attribute into the list
-        // returns the index within the list
-        virtual int add (bool   value) = 0;
-        virtual int add (int    value) = 0;
-        virtual int add (float value) = 0;
-        virtual int add (string value) = 0;
-        virtual int add (vec3_t value) = 0;
-        
-        // get the attribute value by index
-        virtual bool get (int index, bool   &value) = 0;
-        virtual bool get (int index, int    &value) = 0;
-        virtual bool get (int index, float &value) = 0;     
-        virtual bool get (int index, string &value) = 0;
-        virtual bool get (int index, vec3_t &value) = 0;
-        
-        // replace the existing value of an attribute by index (dirty flag will be set)
-        virtual bool set (int index, bool   value) = 0;
-        virtual bool set (int index, int    value) = 0;
-        virtual bool set (int index, float value) = 0;        
-        virtual bool set (int index, string value) = 0;
-        virtual bool set (int index, vec3_t value) = 0; 
-
-        // encode all current values into a byte string
-        //virtual string &pack_all () = 0;
-        virtual int pack_all (char **) = 0;
-        
-        // encode only those that have been updated (unset all dirty flag)
-        virtual int pack_dirty (char **) = 0;
-        
-        // unpack an encoded bytestring
-        virtual bool unpack (char *str) = 0;
-
-        // returns the size of the attributes, if packed as a string
-        //virtual bool packsize () = 0;
-                
-        byte_t      type;           // type = 1 is a character creation event (?)
-        bool        dirty;          // right now any updated attribute will resend whole
-        version_t   version;
-    };
-    
-    // a list of attributes used by an object or an event
-    class attributes_impl : public attributes
-    {
-    public:
-        attributes_impl ()
-        {
-            _size = 0;
-        }
-
-        ~attributes_impl ()
-        {
-        }
-        
-        // return the size of the attribute list
-        int size ()
-        {
-            return _size;
-        }
-        
-        // store a new attribute into the list
-        // returns the index within the list
-        int add (bool   value);
-        int add (int    value);
-        int add (float  value);
-        int add (string value);
-        int add (vec3_t value);
-        
-        // get the attribute value by index
-        bool get (int index, bool   &value);
-        bool get (int index, int    &value);
-        bool get (int index, float  &value);     
-        bool get (int index, string &value);
-        bool get (int index, vec3_t &value);
-        
-        // replace the existing value of an attribute by index (dirty flag will be set)
-        bool set (int index, bool   value);
-        bool set (int index, int    value);
-        bool set (int index, float  value);        
-        bool set (int index, string value);
-        bool set (int index, vec3_t value); 
-        
-        // encode all current values into a byte string
-        // returns 0 for error        
-        //string &pack_all ();
-        int pack_all (char **);
-        
-        // encode only those that have been updated (unset all dirty flag)
-        int pack_dirty (char **);
-        
-        // unpack an encoded bytestring
-        bool unpack (char *str);      
-           
-        bool is_dirty (int index)
-        {
-            return _dirty[index];
-        }
-
-        void reset_dirty ()
-        {
-            for (int i=0; i<(int)_dirty.size (); ++i)
-                _dirty[i] = false;
-            dirty = false;            
-        }
-        
-         bool get (int index, void **ptr, int &length)
-         {
-             length = _length[index];
-             *ptr = (void *)start_ptr (index);
-             return true;
-         }
-
-    private:
-        int             _size;                
-        vector<byte_t>  _types;         // 16 bytes in memory
-        string          _data;          // 16 bytes in memory
-        vector<word_t>  _length;
-        vector<bool>    _dirty;         // per attribute dirty flag
-
-        inline int start_index (int index)
-        {
-            // get to the beginning of data
-            int i, count = 0;
-            for (i=0; i<index; ++i)
-                count += _length[i];            
-            return count;
-        }
-
-        inline const char *start_ptr (int index)
-        {
-            return _data.c_str() + start_index (index);
-        }
-
-        void printdata () 
-        {
-            for (int i=0; i<(int)_data.length (); i++)
-                printf ("%3u ", (unsigned char)_data[i]);
-            printf ("\n");
-        }
-    };
-    
-    class event : public attributes_impl
-    {
-    public:
-        event () 
-        {
-        }
-
-        event (id_t sender, event_id_t event_id, timestamp_t occur_time)
-            :_sender(sender), _id(event_id), _timestamp (occur_time)
-        {
-        }
-
-        event_id_t get_id ()
-        {
-            return _id;
-        }
-
-        id_t get_sender ()
-        {
-            return _sender;
-        }
-
-        timestamp_t get_timestamp ()
-        {
-            return _timestamp;
-        }
-
-        // encode an event to a buffer, return the number of bytes encoded
-        int encode (char *buf)
-        {
-            Msg_EVENT info;
-
-            // encode this event
-            info.type       = type;
-            info.version    = version;
-            info.id         = _id;
-            info.sender     = _sender;
-            info.timestamp  = _timestamp;
-
-            // copy data in event class
-            memcpy (buf, (void *)&info, sizeof (Msg_EVENT));        
-        
-            // copy entire bytestring of the attribute values
-            char *p = buf + sizeof (Msg_EVENT);
-        
-            return (sizeof (Msg_EVENT) + this->pack_all (&p));
-        }
-
-        // decode an serialized event back to this class
-        bool decode (char *buf)
-        {
-            Msg_EVENT info;
-
-            memcpy (&info, buf, sizeof (Msg_EVENT));
-            type        = info.type;
-            version     = info.version;
-            _id         = info.id;
-            _sender     = info.sender;
-            _timestamp  = info.timestamp;
-
-            return this->unpack (buf + sizeof (Msg_EVENT));
-        }       
-
-    private:
-        event_id_t  _id;
-        id_t        _sender;
-        timestamp_t _timestamp;
-    };
-        
-    class object : public attributes_impl
-    {
-    public:
-        object (obj_id_t id)
-            :_id(id), peer (0), pos_dirty(false), visible(false), pos_version (0), _alive(true)
-        {
-            dirty = false;
-        }
-
-        ~object ()
-        {
-        }
-
-        obj_id_t get_id ()
-        {
-            return _id;
-        }
-        
-        void set_pos (Position &pos)
-        {
-            _pos = pos;
-            pos_dirty = true;
-        } 
-
-        Position &get_pos ()
-        {
-            return _pos;
-        }
-                
-        void mark_deleted ()
-        {
-            _alive = false;
-        }
-
-		bool is_alive ()
-		{
-			return _alive;
-		}
-
-        bool is_AOI_object (Node &n, bool add_buffer = false)
-        {
-            if (add_buffer)
-                return n.pos.dist (_pos) <= ((double)n.aoi * VASTATE_BUFFER_MULTIPLIER);
-            else
-                return n.pos.dist (_pos) <= n.aoi;
-        }
-
-        char *tostring ()
-        {
-            static char str[9];
-            ID_STR::tostring (_id, str);
-            return str;
-        }
-            
-        // encode an object header, returns the # of bytes encoded
-        int encode_pos (char *buf, bool dirty_only, bool is_request = false)
-        {
-            if (dirty_only == true && pos_dirty == false)
-                return 0;
-            
-            Msg_OBJECT info;
-            info.obj_id      = _id;
-            info.pos         = _pos;
-            info.pos_version = pos_version;
-            //info.version     = version;
-            info.peer        = peer;
-            info.is_request  = is_request;
-            
-            // store the object part        
-            memcpy (buf, &info, sizeof(Msg_OBJECT));
-            
-            return sizeof (Msg_OBJECT);
-        }   
-
-        bool decode_pos (char *buf)
-        {
-            Msg_OBJECT info;
-            memcpy (&info, buf, sizeof (Msg_OBJECT));
-
-            if (_id != info.obj_id)
-                return false;
-
-            // if the update is not newer then we don't apply
-            if (info.pos_version < pos_version)
-                return false;
-
-            // decode_pos for a mark_deleted object, make it alive
-            _alive = true;
-
-            _pos        = info.pos;
-            peer        = info.peer;     // TODO: don't do this every time, redundent
-            //version     = info.version;
-            //pos_version = info.pos_version;
-            pos_dirty   = true;
-
-            return true;
-        }
-
-        // encode an object states
-        // returns the # of bytes encoded
-        // packing order: 
-        //      1.    Msg_STATE
-        //      2.    encoded bytestring (variable length)        
-        int encode_states (char *buf, bool dirty_only, bool is_request = false)
-        {        
-            // store the attribute part        
-            char *p = buf + sizeof (Msg_STATE);
-            
-            Msg_STATE info;  
-            info.obj_id     = _id;
-            info.version    = version;
-            info.size       = (dirty_only ? this->pack_dirty (&p) : this->pack_all (&p));
-            info.is_request = is_request;
-            
-            if (info.size == 0)
-                return 0;
-            
-            memcpy (buf, &info, sizeof (Msg_STATE));
-            
-            return sizeof (Msg_STATE) + info.size;
-        }
-        
-        bool decode_states (char *buf)
-        {
-            Msg_STATE info;
-            memcpy (&info, buf, sizeof (Msg_STATE));
-
-            // if the update is not newer then we don't apply
-            if (info.version < version)
-                return false;
-
-            if (this->unpack (buf + sizeof (Msg_STATE)) == true)
-            {
-                this->dirty = true;
-                return true;
-            }
-            return false;
-        }
-                    
-        id_t        peer;
-        bool        pos_dirty;    // new position has been given		
-        bool		visible;
-		version_t   pos_version;
-
-    private:
-        obj_id_t    _id;
-        Position    _pos;        
-        
-        bool        _alive;      
-    };
-
-    //
-    // message for transport over network
-    //
 
     class Msg_NODE
     {

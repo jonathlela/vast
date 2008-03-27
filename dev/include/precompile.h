@@ -7,7 +7,7 @@
 // STL Header
 #include <map>
 #include <string>
-#include <ostream>
+#include <sstream>
 
 // RTTI support
 #include <typeinfo>
