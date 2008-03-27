@@ -39,6 +39,8 @@ public:
     {
         //bool is_gateway = (_id == NET_ID_GATEWAY ? true : false);                
         Addr gateway;
+        // NOTE: this must be done for network layer is check the id to connect
+        gateway.id = NET_ID_GATEWAY;
         
         // NOTE: we assume default local listen port is the same as gateway's port
         vnode = _world->create_node (gateway.publicIP.port, (aoi_t)para.AOI_BUFFER);

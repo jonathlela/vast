@@ -103,7 +103,6 @@ namespace VAST
             // send query to find acceptor if I'm a regular peer
             Msg_QUERY info (_self, _net->getaddr (_self.id));
 
-            gateway.id = NET_ID_GATEWAY;
             if (_net->connect (gateway) == (-1))
                 return false;
 

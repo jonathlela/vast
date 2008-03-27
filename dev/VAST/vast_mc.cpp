@@ -99,7 +99,8 @@ namespace VAST
 		{
 			// send query to find acceptor if I'm a regular peer
 			Msg_Query info (_self, _net->getaddr (_self.id));
-			if (_net->connect (NET_ID_GATEWAY, gateway) == (-1))
+			//if (_net->connect (NET_ID_GATEWAY, gateway) == (-1))
+            if (_net->connect (gateway) == (-1))
 				return false;
 
 			// NOTE: gateway will disconnect me immediately after receving	QUERY
