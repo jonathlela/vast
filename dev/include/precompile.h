@@ -5,6 +5,7 @@
 // Standard C Header
 
 // STL Header
+#include <iostream>
 #include <map>
 #include <string>
 #include <sstream>
