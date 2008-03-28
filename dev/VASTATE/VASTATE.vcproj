@@ -151,6 +151,9 @@ copy &quot;$(OutDir)\$(TargetName).lib&quot; &quot;$(ProjectDir)..\lib&quot;
 		<Filter
 			Name="Source Files"
 			Filter="cpp;c;cxx;rc;def;r;odl;idl;hpj;bat">
+			<File
+				RelativePath=".\shared.cpp">
+			</File>
 		</Filter>
 		<Filter
 			Name="Header Files"
