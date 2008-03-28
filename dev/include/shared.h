@@ -255,7 +255,7 @@ public:
     }
 
 protected:
-    int _value;
+    void *_value;
 };
 
 // Container
