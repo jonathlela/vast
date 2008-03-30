@@ -31,7 +31,7 @@ namespace VAST
         // if this is a first-time join
         if (_id == NET_ID_UNASSIGNED && _request_counter == 0)
         {
-            _net->connect (NET_ID_GATEWAY, _gateway);
+            _net->connect (_gateway);
             _net->sendmsg (NET_ID_GATEWAY, ID, 0, 0);//, 0);
 
             // we'll make a countdown
