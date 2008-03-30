@@ -25,7 +25,8 @@
 				MinimalRebuild="TRUE"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="5"
-				UsePrecompiledHeader="0"
+				UsePrecompiledHeader="1"
+				PrecompiledHeaderThrough="precompile.h"
 				WarningLevel="3"
 				Detect64BitPortabilityProblems="TRUE"
 				DebugInformationFormat="4"/>
@@ -117,11 +118,23 @@
 			<File
 				RelativePath=".\main.cpp">
 			</File>
+			<File
+				RelativePath=".\precomplie.cpp">
+			</File>
+			<File
+				RelativePath="..\..\VASTATE\shared.cpp">
+			</File>
 		</Filter>
 		<Filter
 			Name="¼ÐÀYÀÉ"
 			Filter="h;hpp;hxx;hm;inl;inc;xsd"
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}">
+			<File
+				RelativePath="..\..\include\precompile.h">
+			</File>
+			<File
+				RelativePath="..\..\include\shared.h">
+			</File>
 		</Filter>
 		<Filter
 			Name="¸ê·½ÀÉ"
