@@ -19,7 +19,8 @@
 			ConfigurationType="2"
 			UseOfMFC="0"
 			ATLMinimizesCRunTimeLibraryUsage="FALSE"
-			CharacterSet="2">
+			CharacterSet="2"
+			DeleteExtensionsOnClean="*.obj;*.ilk;*.pdb;*.tlb;*.tli;*.tlh;*.tmp;*.rsp;*.bat;$(TargetPath);&quot;$(SolutionDir)\bin\$(TargetFileName)&quot;">
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="2"
@@ -83,7 +84,8 @@ copy &quot;$(OutDir)\$(TargetName).lib&quot; &quot;$(ProjectDir)..\lib&quot;
 			ConfigurationType="2"
 			UseOfMFC="0"
 			ATLMinimizesCRunTimeLibraryUsage="FALSE"
-			CharacterSet="2">
+			CharacterSet="2"
+			DeleteExtensionsOnClean="*.obj;*.ilk;*.pdb;*.tlb;*.tli;*.tlh;*.tmp;*.rsp;*.bat;$(TargetPath);&quot;$(SolutionDir)\bin\$(TargetFileName)&quot;;&quot;$(SolutionDir)\bin\$(TargetName).pdb&quot;">
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
