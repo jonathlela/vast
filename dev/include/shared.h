@@ -125,6 +125,8 @@ public:
     }
 };
 
+std::string to_string (const Coord3D& p);
+
 //// Game object model defination
 ///////////////////////////////////////
 /*
@@ -133,7 +135,27 @@ public:
         / MSimpleValue
 MValue -
         \ MContainer - MBaseObject - VEObject
+
+Factory class
+MValueFactory
 */
+#define DECLARE_ACCESS_FUNCTION(t)      \
+    public:                             \
+    virtual int get (t& m)        {_not_impl ("get ()"); return -1;} \
+    virtual int set (const t& m)  {_not_impl ("set ()"); return -1;}
+
+class MValue;
+
+EXPORT class MValueFactory
+{
+public:
+    static MValue* copy (const MValue& value);
+    static void destroy (const MValue *m);
+
+private:
+    MValueFactory () {}
+};
+
 class MValue
 {
 public:
@@ -141,18 +163,22 @@ public:
     const static objecttype_t T_UNKNOWN       = 0x01;
     const static objecttype_t T_CONTAINER     = 0x02;
     const static objecttype_t T_PREFIX_SIMPLE = 0x10;
-    const static objecttype_t TS_INT          = T_PREFIX_SIMPLE | 0x01;
-    const static objecttype_t TS_DOUBLE       = T_PREFIX_SIMPLE | 0x02;
-    const static objecttype_t TS_STRING       = T_PREFIX_SIMPLE | 0x04;
+    const static objecttype_t TS_BOOL         = T_PREFIX_SIMPLE | 0x01;
+    const static objecttype_t TS_INT          = T_PREFIX_SIMPLE | 0x02;
+    const static objecttype_t TS_DOUBLE       = T_PREFIX_SIMPLE | 0x04;
+    const static objecttype_t TS_STRING       = T_PREFIX_SIMPLE | 0x08;
     //const static std::string OBJECTTYPE_STR[] = {"T_UNKNOWN", "T_CONTAINER"};
 
     const static MValue null_value;
     static MValue unknown_value;
+    static MValue error_value;
 
 public:
     MValue (objecttype_t t = T_UNKNOWN)
-        : _type (t)
-    {}
+        : _type (t) {}
+
+    MValue (const MValue& m)
+        : _type (m._type) {}
 
     virtual ~MValue ()
     {
@@ -160,45 +186,47 @@ public:
     }
 
     inline
-    objecttype_t getType () const
+    objecttype_t get_type () const
     {
         return _type;
     }
 
     /*
         Value operators:
-        getValue ()
+        get ()
+        set ()
     */
-    virtual int& getValue_int ()    {static int i=0; _not_impl (); return i;}
+    DECLARE_ACCESS_FUNCTION(bool)
+    DECLARE_ACCESS_FUNCTION(int)
+    DECLARE_ACCESS_FUNCTION(double)
+    DECLARE_ACCESS_FUNCTION(std::string)
 
     /*
         Container Operators:
-        getItem ()
-        add ()
-        remove ()
+        add_attribute ()
+        remove_attribute ()
+        get_attribute ()
     */
-    virtual MValue& getItem (VAST::short_index_t index)     {std::cout << "MValue::getItem ()" << endl; return *this;}
+    virtual int add_attribute     (VAST::short_index_t index, const MValue& m) 
+    {
+        _not_impl ("add_attribute ()"); 
+        return -1;
+    }
 
-    virtual void add (VAST::short_index_t index, int value) {std::cout << "MValue::add ()" << endl;    _not_impl ();}
-    virtual void remove (VAST::short_index_t index)         {std::cout << "MValue::remove ()" << endl; _not_impl ();}
+    virtual int remove_attribute  (VAST::short_index_t index)         
+    {
+        _not_impl ("remove_attribute ()"); 
+        return -1;
+    }
 
-    /*
-        common operators:
-        assign ()
-    */
-    virtual MValue& assign (const int m)            {std::cout << "MValue::assign (int)" << endl; _not_impl (); return *this;}
-    virtual MValue& assign (const VAST::MValue& m)  {std::cout << "MValue::assign (MValue)" << endl; _not_impl (); return *this;}
-
-    // operators
-    //virtual operator int ()     {return getValue_int ();}
-    virtual MValue& operator[] (short_index_t index)    {return getItem (index);}
-
-    virtual MValue& operator= (const int& m)            {return assign(m);}
-    virtual MValue& operator= (const MValue& m)         {return assign(m);}
+    virtual MValue& get_attribute (VAST::short_index_t index)
+    {
+        _not_impl ("get_attribute ()"); 
+        return MValue::error_value;
+    }
 
     virtual std::string encodeToStr () const
     {
-        std::cout << "MValue::encodeToStr ()" << endl;
         std::ostringstream s;
         s << "[t" << (int) _type << "]";
         return s.str ();
@@ -209,54 +237,70 @@ protected:
 
     /* Debug functions */
 protected:
-    inline void _not_impl ()
+    inline void _not_impl (const std::string& functionName)
     {
 #ifdef DEBUG_DETAIL
-        printf ("MValue: not implements the function.\n");
+        std::cout << "MValue: " << functionName << "not implements the function." << std::endl;
 #endif
     }
 };
 
 // Basic value define
 ///////////////////////////////////////
-class MSimpleValue_int : public MValue
+template<VAST::objecttype_t TYPE_ID,typename TYPE>
+class MSimpleValue : public MValue
 {
+protected:
+    TYPE _value;
+
 public:
-    MSimpleValue_int (int init_value)
-        : MValue (MValue::TS_INT), _value (init_value)
+    MSimpleValue (TYPE init_value)
+        : MValue (TYPE_ID), _value (init_value)
     {}
 
-    MSimpleValue_int (const MSimpleValue_int& sv)
-        : MValue (MValue::TS_INT), _value (sv._value)
-    {}
-
-    virtual ~MSimpleValue_int ()
-    {}
-
-    int& getValue_int ()
+    MSimpleValue (const MSimpleValue<TYPE_ID, TYPE>& sv)
+        : MValue (TYPE_ID), _value(sv._value)
     {
-        return _value;
     }
 
-    MValue& assign (const int m)
+    virtual ~MSimpleValue ()
     {
-        std::cout << "MSimpleValue_int::assign (int)" << endl;
+    }
+
+    int get (TYPE& m)
+    {
+        m = _value;
+        return 0;
+    }
+
+    int set (const TYPE &m)
+    {
         _value = m;
-        return *this;
+        return 0;
     }
 
-    string encodeToStr () const
+    int set (const MSimpleValue<TYPE_ID,TYPE>& m)
     {
-        std::cout << "MSimpleValue_int::encodeToStr ()" << endl;
+        _value = m._value;
+        return 0;
+    }
+
+    virtual string encodeToStr () const
+    {
         std::ostringstream s;
         s << MValue::encodeToStr ();
         s << _value;
         return s.str ();
     }
-
-protected:
-    void *_value;
 };
+
+//
+///////////////////////////////////////
+typedef MSimpleValue<MValue::TS_BOOL, bool>             MSimpleValue_bool;
+typedef MSimpleValue<MValue::TS_INT, int>               MSimpleValue_int;
+typedef MSimpleValue<MValue::TS_DOUBLE, double>         MSimpleValue_double;
+typedef MSimpleValue<MValue::TS_STRING, std::string>    MSimpleValue_string;
+
 
 // Container
 ///////////////////////////////////////
@@ -281,43 +325,37 @@ public:
             delete it->second;
     }
 
-    MValue& getItem (VAST::short_index_t index)
+    int add_attribute (VAST::short_index_t index, const MValue& m) 
+    {
+        std::cout << "MContainer::add ("<< (int) index << "," << m.encodeToStr () << ")" << endl;
+        if (_b.find (index) != _b.end ())
+            MValueFactory::destroy (_b[index]);
+
+        _b[index] = MValueFactory::copy (m);
+        return 0;
+    }
+
+    int remove_attribute (VAST::short_index_t index)         
+    {
+        if (_b.find (index) != _b.end ())
+        {
+            MValueFactory::destroy (_b[index]);
+            _b.erase (index);
+        }
+        return -1;
+    }
+
+    MValue& get_attribute (VAST::short_index_t index)
     {
         std::cout << "MContainer::getItem ()" << endl;
         if (_b.find (index) == _b.end ())
-            return unknown_value;
+            return error_value;
 
         return *(_b[index]);
     }
 
-    MValue& assign (VAST::short_index_t index, const int& m)
+    virtual std::string encodeToStr () const
     {
-        std::cout << "MContainer::assign () " << endl;
-        *(_b[index]) = m;
-        return *this;
-    }
-
-    void add (VAST::short_index_t index, int value)
-    {
-        std::cout << "MContainer::add ("<< (int) index << "," << value << ")" << endl;
-        bool b_exist;
-        if ((b_exist = _b.find (index) != _b.end ()) && _b[index]->getType() == MValue::TS_INT)
-            _b[index]->assign (value);
-        else
-            if (b_exist)
-                delete (_b[index]);
-            _b[index] = new MSimpleValue_int (value);
-    }
-
-    void remove (VAST::short_index_t index)
-    {
-        if (_b.find (index) != _b.end ())
-            _b.erase (index);
-    }
-
-    std::string encodeToStr () const
-    {
-        std::cout << "MContainer::encodeToStr ()" << endl;
         std::ostringstream s;
         s << MValue::encodeToStr ();
         s << "{";
@@ -329,19 +367,31 @@ public:
         s << "}";
         return s.str ();
     }
+
+    friend class MValueFactory;
 };
 
 class MBaseObject : public MContainer
 {
+private:
+    id_t    _id;
+
 public:
     // any property here? 
-    MBaseObject ()  {   }
-    ~MBaseObject () {   }
+    MBaseObject (const id_t & id) 
+        : _id (id)  {}
+    ~MBaseObject () {}
 
-    std::string encodeToStr () const
+    inline 
+    id_t get_id () const
+    {   return _id;  }
+
+    virtual std::string encodeToStr () const
     {
-        std::cout << "MBaseObject::encodeToStr ()" << endl;
-        return MContainer::encodeToStr ();
+        std::ostringstream s;
+        s << "[id " << get_id () << "]";
+        s << MContainer::encodeToStr ();
+        return s.str ();
     }
 };
 
@@ -350,21 +400,18 @@ class VEObject : public MBaseObject
 public:
     Coord3D pos;
 
-private:
-    id_t    _id;
-
 public:
-    VEObject (const id_t &id, const Coord3D &init_pos)
-        : pos (init_pos), _id (id) {}
+    VEObject (const id_t& id, const Coord3D &init_pos)
+        : MBaseObject (id), pos (init_pos) {}
     ~VEObject () {}
-    std::string encodeToStr ()
-    {
-        return MBaseObject::encodeToStr ();
-    }
 
-    inline 
-    id_t get_id () const
-    {   return _id;  }
+    std::string encodeToStr () const
+    {
+        std::ostringstream s;
+        s << "[pos " << to_string (pos) << "]";
+        s << MBaseObject::encodeToStr ();
+        return s.str ();
+    }
 };
 
 } /* end of namespace VAST */

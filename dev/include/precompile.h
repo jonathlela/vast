@@ -2,6 +2,9 @@
 #ifndef _VASTATE_PRECOMPILE_H
 #define _VASTATE_PRECOMPILE_H
 
+// Project configure
+#include "config.h"
+
 // Standard C Header
 
 // STL Header
@@ -11,6 +14,6 @@
 #include <sstream>
 
 // RTTI support
-#include <typeinfo>
+//#include <typeinfo>
 
 #endif /* _VASTATE_PRECOMPILE_H */
