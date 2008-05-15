@@ -200,7 +200,7 @@ class EXPORT Addr
 {
     
 public:
-    // should this correct? defininyg a id in Addr and in typedef.h
+    // should this correct? define an id in Addr and in typedef.h
     id_t   id;
     IPaddr publicIP;
     IPaddr privateIP;

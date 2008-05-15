@@ -76,7 +76,7 @@ namespace VAST {
         //        NET_ID_UNASSIGNED: means connects to a outside node, network layer should allocating a
         //                           temp&private id and return by addr structure
         //        any non-private id: connects to the node, and register addr.id to the address
-        virtual int connect (id_t target, Addr addr) { puts ("network: connect (): Not supported.\n"); return 0; }
+        //virtual int connect (id_t target, Addr addr) { puts ("network: connect (): Not supported.\n"); return 0; }
         virtual int connect (id_t target) = 0;
         virtual int connect (Addr & addr) = 0;
         virtual int disconnect (id_t target) = 0;
