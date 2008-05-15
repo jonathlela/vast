@@ -14,23 +14,24 @@
 	<Configurations>
 		<Configuration
 			Name="Release|Win32"
-			OutputDirectory="..\build\$(ProjectName)\$(ConfigurationName)\"
-			IntermediateDirectory="..\build\$(ProjectName)\$(ConfigurationName)\"
+			OutputDirectory="$(SolutionDir)\build\$(ProjectName)\$(ConfigurationName)\"
+			IntermediateDirectory="$(SolutionDir)\build\$(ProjectName)\$(ConfigurationName)\"
 			ConfigurationType="2"
 			UseOfMFC="0"
 			ATLMinimizesCRunTimeLibraryUsage="FALSE"
 			CharacterSet="2"
-			DeleteExtensionsOnClean="*.obj;*.ilk;*.pdb;*.tlb;*.tli;*.tlh;*.tmp;*.rsp;*.bat;$(TargetPath);&quot;$(SolutionDir)\bin\$(TargetFileName)&quot;">
+			DeleteExtensionsOnClean="*.obj;*.ilk;*.pdb;*.tlb;*.tli;*.tlh;*.tmp;*.rsp;*.bat;$(TargetPath);$(TargetPath);&quot;$(SolutionDir)\bin\$(TargetFileName)&quot;;&quot;$(SolutionDir)\bin\$(TargetName).pdb&quot;;&quot;$(SolutionDir)\lib\$(TargetFileName)&quot;;&quot;$(SolutionDir)\lib\$(TargetName).lib&quot;;">
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				InlineFunctionExpansion="1"
-				AdditionalIncludeDirectories="..\include"
+				AdditionalIncludeDirectories="&quot;$(SolutionDir)\include&quot;;&quot;$(ProjectDir)\include&quot;"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;VASTATE_EXPORTS"
 				StringPooling="TRUE"
 				RuntimeLibrary="0"
 				EnableFunctionLevelLinking="TRUE"
 				UsePrecompiledHeader="2"
+				PrecompiledHeaderThrough="precompile.h"
 				ProgramDataBaseFileName="$(IntDir)/$(ProjectName).pdb"
 				WarningLevel="3"
 				SuppressStartupBanner="TRUE"
@@ -54,9 +55,9 @@
 				HeaderFileName=""/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="copy &quot;$(OutDir)\$(TargetFileName)&quot; &quot;$(ProjectDir)..\bin&quot;
-copy &quot;$(OutDir)\$(TargetFileName)&quot; &quot;$(ProjectDir)..\lib&quot;
-copy &quot;$(OutDir)\$(TargetName).lib&quot; &quot;$(ProjectDir)..\lib&quot;
+				CommandLine="copy &quot;$(OutDir)\$(TargetFileName)&quot; &quot;$(SolutionDir)\bin&quot;
+copy &quot;$(OutDir)\$(TargetFileName)&quot; &quot;$(SolutionDir)\lib&quot;
+copy &quot;$(OutDir)\$(TargetName).lib&quot; &quot;$(SolutionDir)\lib&quot;
 "/>
 			<Tool
 				Name="VCPreBuildEventTool"/>
@@ -79,17 +80,17 @@ copy &quot;$(OutDir)\$(TargetName).lib&quot; &quot;$(ProjectDir)..\lib&quot;
 		</Configuration>
 		<Configuration
 			Name="Debug|Win32"
-			OutputDirectory="..\build\$(ProjectName)\$(ConfigurationName)\"
-			IntermediateDirectory="..\build\$(ProjectName)\$(ConfigurationName)\"
+			OutputDirectory="$(SolutionDir)\build\$(ProjectName)\$(ConfigurationName)\"
+			IntermediateDirectory="$(SolutionDir)\build\$(ProjectName)\$(ConfigurationName)\"
 			ConfigurationType="2"
 			UseOfMFC="0"
 			ATLMinimizesCRunTimeLibraryUsage="FALSE"
 			CharacterSet="2"
-			DeleteExtensionsOnClean="*.obj;*.ilk;*.pdb;*.tlb;*.tli;*.tlh;*.tmp;*.rsp;*.bat;$(TargetPath);&quot;$(SolutionDir)\bin\$(TargetFileName)&quot;;&quot;$(SolutionDir)\bin\$(TargetName).pdb&quot;">
+			DeleteExtensionsOnClean="*.obj;*.ilk;*.pdb;*.tlb;*.tli;*.tlh;*.tmp;*.rsp;*.bat;$(TargetPath);&quot;$(SolutionDir)\bin\$(TargetFileName)&quot;;&quot;$(SolutionDir)\bin\$(TargetName).pdb&quot;;&quot;$(SolutionDir)\lib\$(TargetFileName)&quot;;&quot;$(SolutionDir)\lib\$(TargetName).lib&quot;;">
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="..\include"
+				AdditionalIncludeDirectories="&quot;$(SolutionDir)\include&quot;;&quot;$(ProjectDir)\include&quot;"
 				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;_USRDLL;VASTATE_EXPORTS"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="1"
@@ -121,11 +122,11 @@ copy &quot;$(OutDir)\$(TargetName).lib&quot; &quot;$(ProjectDir)..\lib&quot;
 				HeaderFileName=""/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="copy &quot;$(OutDir)\$(TargetFileName)&quot; &quot;$(ProjectDir)..\bin&quot;
-copy &quot;$(OutDir)\$(TargetName).pdb&quot; &quot;$(ProjectDir)..\bin&quot;
-copy &quot;$(OutDir)\$(TargetFileName)&quot; &quot;$(ProjectDir)..\lib&quot;
-copy &quot;$(OutDir)\$(TargetName).pdb&quot; &quot;$(ProjectDir)..\lib&quot;
-copy &quot;$(OutDir)\$(TargetName).lib&quot; &quot;$(ProjectDir)..\lib&quot;
+				CommandLine="copy &quot;$(OutDir)\$(TargetFileName)&quot; &quot;$(SolutionDir)\bin&quot;
+copy &quot;$(OutDir)\$(TargetName).pdb&quot; &quot;$(SolutionDir)\bin&quot;
+copy &quot;$(OutDir)\$(TargetFileName)&quot; &quot;$(SolutionDir)\lib&quot;
+copy &quot;$(OutDir)\$(TargetName).pdb&quot; &quot;$(SolutionDir)\lib&quot;
+copy &quot;$(OutDir)\$(TargetName).lib&quot; &quot;$(SolutionDir)\lib&quot;
 "/>
 			<Tool
 				Name="VCPreBuildEventTool"/>
@@ -154,23 +155,77 @@ copy &quot;$(OutDir)\$(TargetName).lib&quot; &quot;$(ProjectDir)..\lib&quot;
 			Name="Source Files"
 			Filter="cpp;c;cxx;rc;def;r;odl;idl;hpj;bat">
 			<File
-				RelativePath=".\shared.cpp">
+				RelativePath=".\src\arbitrator_impl.cpp">
+			</File>
+			<File
+				RelativePath=".\src\peer_impl.cpp">
+			</File>
+			<File
+				RelativePath=".\src\precompile.cpp">
+			</File>
+			<File
+				RelativePath=".\src\shared.cpp">
+			</File>
+			<File
+				RelativePath=".\src\storage_cs.cpp">
+			</File>
+			<File
+				RelativePath=".\src\vastate_impl.cpp">
+			</File>
+			<File
+				RelativePath=".\src\vastory.cpp">
+			</File>
+			<File
+				RelativePath=".\src\vworld.cpp">
 			</File>
 		</Filter>
 		<Filter
 			Name="Header Files"
 			Filter="h;hpp;hxx;hm;inl">
 			<File
-				RelativePath="..\include\precompile.h">
+				RelativePath=".\include\arbitrator.h">
 			</File>
 			<File
-				RelativePath="..\include\shared.h">
+				RelativePath=".\src\arbitrator_impl.h">
 			</File>
 			<File
-				RelativePath="..\include\vastate.h">
+				RelativePath=".\include\arbitrator_logic.h">
 			</File>
 			<File
-				RelativePath="..\include\vastory.h">
+				RelativePath=".\include\peer.h">
+			</File>
+			<File
+				RelativePath=".\src\peer_impl.h">
+			</File>
+			<File
+				RelativePath=".\include\peer_logic.h">
+			</File>
+			<File
+				RelativePath=".\include\precompile.h">
+			</File>
+			<File
+				RelativePath=".\include\shared.h">
+			</File>
+			<File
+				RelativePath=".\include\storage.h">
+			</File>
+			<File
+				RelativePath=".\src\storage_cs.h">
+			</File>
+			<File
+				RelativePath=".\include\storage_logic.h">
+			</File>
+			<File
+				RelativePath=".\include\vastate.h">
+			</File>
+			<File
+				RelativePath=".\src\vastate_impl.h">
+			</File>
+			<File
+				RelativePath=".\include\vastory.h">
+			</File>
+			<File
+				RelativePath=".\include\vworld.h">
 			</File>
 		</Filter>
 		<Filter
