@@ -164,6 +164,9 @@ copy &quot;$(OutDir)\$(TargetName).lib&quot; &quot;$(SolutionDir)\lib&quot;
 				RelativePath=".\src\precompile.cpp">
 			</File>
 			<File
+				RelativePath=".\src\rawdata.cpp">
+			</File>
+			<File
 				RelativePath=".\src\shared.cpp">
 			</File>
 			<File
@@ -204,6 +207,9 @@ copy &quot;$(OutDir)\$(TargetName).lib&quot; &quot;$(SolutionDir)\lib&quot;
 				RelativePath=".\include\precompile.h">
 			</File>
 			<File
+				RelativePath=".\include\rawdata.h">
+			</File>
+			<File
 				RelativePath=".\include\shared.h">
 			</File>
 			<File
@@ -220,6 +226,9 @@ copy &quot;$(OutDir)\$(TargetName).lib&quot; &quot;$(SolutionDir)\lib&quot;
 			</File>
 			<File
 				RelativePath=".\src\vastate_impl.h">
+			</File>
+			<File
+				RelativePath=".\include\vastate_typedef.h">
 			</File>
 			<File
 				RelativePath=".\include\vastory.h">

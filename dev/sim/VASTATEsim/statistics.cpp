@@ -338,9 +338,11 @@ int statistics::record_step ()
                     // for each arbitrator hosted by the node
                     for (int arbc = 0; arbc < arb_count; arbc ++)
                     {
+                        // TODO: what's going on here??
                         // fetch accmulated transmitted
-                        unsigned int acc_sendsize = _world->sendsize (arbi[arbc].id);
-                        unsigned int acc_recvsize = _world->recvsize (arbi[arbc].id);
+                        //unsigned int acc_sendsize = _world->sendsize (arbi[arbc].id);
+                        //unsigned int acc_recvsize = _world->recvsize (arbi[arbc].id);
+                        unsigned int acc_sendsize = 0, acc_recvsize = 0;
 
                         // process send size
                         if (_pa_trans_ls[SBW_SEND].find (arbi[arbc].id) == _pa_trans_ls[SBW_SEND].end ())
@@ -374,8 +376,10 @@ int statistics::record_step ()
                     // fetch peer information
                     object * obj = tp->GetSelfObject ();
                     //pair<unsigned int, unsigned int> peer_transmitted = tp->getAccmulatedTransmit ();
-                    unsigned int acc_sendsize = _world->sendsize (obj->peer);
-                    unsigned int acc_recvsize = _world->recvsize (obj->peer);
+                    // TODO: what's goint on here??
+                    //unsigned int acc_sendsize = _world->sendsize (obj->peer);
+                    //unsigned int acc_recvsize = _world->recvsize (obj->peer);
+                    size_t acc_sendsize = 0, acc_recvsize = 0;
 
                     // process send size
                     if (_pa_trans_ls[SBW_SEND].find (obj->get_id ()) == _pa_trans_ls[SBW_SEND].end ())

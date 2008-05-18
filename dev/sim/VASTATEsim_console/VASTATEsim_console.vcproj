@@ -15,11 +15,12 @@
 			OutputDirectory="$(SolutionDir)build\$(ProjectName)\$(ConfigurationName)\"
 			IntermediateDirectory="$(SolutionDir)build\$(ProjectName)\$(ConfigurationName)\"
 			ConfigurationType="1"
-			CharacterSet="2">
+			CharacterSet="2"
+			DeleteExtensionsOnClean="*.obj;*.ilk;*.pdb;*.tlb;*.tli;*.tlh;*.tmp;*.rsp;*.bat;$(TargetPath);&quot;$(SolutionDir)\bin\$(TargetFileName)&quot;;&quot;$(SolutionDir)\bin\$(TargetName).pdb&quot;">
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="..\VASTATEsim,..\..\include"
+				AdditionalIncludeDirectories="&quot;$(SolutionDir)\sim\VASTATEsim&quot;;&quot;$(SolutionDir)\include&quot;;&quot;$(SolutionDir)\VASTATE\include&quot;"
 				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE"
 				MinimalRebuild="TRUE"
 				BasicRuntimeChecks="3"
@@ -68,10 +69,11 @@ copy &quot;$(OutDir)\$(TargetName).pdb&quot; &quot;$(SolutionDir)\bin&quot;
 			OutputDirectory="$(SolutionDir)build\$(ProjectName)\$(ConfigurationName)\"
 			IntermediateDirectory="$(SolutionDir)build\$(ProjectName)\$(ConfigurationName)\"
 			ConfigurationType="1"
-			CharacterSet="2">
+			CharacterSet="2"
+			DeleteExtensionsOnClean="*.obj;*.ilk;*.pdb;*.tlb;*.tli;*.tlh;*.tmp;*.rsp;*.bat;$(TargetPath);&quot;$(SolutionDir)\bin\$(TargetFileName)&quot;">
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="..\VASTATEsim,..\..\include"
+				AdditionalIncludeDirectories="&quot;$(SolutionDir)\sim\VASTATEsim&quot;;&quot;$(SolutionDir)\include&quot;;&quot;$(SolutionDir)\VASTATE\include&quot;"
 				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE"
 				RuntimeLibrary="4"
 				UsePrecompiledHeader="0"

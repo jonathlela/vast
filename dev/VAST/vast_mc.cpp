@@ -90,7 +90,7 @@ namespace VAST
 		// this should be done in vastid::hanlemsg while receiving an ID from gateway
 		_net->register_id (id);
 
-		insert_node (_self); //, _net->getaddr (_self.id));
+		insert_node (_self);
 
 		// the first node is automatically considered joined
 		if (id == NET_ID_GATEWAY)
@@ -99,7 +99,6 @@ namespace VAST
 		{
 			// send query to find acceptor if I'm a regular peer
 			Msg_Query info (_self, _net->getaddr (_self.id));
-			//if (_net->connect (NET_ID_GATEWAY, gateway) == (-1))
             if (_net->connect (gateway) == (-1))
 				return false;
 
@@ -237,7 +236,7 @@ namespace VAST
 				if (_voronoi->contains (_self.id, joiner.pos))
 				{
 					// I'm the acceptor
-					insert_node (joiner, n.addr);
+                    insert_node (joiner, n.addr);
 					vector<id_t> th_list = TwoHopNbr_maintain ();
 					// add all relevent nodes in the initial list
 					map<id_t, Node>::iterator it;
@@ -262,29 +261,59 @@ namespace VAST
 					nbr_size = _neighbors.size ();
 					if (nbr_size != 0)
 					{
-						Node nbr_node;
-						id_t target = _self.id;
-						double dist = _self.pos.dist (joiner.pos);
-						for (i = 0; i < nbr_size; i++)
-						{
-							nbr_node = *_neighbors[i];
-							if (nbr_node.pos.dist (joiner.pos) < dist)
-							{
-								target = nbr_node.id;
-								dist = nbr_node.pos.dist (joiner.pos);
-							}
-						}
+                        // Note csc:
+                        //      the procedure here originally didn't check the situation when it can't connect to
+                        //   the forwardee. New procedure checks all neighbors I know by distance from near to far 
+                        //   to joiner's pos, but never considers neighbors more far to joiner's pos then me. 
 
-						if (_net->is_connected (target) == false)
-						{
-							_net->connect (target, _net->getaddr (target));
-							_addition_conn.push_back (target);
-						}
-						_net->sendmsg (target, MC_QUERY, msg, size, true, true);
+                        // smallest distance ever tried between joiner.pos and acceptor, but failed
+                        double smallest_dist = 0;
+                        do
+                        {
+						    Node nbr_node;
+						    id_t target = _self.id;
+						    double dist = _self.pos.dist (joiner.pos);
 
+                            // find a nearest to joiner.pos's, and connect-able, neighbor to forward
+						    for (i = 0; i < nbr_size; i++)
+						    {
+							    nbr_node = *_neighbors[i];
+							    if (nbr_node.pos.dist (joiner.pos) < dist && dist > smallest_dist)
+							    {
+								    target = nbr_node.id;
+								    dist = nbr_node.pos.dist (joiner.pos);
+							    }
+						    }
+
+                            // csc: should this happen?
+                            if (target == _self.id)
+                            {
+                                printf ("vast_mc: handlemsg (MC_QUERY): fatal error, node %d can't find any possible forwardee.\n", joiner.id);
+                                break;
+                            }
+
+						    if (_net->is_connected (target) == false)
+						    {
+							    //_net->connect (target, _net->getaddr (target));
+                                if (_id2addr.find (target) == _id2addr.end ())
+                                {
+                                    printf ("vast_mc: handlemsg (MC_QUERY): error finding forwarder's address.\n");
+                                    smallest_dist = dist;
+                                    continue;
+                                }
+
+                                _net->connect (_id2addr[target]);
+							    _addition_conn.push_back (target);
+						    }
+
+                            if (_net->sendmsg (target, MC_QUERY, msg, size, true, true) > 0)
+                                break;
+                        
 #ifdef DEBUG_DETAIL
 						printf ("	Node [%d] relay QUERY to Node [%d] asked by Node [%d] \n", (int)_self.id, (int)target, (int)joiner.id);
 #endif
+                        } while (true);
+
 					}
 					else
 					{
@@ -557,11 +586,15 @@ namespace VAST
 					}
 				}
 				_ackaddr_buf[0] = (unsigned char)info_count;
+
+                // the situation impossible happened
+                /*
 				if (_net->is_connected (from_id) == false)
 				{
 					_net->connect (from_id, _id2addr[from_id]);
 					_addition_conn.push_back (from_id);
 				}
+                */
 				_net->sendmsg (from_id, MC_ACKADDR, (char *)&_ackaddr_buf, 1 + info_count * sizeof (id_addr), true, true);
 			}
 			break;
@@ -667,7 +700,7 @@ namespace VAST
 					if (list_size != 0)
 					{
 #ifdef DEBUG_DETAIL
-						printf ("	and realy to");
+						printf ("	and relay to"); // miss spelled from "realy"
 						for (int i = 0; i < list_size; i++)
 							printf ("  [%d]", (int)nexthop_list[i]);
 #endif
@@ -806,16 +839,17 @@ namespace VAST
 			}
 
 			// send to all neighbors by 6 nodes per step
-			now_index = _addr_index;
+            now_index = _addr_index = (_addr_index % ((int) _neighbors.size ()));
 			while (count < 6)
 			{
 				// avoid when known nodes is less than 6
 				if ((_addr_index + 1) % (int)_neighbors.size () == now_index)
-					break;
+				    break;
 
 				// syhu: seems like a check was missing, _addr_index would go out of range
-				if (_neighbors.size () <= (unsigned)_addr_index)
-					break;
+                // csc: replace the statement with pre-mod to _neighbors's size
+				//if (_neighbors.size () <= (unsigned)_addr_index)
+				//    break;
 
 				tmp_id = _neighbors[_addr_index]->id;
 				if (tmp_id != _self.id &&
@@ -824,7 +858,7 @@ namespace VAST
 				{
 					if (_net->is_connected (tmp_id) == false)
 					{
-						_net->connect (tmp_id, _id2addr[tmp_id]);
+                        _net->connect (_id2addr[tmp_id]);
 						_addition_conn.push_back (tmp_id);
 					}
 					_net->sendmsg (tmp_id, MC_REQADDR, (char *)&_reqaddr_buf, 1 + addr_size * sizeof (id_t), true, true);
@@ -912,7 +946,15 @@ namespace VAST
 				{
 					if (_net->is_connected (en_Nbr[i]) == false)
 					{
-						_net->connect (en_Nbr[i], _id2addr[en_Nbr[i]]);
+                        // check address record exists first
+                        if (_id2addr.find (en_Nbr[i]) == _id2addr.end ())
+                        {
+                            printf ("vast_mc: post_processmsg (): error finding enclosing neighbors net address.\n");
+                            continue;
+                        }
+
+						//_net->connect (en_Nbr[i], _id2addr[en_Nbr[i]]);
+                        _net->connect (_id2addr[en_Nbr[i]]);
 #ifdef DEBUG_DETAIL
 				printf ("(h)");
 #endif
@@ -982,7 +1024,9 @@ namespace VAST
 
 		_voronoi->insert (node.id, node.pos);
 		_id2node[node.id] = node;
-		_id2addr[node.id] = addr;
+        if (addr.id != NET_ID_UNASSIGNED)
+		    _id2addr[node.id] = addr;
+
 		_neighbors.push_back (&_id2node[node.id]);
 		_total_neighbor++;
 
@@ -992,8 +1036,10 @@ namespace VAST
 		// NOTE: connection may already exist with remote node, in which case
 		//		 the insert_node process will continue (instead of aborting)
 		if (node.id != _self.id && _voronoi->is_enclosing (node.id))
-            if ((addr.id != 0 && _net->connect (node.id, addr) == (-1)) ||
-                _net->connect (node.id) == (-1))
+            // connect to the node using address if addr is specified
+            //if ((addr.id != 0 && _net->connect (addr) == (-1)) ||
+            //    _net->connect (node.id) == (-1))
+            if (addr.id != 0 && _net->connect (addr) == (-1))
 				return false;
 		
 		return true;
@@ -1019,6 +1065,8 @@ namespace VAST
 		}
 
 		_id2node.erase (id);
+        // csc: delete address record also
+        _id2addr.erase (id);
 		_total_neighbor--;
 
 		return true;
@@ -1204,7 +1252,16 @@ namespace VAST
 		for (int i = 0; i < (int)nexthop_list.size (); i++)
 		{
 			if (_net->is_connected (nexthop_list[i]) == false)
-				_net->connect (nexthop_list[i], _id2addr[nexthop_list[i]]);
+            {
+                if (_id2addr.find (nexthop_list[i]) == _id2addr.end ())
+                {
+                    printf ("vast_mc: relay_nodes: error finding address to buildup relay hop list.\n");
+                    continue;
+                }
+
+				_net->connect (_id2addr[nexthop_list[i]]);
+            }
+
 			_net->sendmsg (nexthop_list[i], MC_RELAY, (char *)&relay_node, sizeof (MC_Node), true, true);
 		}
 	}
@@ -1240,11 +1297,17 @@ namespace VAST
 #endif
 		// avoid send to self
 		for (i = 0; i < n; i++)
-			if (ENs_list[i] != _self.id)
+            if (ENs_list[i] != _self.id)
 			{
 				if (_net->is_connected (ENs_list[i]) == false)
 				{
-					_net->connect (ENs_list[i], _id2addr[ENs_list[i]]);
+                    if (_id2addr.find (ENs_list[i]) == _id2addr.end ())
+                    {
+                        printf ("vast_mc: exchange_ENs (): error finding address.\n");
+                        continue;
+                    }
+
+					_net->connect (_id2addr[ENs_list[i]]);
 				}
 				_net->sendmsg (ENs_list[i], MC_EXCHANGE, _ex_buf, 1 + n * sizeof (Node), true, true);
 #ifdef DEBUG_DETAIL

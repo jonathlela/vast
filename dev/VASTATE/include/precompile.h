@@ -12,13 +12,16 @@
 #include <stdio.h>
 
 // STL Header
+#include <memory>
 #include <iostream>
+
+#include <string>
+#include <sstream>
+
 #include <map>
 #include <vector>
-#include <string>
 #include <stack>
-#include <sstream>
-#include <memory>
+#include <queue>
 
 // RTTI support
 //#include <typeinfo>

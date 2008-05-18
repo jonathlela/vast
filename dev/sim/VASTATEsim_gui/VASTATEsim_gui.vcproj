@@ -4,6 +4,7 @@
 	Version="7.10"
 	Name="VASTATEsim_gui"
 	ProjectGUID="{933C5976-0E64-4DF3-812D-23AD50E78CB2}"
+	RootNamespace="VASTATEsim_gui"
 	SccProjectName=""
 	SccLocalPath="">
 	<Platforms>
@@ -18,12 +19,13 @@
 			ConfigurationType="1"
 			UseOfMFC="0"
 			ATLMinimizesCRunTimeLibraryUsage="FALSE"
-			CharacterSet="2">
+			CharacterSet="2"
+			DeleteExtensionsOnClean="*.obj;*.ilk;*.pdb;*.tlb;*.tli;*.tlh;*.tmp;*.rsp;*.bat;$(TargetPath);&quot;$(SolutionDir)\bin\$(TargetFileName)&quot;">
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				InlineFunctionExpansion="1"
-				AdditionalIncludeDirectories="..\VASTATEsim,..\..\include"
+				AdditionalIncludeDirectories="&quot;$(SolutionDir)\sim\VASTATEsim&quot;;&quot;$(SolutionDir)\include&quot;;&quot;$(SolutionDir)\VASTATE\include&quot;"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS"
 				StringPooling="TRUE"
 				RuntimeLibrary="4"
@@ -81,11 +83,12 @@
 			UseOfMFC="0"
 			ATLMinimizesCRunTimeLibraryUsage="FALSE"
 			CharacterSet="2"
+			DeleteExtensionsOnClean="*.obj;*.ilk;*.pdb;*.tlb;*.tli;*.tlh;*.tmp;*.rsp;*.bat;$(TargetPath);&quot;$(SolutionDir)\bin\$(TargetFileName)&quot;;&quot;$(SolutionDir)\bin\$(TargetName).pdb&quot;"
 			ReferencesPath="">
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="..\VASTATEsim,..\..\include"
+				AdditionalIncludeDirectories="&quot;$(SolutionDir)\sim\VASTATEsim&quot;;&quot;$(SolutionDir)\include&quot;;&quot;$(SolutionDir)\VASTATE\include&quot;"
 				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="5"

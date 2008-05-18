@@ -35,11 +35,13 @@
 #include "precompile.h"
 //#include "vastverse.h"
 #include "typedef.h"
+#include "vastate_typedef.h"
+#include "rawdata.h"
 #include "vastutil.h"
 //#include "vworld.h"
 
 namespace VASTATE {
-
+/* // move to typedef.h 
 // type definations
 typedef unsigned char  uchar_t;
 
@@ -52,132 +54,148 @@ typedef unsigned long long_id_t;
 //typedef id_t          obj_id_t;
 //typedef id_t          event_id_t;
 typedef unsigned char objecttype_t;
+*/
 
 //class Coord3D;
 //typedef Coord3D Coord;
 
 // codable
 ///////////////////////////////////////
-class codable
-{
-    virtual char * encodeToStr   () = 0;
-    virtual int    decodeFromStr (char * str) = 0;
-};
 
-// System parameter for initialize Vastate factory class
-class system_parameter_t
-{
-public:
-    system_parameter_t ()
-        :width (0), height (0), aoi (0)
+    /*
+    class codable
     {
-    }
+    public:
+        virtual char * encodeToStr   () = 0;
+        virtual int    decodeFromStr (char * str) = 0;
+    };
+    */
 
-    system_parameter_t (const system_parameter_t & n)
-        : width (n.width), height (n.height), aoi (n.aoi)
+    class encodable
     {
-    }
+    public:
+        virtual RawData encodeToRaw   
+                        (bool only_updated = false) 
+                        const                       = 0;
 
-    ~system_parameter_t ()
+        virtual bool    decodeFromRaw 
+                        (RawData& raw)              = 0;
+    };
+
+    // System parameter for initialize Vastate factory class
+    class system_parameter_t
     {
-    }
+    public:
+        system_parameter_t ()
+            :width (0), height (0), aoi (0)
+        {
+        }
 
-    system_parameter_t & operator= (const system_parameter_t & n)
+        system_parameter_t (const system_parameter_t & n)
+            : width (n.width), height (n.height), aoi (n.aoi)
+        {
+        }
+
+        ~system_parameter_t ()
+        {
+        }
+
+        system_parameter_t & operator= (const system_parameter_t & n)
+        {
+            width = n.width;
+            height = n.height;
+            aoi = n.aoi;
+        }
+
+        unsigned int width;
+        unsigned int height;
+        int          aoi;
+    };
+
+    class Coord3D
     {
-        width = n.width;
-        height = n.height;
-        aoi = n.aoi;
-    }
+    public:
+        coord_t x, y, z;
 
-    unsigned int width;
-    unsigned int height;
-    int          aoi;
-};
+        Coord3D () 
+            :x (0), y (0), z (0) {}
 
-class Coord3D
-{
-public:
-    coord_t x, y, z;
+        Coord3D (const Coord3D &c)
+            :x(c.x), y(c.y), z(c.z) {}
 
-    Coord3D () 
-        :x (0), y (0), z (0) {}
+        Coord3D (int x_coord, int y_coord, int z_coord)
+            :x((coord_t)x_coord), y((coord_t)y_coord), z((coord_t)z_coord) {}
 
-    Coord3D (const Coord3D &c)
-        :x(c.x), y(c.y), z(c.z) {}
+        Coord3D (coord_t x_coord, coord_t y_coord, coord_t z_coord)
+            :x(x_coord), y(y_coord), z(z_coord) {}
 
-    Coord3D (int x_coord, int y_coord, int z_coord)
-        :x((coord_t)x_coord), y((coord_t)y_coord), z((coord_t)z_coord) {}
+        Coord3D &operator=(const Coord3D& c)
+        {
+            x = c.x;
+            y = c.y;
+            z = c.z;
+            return *this;
+        }
 
-    Coord3D (coord_t x_coord, coord_t y_coord, coord_t z_coord)
-        :x(x_coord), y(y_coord), z(z_coord) {}
+        bool operator==(const Coord3D& c) const
+        {
+            return (this->x == c.x && this->y == c.y && this->z == c.z);
+        }
 
-    Coord3D &operator=(const Coord3D& c)
-    {
-        x = c.x;
-        y = c.y;
-        z = c.z;
-        return *this;
-    }
+        Coord3D &operator+=(const Coord3D& c)
+        {
+            x += c.x;
+            y += c.y;
+            z += c.z;
+            return *this;
+        }
 
-    bool operator==(const Coord3D& c) const
-    {
-        return (this->x == c.x && this->y == c.y && this->z == c.z);
-    }
+        Coord3D &operator-=(const Coord3D& c)
+        {
+            x -= c.x;
+            y -= c.y;
+            z -= c.z;
+            return *this;
+        }
 
-    Coord3D &operator+=(const Coord3D& c)
-    {
-        x += c.x;
-        y += c.y;
-        z += c.z;
-        return *this;
-    }
+        Coord3D &operator*=(double value)
+        {
+            x *= value;
+            y *= value;
+            z *= value;
+            return *this;
+        }
 
-    Coord3D &operator-=(const Coord3D& c)
-    {
-        x -= c.x;
-        y -= c.y;
-        z -= c.z;
-        return *this;
-    }
+        Coord3D &operator/=(double c)
+        {
+            x = (coord_t)((double)x / c);
+            y = (coord_t)((double)y / c);
+            z = (coord_t)((double)z / c);
+            return *this;
+        }
 
-    Coord3D &operator*=(double value)
-    {
-        x *= value;
-        y *= value;
-        z *= value;
-        return *this;
-    }
+        inline Coord3D operator+(const Coord3D& c) const
+        {
+            return Coord3D (x + c.x, y + c.y, z + c.z);
+        }
 
-    Coord3D &operator/=(double c)
-    {
-        x = (coord_t)((double)x / c);
-        y = (coord_t)((double)y / c);
-        z = (coord_t)((double)z / c);
-        return *this;
-    }
+        inline Coord3D operator-(const Coord3D& c) const
+        {
+            return Coord3D (x - c.x, y - c.y, z - c.z);
+        }
 
-    inline Coord3D operator+(const Coord3D& c) const
-    {
-        return Coord3D (x + c.x, y + c.y, z + c.z);
-    }
+        inline double dist (const Coord3D &c) const
+        {
+            return sqrt (distsqr(c));
+        }
 
-    inline Coord3D operator-(const Coord3D& c) const
-    {
-        return Coord3D (x - c.x, y - c.y, z - c.z);
-    }
+        inline double distsqr (const Coord3D &c) const
+        {
+            return (pow (c.x - x, 2) + pow (c.y - y, 2) + pow (c.z - z, 2));
+        }
+    };
 
-    inline double dist (const Coord3D &c) const
-    {
-        return sqrt (distsqr(c));
-    }
-
-    inline double distsqr (const Coord3D &c) const
-    {
-        return (pow (c.x - x, 2) + pow (c.y - y, 2) + pow (c.z - z, 2));
-    }
-};
-
-EXPORT const std::string to_string (const Coord3D& p);
+    EXPORT const std::string to_string (const Coord3D& p);
 
 } /* namespace VASTATE */
 

@@ -122,6 +122,7 @@ int InitVSSim (SimPara &para, int mode, const char * foodimage_filename, const c
 {
     vastory fac;
 	Addr gateway;
+    gateway.id = NET_ID_GATEWAY;
 
     srand ((unsigned int)time (NULL));
 

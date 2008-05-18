@@ -39,110 +39,9 @@ namespace VAST
     vastate_impl::vastate_impl (vastverse *vastworld, Addr &gatewayIP, const VASTATE::system_parameter_t & sp)
         : vastate (sp), _vastworld(vastworld), _gateway(gatewayIP)
     {
+        
+
         // test data
-        /*
-  
-        attributes_impl a;
-
-        a.add (true);
-        a.add ((int)32767);
-        a.add (112343.14159269777f);       string s("abcdefg ");
-        a.add (s);      vec3_t c; c.x = 382.573829f; c.y = 2349.2431f; c.z = 5382.34234f;
-        a.add (c);
-        a.add (true);
-        //a.add (19);
-        
-        bool   v1 = false;
-        int    v2 = 777;
-        float  v3 = 0.0;
-        string v4 = "abc good";
-        vec3_t v5;
-
-        a.get (0, v1);        printf ("bool: %d\n", v1);        
-        a.get (1, v2);        printf ("int: %d\n", v2);        
-        a.get (2, v3);        printf ("float: %f\n", v3);
-        a.get (3, v4);        printf ("str: (%s)\n", v4.c_str ());        
-        a.get (4, v5);        printf ("vec3: (%f, %f, %f)\n", v5.x, v5.y, v5.z);        
-        a.get (5, v1);        printf ("bool: %d\n", v1);       
-        //a.get (6, v2);        printf ("int: %d\n", v2); 
-                
-        
-        char buf[VASTATE_BUFSIZ];
-        char *p = buf;
-        int size = a.pack_all (&p);
-        
-        string str;
-        string str1;
-        string str2;
-        
-        for (int k=0; k<size; k++)
-        {
-            str1 += buf[k];
-            str2 += buf[k];
-        }
-        str += str1;
-        str += str2;
-
-        printf ("packsize: %d string size: %d\n", size, str.size());
-        */
-        
-        /*
-        printf ("\ntransferring to another attribute (pack size: %d)\n\n", size);
-        
-        attributes_impl b;   
-        
-        b.unpack (buf);
-        
-        b.get (0, v1);        printf ("bool: %d\n", v1);        
-        b.get (1, v2);        printf ("int: %d\n", v2);        
-        b.get (2, v3);        printf ("float: %f\n", v3);
-        b.get (3, v4);        printf ("str: (%s)\n", v4.c_str ());        
-        b.get (4, v5);        printf ("vec3: (%f, %f, %f)\n", v5.x, v5.y, v5.z);        
-        b.get (5, v1);        printf ("bool: %d\n", v1);
-        //b.get (6, v2);        printf ("int: %d\n", v2); 
-        
-        printf ("\nresetting values in a\n\n");
-        
-        a.reset_dirty();
-
-        a.add (19);
-
-        a.set (0, false);
-        a.set (1, (int)512);
-        a.set (2, (float)3.14159269f);  
-        string s2("abcdefg   ");
-        a.set (3, s2);               
-        vec3_t c2; c2.x = 5.0; c2.y = 6.0; c2.z = 7.0;
-        //a.set (4, c2);
-        a.set (5, false);
-        
-        a.get (0, v1);        printf ("bool: %d\n", v1);        
-        a.get (1, v2);        printf ("int: %d\n", v2);        
-        a.get (2, v3);        printf ("float: %f\n", v3);
-        a.get (3, v4);        printf ("str: (%s)\n", v4.c_str ());        
-        a.get (4, v5);        printf ("vec3: (%f, %f, %f)\n", v5.x, v5.y, v5.z);        
-        a.get (5, v1);        printf ("bool: %d\n", v1);       
-        a.get (6, v2);        printf ("int: %d\n", v2);                 
-        
-        p = buf;
-        size = a.pack_dirty (&p);
-        //size = a.pack_all (&p);
-        printf ("\npacking to b again, size: %d\n\n", size);
-        
-        b.unpack (buf);
-        
-        int vv;
-        b.get (0, v1);        printf ("bool: %d\n", v1);        
-        b.get (1, vv);        printf ("int: %d\n", vv);        
-        b.get (2, v3);        printf ("float: %f\n", v3);
-        b.get (3, v4);        printf ("str: (%s)\n", v4.c_str ());        
-        b.get (4, v5);        printf ("vec3: (%f, %f, %f)\n", v5.x, v5.y, v5.z);        
-        b.get (5, v1);        printf ("bool: %d\n", v1);       
-        b.get (6, v2);        printf ("int: %d\n", v2);  
-        
-        printf ("\n\n");
-*/  
-
         cout << "Hello, World!" << endl;
         VEObject *mp = new VEObject (1, Coord3D (318.52, 224.3, 900.0));
         VEObject &mpr = *mp;
@@ -158,7 +57,7 @@ namespace VAST
 
         // sword attributes
         cout << "New object: sword" << endl;
-        VObject sword (2);
+        VObject sword ((VASTATE::id_t) 2);
         sword.add_attribute (0, VSimpleValue_string("¶Ã¤C¤KÁV¼C"));
         sword.add_attribute (5, VSimpleValue_int(10));
         sword.add_attribute (6, VSimpleValue_double(2.2));
@@ -196,33 +95,54 @@ namespace VAST
 
         object_info (mpr);
 
-        // encoding
+        // encoding 2
         cout << "encoding =================" << endl;
-        uchar_t buffer[10240];
-        size_t bufferlen = 10240;
-        int result = VValueFactory::encode (mp, buffer, bufferlen);
-        cout << endl << "encode r = " << result << " (size: " << bufferlen << ")" << endl;
-       
-        cout << "decoding==================" << endl;
-        VValue *o = VValueFactory::decode (buffer, bufferlen);
-        cout << endl << "decode r = " << (unsigned int) o << " (size: " << bufferlen << ")" << endl;
+        RawData r = VValueFactory::encodeToRaw (mp);
 
-        cout << "decoded object============" << endl;
-        if (o != NULL)
-            object_info (*o);
+        cout << "data encoded =============" << endl;
+        for (RawData::iterator it = r.begin (); it != r.end (); it ++)
+            cout << (int) *it << " ";
+        cout << " (size: " << r.size () << ") " << endl;
+
+        cout << "decodeing ================" << endl;
+        VValue * new_object = VValueFactory::decodeFromRaw (r);
+
+        cout << "object decoded ===========" << endl;
+        if (new_object != NULL)
+            object_info (*new_object);
+        else
+            cout << "(empty object pointer)" << endl;
+
+        cout << "encoded delta ============" << endl;
+        mp->clear_edit ();
+        mp->get_attribute (1).set (100);
+        mp->get_attribute (10).get_attribute (0).get_attribute (6).set (4.8);
+        RawData r2 = VValueFactory::encodeToRaw (mp, true);
+
+        cout << "data encoded =============" << endl;
+        for (RawData::iterator it = r2.begin (); it != r2.end (); it ++)
+            cout << (int) *it << " ";
+        cout << " (size: " << r2.size () << ") " << endl;
+
+        cout << "decodeing ================" << endl;
+        VValue * new_object2 = VValueFactory::decodeFromRaw (r2, mp);
+
+        cout << "object decoded ===========" << endl;
+        if (new_object2 != NULL)
+            object_info (*new_object2);
         else
             cout << "(empty object pointer)" << endl;
 
         cout << "==========================" << endl;
 
-        // decoding
-        //cout << "decoding ============================" << endl;
-        //VValueFactory::decode (mpr.encodeToStr ());
-
         cout << "delete mp" << endl;
         delete mp;
-        cout << endl;
+        cout << "delete new_object" << endl;
+        delete new_object;
+        //cout << "delete new_object2" << endl;
+        //delete new_object2;
 
+        cout << endl;
     }
 
     int      

@@ -1,79 +1,41 @@
 
+///////////////////////////////////////
+// main.cpp - Main program for testing vastate under development stage
+
 #include "precompile.h"
 //#include "vastate.h"
-#include "shared.h"
+//#include "shared.h"
+#include "vastory.h"
 
 using namespace std;
 using namespace VAST;
-
-void object_info (MValue& m)
-{
-    cout << "Object information ---" << endl;
-    cout << m.encodeToStr () << endl;
-    cout << "----------------------" << endl;
-}
+using namespace VASTATE;
 
 int main ()
 {
-    cout << "Hello, World!" << endl;
-    VEObject *mp = new VEObject (1, Coord3D (318.52, 224.3, 900.0));
-    VEObject &mpr = *mp;
-    // assignment
-    cout << "mpr.add (0, 20)" << endl;
-    mpr.add_attribute (0, MSimpleValue_string ("IlMgcer"));
-    mpr.add_attribute (1, MSimpleValue_int (100));
-    mpr.add_attribute (2, MSimpleValue_int (220));
-    mpr.add_attribute (3, MSimpleValue_double (2.5));
-    mpr.add_attribute (10, MContainer ());
-    cout << endl;
+    vastverse vs(VAST_MODEL_DIRECT, VAST_NET_EMULATED, 20);
 
-    // sword attributes
-    cout << "New object: sword" << endl;
-    MBaseObject sword (2);
-    sword.add_attribute (0, MSimpleValue_string("¶Ã¤C¤KÁV¼C"));
-    sword.add_attribute (5, MSimpleValue_int(10));
-    sword.add_attribute (6, MSimpleValue_double(2.2));
-    sword.add_attribute (7, MSimpleValue_int(100));
+    Addr gateway;
+    gateway.id = NET_ID_GATEWAY;
 
-    if (mpr.get_attribute (10).get_type () != MValue::T_CONTAINER)
-        cout << "error containor type" << endl;
+    // system parameters
+    system_parameter_t sp;
+    sp.width = 800;
+    sp.height = 600;
+    sp.aoi = 100;
 
-    // find a place to put in
-    MContainer & res = *(MContainer*) &mpr.get_attribute (10);
-    short_index_t free_index = 0;
-    for (short_index_t i = 0; i < (short_index_t)0 - (short_index_t)1; i ++)
-    {
-        if (res.get_attribute (i).get_type () == MValue::T_ERROR)
-        {
-            free_index = i;
-            break;
-        }
-    }
+    // create vastate
+    vastory factory;
+    vastate *manager = factory.create (&vs, gateway, sp);
 
-    res.add_attribute (free_index, sword);
+    // do something
+    // overlay creator,  
+    // arbitrator_logic, storage_logic, system_parameter
+    // peer_logic, peer_info, capacity
+    // id, arbitrator_info, gateway
 
-    // demage
-    cout << "mpr[5] = 77" << endl;
-    int hp_diff = -5;
-    //int hp = mpr.get_attribute (1);
-    int hp;
-    mpr.get_attribute (1).get ((int) hp);
-    hp += hp_diff;
-    mpr.get_attribute (1).set ((int) hp);
-    cout << endl;
 
-//    if (mp[5] >= 10)
-//        mp[2] = "HP Good!";
-
-    //MBaseObject *pack = new MBaseObject ();
-    //pack->add (1, "Red pack");
-    //pack->add (2, 10);
-    //mpr[24] = *pack;
-
-    object_info (mpr);
-    cout << "delete mp" << endl;
-    delete mp;
-    cout << endl;
+    factory.destroy (manager);
 
     getchar ();
     return 0;
