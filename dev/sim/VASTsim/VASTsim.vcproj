@@ -23,7 +23,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				InlineFunctionExpansion="1"
-				AdditionalIncludeDirectories="..\..\include"
+				AdditionalIncludeDirectories="$(ProjectDir)\..\..\include"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;VASTSIM_EXPORTS"
 				StringPooling="TRUE"
 				RuntimeLibrary="0"
@@ -40,6 +40,7 @@
 				OutputFile="$(OutDir)$(ProjectName).dll"
 				LinkIncremental="0"
 				SuppressStartupBanner="TRUE"
+				AdditionalLibraryDirectories="$(SolutionDir)\..\ACE_wrappers\lib.vc7"
 				ProgramDatabaseFile="$(OutDir)/$(TargetName).pdb"
 				TargetMachine="1"/>
 			<Tool
@@ -86,7 +87,7 @@ copy &quot;$(OutDir)\$(TargetName).lib&quot; &quot;$(ProjectDir)..\..\lib&quot;
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="..\..\include"
+				AdditionalIncludeDirectories="$(ProjectDir)\..\..\include"
 				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;_USRDLL;VASTSIM_EXPORTS"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="1"
@@ -104,6 +105,7 @@ copy &quot;$(OutDir)\$(TargetName).lib&quot; &quot;$(ProjectDir)..\..\lib&quot;
 				OutputFile="$(OutDir)$(ProjectName)d.dll"
 				LinkIncremental="0"
 				SuppressStartupBanner="TRUE"
+				AdditionalLibraryDirectories="$(SolutionDir)\..\ACE_wrappers\lib.vc7"
 				GenerateDebugInformation="TRUE"
 				ProgramDatabaseFile="$(OutDir)/$(TargetName).pdb"
 				TargetMachine="1"/>

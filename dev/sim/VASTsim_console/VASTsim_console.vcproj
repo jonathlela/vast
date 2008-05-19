@@ -38,6 +38,7 @@
 				Name="VCLinkerTool"
 				LinkIncremental="0"
 				SuppressStartupBanner="TRUE"
+				AdditionalLibraryDirectories="$(SolutionDir)\..\ACE_wrappers\lib.vc7"
 				ProgramDatabaseFile="$(OutDir)/$(TargetName).pdb"
 				SubSystem="1"
 				TargetMachine="1"/>
@@ -95,6 +96,7 @@
 				Name="VCLinkerTool"
 				LinkIncremental="0"
 				SuppressStartupBanner="TRUE"
+				AdditionalLibraryDirectories="$(SolutionDir)\..\ACE_wrappers\lib.vc7"
 				GenerateDebugInformation="TRUE"
 				ProgramDatabaseFile="$(OutDir)/$(TargetName).pdb"
 				SubSystem="1"

@@ -20,7 +20,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="&quot;$(SolutionDir)\sim\VASTATEsim&quot;;&quot;$(SolutionDir)\include&quot;;&quot;$(SolutionDir)\VASTATE\include&quot;"
+				AdditionalIncludeDirectories="&quot;$(SolutionDir)\include&quot;;&quot;$(SolutionDir)\VASTATE\include&quot;;&quot;$(SolutionDir)\sim\VASTATEsim&quot;"
 				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE"
 				MinimalRebuild="TRUE"
 				BasicRuntimeChecks="3"
@@ -73,7 +73,7 @@ copy &quot;$(OutDir)\$(TargetName).pdb&quot; &quot;$(SolutionDir)\bin&quot;
 			DeleteExtensionsOnClean="*.obj;*.ilk;*.pdb;*.tlb;*.tli;*.tlh;*.tmp;*.rsp;*.bat;$(TargetPath);&quot;$(SolutionDir)\bin\$(TargetFileName)&quot;">
 			<Tool
 				Name="VCCLCompilerTool"
-				AdditionalIncludeDirectories="&quot;$(SolutionDir)\sim\VASTATEsim&quot;;&quot;$(SolutionDir)\include&quot;;&quot;$(SolutionDir)\VASTATE\include&quot;"
+				AdditionalIncludeDirectories="&quot;$(SolutionDir)\include&quot;;&quot;$(SolutionDir)\VASTATE\include&quot;;&quot;$(SolutionDir)\sim\VASTATEsim&quot;"
 				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE"
 				RuntimeLibrary="4"
 				UsePrecompiledHeader="0"
