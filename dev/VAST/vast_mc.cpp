@@ -99,7 +99,7 @@ namespace VAST
 		{
 			// send query to find acceptor if I'm a regular peer
 			Msg_Query info (_self, _net->getaddr (_self.id));
-			if (_net->connect (NET_ID_GATEWAY, gateway) == (-1))
+			if (_net->connect (gateway) == (-1))
 				return false;
 
 			// NOTE: gateway will disconnect me immediately after receving	QUERY
@@ -276,7 +276,9 @@ namespace VAST
 
 						if (_net->is_connected (target) == false)
 						{
-							_net->connect (target, _net->getaddr (target));
+                            // May not work, only fit to new connect model on the face
+							//_net->connect (target, _net->getaddr (target));
+                            _net->connect (_net->getaddr (target));
 							_addition_conn.push_back (target);
 						}
 						_net->sendmsg (target, MC_QUERY, msg, size, true, true);
@@ -558,7 +560,9 @@ namespace VAST
 				_ackaddr_buf[0] = (unsigned char)info_count;
 				if (_net->is_connected (from_id) == false)
 				{
-					_net->connect (from_id, _id2addr[from_id]);
+                    // May not work, only fit to new connect model on the face
+					//_net->connect (from_id, _id2addr[from_id]);
+                    _net->connect (_id2addr[from_id]);
 					_addition_conn.push_back (from_id);
 				}
 				_net->sendmsg (from_id, MC_ACKADDR, (char *)&_ackaddr_buf, 1 + info_count * sizeof (id_addr), true, true);
@@ -823,7 +827,9 @@ namespace VAST
 				{
 					if (_net->is_connected (tmp_id) == false)
 					{
-						_net->connect (tmp_id, _id2addr[tmp_id]);
+                        // May not work, only fit to new connect model on the face
+						//_net->connect (tmp_id, _id2addr[tmp_id]);
+                        _net->connect (_id2addr[tmp_id]);
 						_addition_conn.push_back (tmp_id);
 					}
 					_net->sendmsg (tmp_id, MC_REQADDR, (char *)&_reqaddr_buf, 1 + addr_size * sizeof (id_t), true, true);
@@ -911,7 +917,9 @@ namespace VAST
 				{
 					if (_net->is_connected (en_Nbr[i]) == false)
 					{
-						_net->connect (en_Nbr[i], _id2addr[en_Nbr[i]]);
+                        // May not work, only fit to new connect model on the face
+						//_net->connect (en_Nbr[i], _id2addr[en_Nbr[i]]);
+                        _net->connect (_id2addr[en_Nbr[i]]);
 #ifdef DEBUG_DETAIL
 				printf ("(h)");
 #endif
@@ -991,8 +999,9 @@ namespace VAST
 		// NOTE: connection may already exist with remote node, in which case
 		//		 the insert_node process will continue (instead of aborting)
 		if (node.id != _self.id && _voronoi->is_enclosing (node.id))
-            if ((addr.id != 0 && _net->connect (node.id, addr) == (-1)) ||
-                _net->connect (node.id) == (-1))
+            // May not work, only fit to new connect model on the face
+            //if ((addr.id != 0 && _net->connect (node.id, addr) == (-1)) || _net->connect (node.id) == (-1)))
+            if (addr.id != 0 && _net->connect (node.id) == (-1))
 				return false;
 		
 		return true;
@@ -1203,7 +1212,9 @@ namespace VAST
 		for (int i = 0; i < (int)nexthop_list.size (); i++)
 		{
 			if (_net->is_connected (nexthop_list[i]) == false)
-				_net->connect (nexthop_list[i], _id2addr[nexthop_list[i]]);
+                // May not work, only fit to new connect model on the face
+				//_net->connect (nexthop_list[i], _id2addr[nexthop_list[i]]);
+                _net->connect (_id2addr[nexthop_list[i]]);
 			_net->sendmsg (nexthop_list[i], MC_RELAY, (char *)&relay_node, sizeof (MC_Node), true, true);
 		}
 	}
@@ -1243,7 +1254,9 @@ namespace VAST
 			{
 				if (_net->is_connected (ENs_list[i]) == false)
 				{
-					_net->connect (ENs_list[i], _id2addr[ENs_list[i]]);
+                    // May not work, only fit to new connect model on the face
+					//_net->connect (ENs_list[i], _id2addr[ENs_list[i]]);
+                    _net->connect (_id2addr[ENs_list[i]]);
 				}
 				_net->sendmsg (ENs_list[i], MC_EXCHANGE, _ex_buf, 1 + n * sizeof (Node), true, true);
 #ifdef DEBUG_DETAIL
