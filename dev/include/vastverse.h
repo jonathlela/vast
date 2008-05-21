@@ -59,6 +59,7 @@ namespace VAST
 
         // create & destroy a vast node, given the specified world condition
         vast *   create_node (unsigned int port, aoi_t detect_buffer);
+        vast *   create_node (network * net, aoi_t detect_buffer);
         void     destroy_node (vast *node);
 
         // obtain a network interface

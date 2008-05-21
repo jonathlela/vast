@@ -113,10 +113,35 @@ namespace VAST
     vastverse::
     create_node (unsigned int port, aoi_t detect_buffer)
     {
+        /*
         network *net = NULL;
         vast    *vnode = NULL;
 
         if ((net = create_net (port)) != NULL)
+        {
+            if (_vast_model == VAST_MODEL_DIRECT)
+                vnode = new vast_dc (net, detect_buffer, _connlimit);
+            //else if (_vast_model == VAST_MODEL_FORWARD)    
+            //    vnode = new vast_fo (net, detect_buffer, _connlimit);
+			else if (_vast_model == VAST_MODEL_MULTICAST)
+			    vnode = new vast_mc (net, detect_buffer);
+        }
+
+        if (vnode != NULL)
+            g_vastnodes.push_back (vnode);
+
+        return vnode;
+        */
+        return create_node (create_net (port), detect_buffer);
+    }
+
+    vast *
+    vastverse::
+    create_node (network * net, aoi_t detect_buffer)
+    {
+        vast *vnode = NULL;
+
+        if (net != NULL)
         {
             if (_vast_model == VAST_MODEL_DIRECT)
                 vnode = new vast_dc (net, detect_buffer, _connlimit);
