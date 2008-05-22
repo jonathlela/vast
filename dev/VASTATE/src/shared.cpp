@@ -24,7 +24,7 @@
 using std::cout;
 using std::endl;
 
-namespace VASTATE {
+namespace VAST {
 
 // Static members for VValue
 ///////////////////////////////////////
@@ -45,7 +45,7 @@ namespace VASTATE {
         return _s;
     }
 
-} /* end of namespace VASTATE */
+} /* end of namespace VAST */
 
 ///////////////////////////////////////////////////////////
 

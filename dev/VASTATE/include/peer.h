@@ -31,7 +31,7 @@
 #include "shared.h"
 #include "peer_logic.h"
 
-namespace VAST 
+namespace VAST
 {  
     class peer : public msghandler
     {

@@ -6,7 +6,7 @@
 #include <vector>
 #include "vastate_typedef.h"
 
-namespace VASTATE
+namespace VAST
 {
 
 #define rawdata_p(x) ((const uchar_t *)&(x))
@@ -46,5 +46,5 @@ namespace VASTATE
         void pop_front (size_t size = sizeof(uchar_t));
     };
 
-} /* namespace VASTATE */
+} /* namespace VAST */
 #endif

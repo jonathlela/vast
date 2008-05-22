@@ -47,7 +47,7 @@ namespace VAST
         
         // initialize an arbitrator
         arbitrator_impl (id_t my_parent, arbitrator_logic *logic, vast *vastnode, storage *s, 
-                         bool is_gateway, Addr &gateway, VASTATE::system_parameter_t * sp);
+                         bool is_gateway, Addr &gateway, system_parameter_t * sp);
         
         ~arbitrator_impl ();
 

@@ -2,7 +2,7 @@
 #include "precompile.h"
 #include "rawdata.h"
 
-namespace VASTATE {
+namespace VAST {
     bool RawData::push_array (const uchar_t * data, size_t dsize)
     {
         this->insert (end (), data, data + dsize);
@@ -42,4 +42,4 @@ namespace VASTATE {
     {
         this->erase (begin (), begin() + size);
     }
-} /* namespace VASTATE */
+} /* namespace VAST */

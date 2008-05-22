@@ -5,7 +5,7 @@
 #ifndef _VASTATE_PRECOMPILE_H
 #define _VASTATE_PRECOMPILE_H
 
-// Project configure
+// Project configuration
 #include "config.h"
 
 // Standard C Header
@@ -25,5 +25,15 @@
 
 // RTTI support
 //#include <typeinfo>
+
+// vast header
+//#include "typedef.h"
+//#include "network.h"
+#include "vastverse.h"
+#include "msghandler.h"
+
+// vastate header
+//#include "shared.h"
+//#include "vastate_typedef.h"
 
 #endif /* _VASTATE_PRECOMPILE_H */

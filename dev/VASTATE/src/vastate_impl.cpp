@@ -21,14 +21,19 @@
 #include "shared.h"
 #include "vworld.h"
 #include "vastate_impl.h"
+#include "gateway_impl.h"
 #include "arbitrator_impl.h"
 #include "peer_impl.h"
 #include "storage_cs.h"
 
-using namespace VASTATE;
+#define VASTATE_IMPL_DEBUGTEST
+
+using std::cout;
 
 namespace VAST
 {
+#ifdef VASTATE_IMPL_DEBUGTEST
+    // codes to testing object model operation
     static void object_info (VValue& m)
     {
         cout << "Object information ---" << endl;
@@ -36,13 +41,9 @@ namespace VAST
         cout << "----------------------" << endl;
     }
 
-    vastate_impl::vastate_impl (vastverse *vastworld, Addr &gatewayIP, const VASTATE::system_parameter_t & sp)
-        : vastate (sp), _vastworld(vastworld), _gateway(gatewayIP)
+    static void debug_test ()
     {
-        
-
-        // test data
-        cout << "Hello, World!" << endl;
+                // test data
         VEObject *mp = new VEObject (1, Coord3D (318.52, 224.3, 900.0));
         VEObject &mpr = *mp;
         // assignment
@@ -68,34 +69,16 @@ namespace VAST
 
         // find a place to put in
         VContainer & res = * (VContainer *) (&mpr.get_attribute (10));
-        short_index_t free_index = 0;
-        for (free_index = 0; free_index < ((short_index_t) 0 - (short_index_t) 1); free_index ++)
+        sindex_t free_index = 0;
+        for (free_index = 0; free_index < ((sindex_t) 0 - (sindex_t) 1); free_index ++)
             if (res.get_attribute (free_index).get_type () == VValue::T_ERROR)
                 break;
 
         res.add_attribute (free_index, sword);
 
-        // demage
-        cout << "mpr[5] = 77" << endl;
-        int hp_diff = -5;
-        //int hp = mpr.get_attribute (1);
-        int hp;
-        mpr.get_attribute (1).get ((int) hp);
-        hp += hp_diff;
-        mpr.get_attribute (1).set ((int) hp);
-        cout << endl;
-
-    //    if (mp[5] >= 10)
-    //        mp[2] = "HP Good!";
-
-        //MBaseObject *pack = new MBaseObject ();
-        //pack->add (1, "Red pack");
-        //pack->add (2, 10);
-        //mpr[24] = *pack;
-
         object_info (mpr);
 
-        // encoding 2
+        // encoding
         cout << "encoding =================" << endl;
         RawData r = VValueFactory::encodeToRaw (mp);
 
@@ -113,10 +96,20 @@ namespace VAST
         else
             cout << "(empty object pointer)" << endl;
 
-        cout << "encoded delta ============" << endl;
+        cout << "make some changes ========" << endl;
         mp->clear_edit ();
         mp->get_attribute (1).set (100);
         mp->get_attribute (10).get_attribute (0).get_attribute (6).set (4.8);
+        // or, make some demage
+        cout << "mpr[5] = 77" << endl;
+        int hp_diff = -5;
+        int hp;
+        mpr.get_attribute (1).get ((int) hp);
+        hp += hp_diff;
+        mpr.get_attribute (1).set ((int) hp);
+        cout << endl;
+
+        cout << "encoded delta ============" << endl;
         RawData r2 = VValueFactory::encodeToRaw (mp, true);
 
         cout << "data encoded =============" << endl;
@@ -144,8 +137,24 @@ namespace VAST
 
         cout << endl;
     }
+#endif
 
-    int      
+    vastate_impl::vastate_impl (vastverse *vastworld, const Addr &gatewayIP, const system_parameter_t & sp)
+        : vastate (sp), _vastworld(vastworld), _gateway_addr(gatewayIP), _started(false), _is_gateway(false)
+        , _ider (NULL), _gateway (NULL)
+    {
+#ifdef VASTATE_IMPL_DEBUGTEST
+        debug_test ();
+#endif
+    }
+
+    int vastate_impl::process_message ()
+    {
+        return this->processmsg ();
+    }
+
+    /*
+    int
     vastate_impl::process_msg ()
     {
         //
@@ -166,6 +175,7 @@ namespace VAST
         //
         // check for arbitrator promotion/demotion
         //
+        /*
         Node info;
         for (i=0; i<_arbitrators.size (); ++i)
         {
@@ -178,8 +188,10 @@ namespace VAST
             if (_peers[i]->is_promoted (info) == true)
                 _arb_requests.insert (multimap<int, Node>::value_type (1, info));
         }
+        */
 
         // check for arbitrator join (after IDs are obtained)
+        /*
         id_t id;        
         arbitrator *a;
         peer *p;
@@ -202,9 +214,35 @@ namespace VAST
                 // TODO: we assume no authentication data for now
                 p->join (id, _node2pos[p].pos, _node2pos[p].aoi, 0, 0);
         }
-        
-
+        */
+        /*
         return 0;
+    }
+    */
+
+    // returns whether the message has been handled successfully
+    bool 
+    vastate_impl::handlemsg (id_t from_id, msgtype_t msgtype, timestamp_t recvtime, char *msg, int size)
+    {
+        return false;
+    }
+
+    // do things after messages are all handled
+    void 
+    vastate_impl::post_processmsg ()
+    {
+        if (is_started () < vastate::STATE_CAN_JOIN)
+        {
+            if (_ider != NULL && _ider->getid () != NET_ID_UNASSIGNED)
+                _started = vastate::STATE_STARTED;
+
+            return ;
+        }
+
+        if (_gateway != NULL)
+            ((gateway_impl *) _gateway)->post_processmsg ();
+
+        // TODO:invoke all rolls post_processmsg ()
     }
 
     // check if a peer or arbitrator has joined successfully
@@ -228,8 +266,74 @@ namespace VAST
         return NET_ID_UNASSIGNED;
     }
 
+    // start the node, get id
+    bool vastate_impl::start (bool is_gateway)
+    {
+        // keep the records
+        _is_gateway = is_gateway;
+
+        network * net;
+        // if is_gateway, use specified gateway port, or use a random port
+        if ((net = _vastworld->create_net (is_gateway ? _gateway_addr.publicIP.port : 0)) == NULL)
+        {
+            cerr << "vastate::start (): Creating net failed." << endl;
+            return false;
+        }
+
+        setnet (net);
+        _net->start ();
+
+        _ider = _vastworld->create_id (this, is_gateway, _gateway_addr);
+        if (_ider != NULL)
+        {
+            _ider->getid ();
+            // gateway can set as started directly
+            _started = is_gateway ? vastate::STATE_STARTED : vastate::STATE_STARTING;
+        }
+
+        return true;
+    }
+
+    // stop the node, disconnects all rolls
+    bool vastate_impl::stop ()
+    {
+        // TODO: stop all rolls (arbs and peers) also?
+        
+        if (_ider != NULL)
+        {
+            _vastworld->destroy_id (_ider);
+            _ider = NULL;
+        }
+
+        if (_net != NULL)
+        {
+            _net->stop ();
+            _vastworld->destroy_net (_net);
+            _net = NULL;
+        }
+
+        return true;
+    }
+
+    // create an initial server, if a server, must be called before any create of peers/arbitrators
+    gateway *
+    vastate_impl::create_gateway ()
+    {
+        if (_started < vastate::STATE_CAN_JOIN)
+            return NULL;
+
+        if ( ! _is_gateway)
+            return NULL;
+
+        if (_gateway != NULL)
+            return _gateway;
+
+        _gateway = new gateway_impl (NET_ID_GATEWAY, *_vastworld, _net, sysparm);
+        return _gateway;
+    }
 
     // create an initial server
+    /*
     bool 
     vastate_impl::create_server (vector<arbitrator_logic *> &alogics, 
                                  vector<storage_logic *>    &slogics, 
@@ -256,14 +360,15 @@ namespace VAST
         }
 
         return true;
-    }    
+    }
+    */
 
     peer *
     vastate_impl::create_peer (peer_logic *logic, Node &peer_info, int capacity)
     {
-        peer *p = new peer_impl (logic, _vastworld->create_net (_gateway.publicIP.port), capacity, _gateway);
+        peer *p = new peer_impl (logic, _vastworld->create_net (_gateway_addr.publicIP.port), capacity, _gateway_addr);
 
-        vastid *idgen = _vastworld->create_id (p, false, _gateway);
+        vastid *idgen = _vastworld->create_id (p, false, _gateway_addr);
 
         // send a request for ID
         idgen->getid ();
@@ -278,11 +383,11 @@ namespace VAST
     arbitrator *
     vastate_impl::create_arbitrator (id_t parent, arbitrator_logic *alogic, storage_logic *slogic, Node &arb_info, bool is_gateway)
     {            
-        vast *vnode     = _vastworld->create_node (_gateway.publicIP.port, 0);
+        vast *vnode     = _vastworld->create_node (_gateway_addr.publicIP.port, 0);
         storage *s      = new storage_cs (slogic);
-        arbitrator *a   = new arbitrator_impl (parent, alogic, vnode, s, is_gateway, _gateway, &sysparm);
+        arbitrator *a   = new arbitrator_impl (parent, alogic, vnode, s, is_gateway, _gateway_addr, &sysparm);
 
-        vastid *idgen   = _vastworld->create_id (vnode, is_gateway, _gateway);
+        vastid *idgen   = _vastworld->create_id (vnode, is_gateway, _gateway_addr);
         
         // chain up event handlers, so the ordering is vastnode -> vastid -> arbitrator -> storage
         // NOTE: in the current design,
@@ -384,7 +489,6 @@ namespace VAST
         _arb_requests.clear ();
         return true;
     }
-
 
     //
     // private methods

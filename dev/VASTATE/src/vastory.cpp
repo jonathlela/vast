@@ -21,7 +21,7 @@
 #include "vastory.h"
 #include "vastate_impl.h"
 
-using namespace VASTATE;
+//using namespace VASTATE;
 
 namespace VAST
 {
@@ -38,4 +38,4 @@ namespace VAST
         return true;
     }
     
-} /* namespace VASTATE */
+} /* namespace VAST */

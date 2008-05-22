@@ -32,7 +32,7 @@ VValueFactory - Factory class of whole object model
 
 //#define DEBUG_ENCODING_STDOUT 1
 
-namespace VASTATE {
+namespace VAST {
 
 #define DECLARE_ACCESS_FUNCTION(t)      \
     public:                             \
@@ -44,25 +44,25 @@ namespace VASTATE {
 class VValue : public encodable
 {
 public:
-    const static objecttype_t T_ERROR         = 0x00;
-    const static objecttype_t T_UNKNOWN       = 0x01;
-    const static objecttype_t T_CONTAINER     = 0x02;
-    const static objecttype_t T_OBJECT        = 0x03;
-    const static objecttype_t T_VEOBJECT      = 0x04;
-    const static objecttype_t T_EVENT         = 0x08;
-    const static objecttype_t T_PREFIX_SIMPLE = 0x10;
-    const static objecttype_t TS_BOOL         = T_PREFIX_SIMPLE | 0x01;
-    const static objecttype_t TS_INT          = T_PREFIX_SIMPLE | 0x02;
-    const static objecttype_t TS_DOUBLE       = T_PREFIX_SIMPLE | 0x04;
-    const static objecttype_t TS_STRING       = T_PREFIX_SIMPLE | 0x08;
+    const static obj_type_t T_ERROR         = 0x00;
+    const static obj_type_t T_UNKNOWN       = 0x01;
+    const static obj_type_t T_CONTAINER     = 0x02;
+    const static obj_type_t T_OBJECT        = 0x03;
+    const static obj_type_t T_VEOBJECT      = 0x04;
+    const static obj_type_t T_EVENT         = 0x08;
+    const static obj_type_t T_PREFIX_SIMPLE = 0x10;
+    const static obj_type_t TS_BOOL         = T_PREFIX_SIMPLE | 0x01;
+    const static obj_type_t TS_INT          = T_PREFIX_SIMPLE | 0x02;
+    const static obj_type_t TS_DOUBLE       = T_PREFIX_SIMPLE | 0x04;
+    const static obj_type_t TS_STRING       = T_PREFIX_SIMPLE | 0x08;
 
-    const static objecttype_t T_DELETE        = 0x20;
+    const static obj_type_t T_DELETE        = 0x20;
     //const static std::string OBJECTTYPE_STR[] = {"T_UNKNOWN", "T_CONTAINER"};
 
     const static VValue null_value;
 
 public:
-    VValue (objecttype_t t = T_UNKNOWN)
+    VValue (obj_type_t t = T_UNKNOWN)
         : _type (t), _modified (false) {}
 
     VValue (const VValue& m)
@@ -73,7 +73,7 @@ public:
     }
 
     inline
-    objecttype_t get_type () const
+    obj_type_t get_type () const
     {
         return _type;
     }
@@ -94,19 +94,19 @@ public:
         remove_attribute ()
         get_attribute ()
     */
-    virtual int             add_attribute     (VASTATE::short_index_t index, const VValue& m) 
+    virtual int             add_attribute     (sindex_t index, const VValue& m) 
     {
         _not_impl ("add_attribute ()"); 
         return -1;
     }
 
-    virtual int             remove_attribute  (VASTATE::short_index_t index)         
+    virtual int             remove_attribute  (sindex_t index)         
     {
         _not_impl ("remove_attribute ()"); 
         return -1;
     }
 
-    virtual VValue&         get_attribute (VASTATE::short_index_t index)
+    virtual VValue&         get_attribute (sindex_t index)
     {
         _not_impl ("get_attribute ()"); 
         return *this;
@@ -138,16 +138,16 @@ public:
 
     virtual bool            decodeFromRaw (RawData& raw)
     {
-        if (raw.size () < sizeof (objecttype_t))
+        if (raw.size () < sizeof (obj_type_t))
             return false;
         if (raw.front () != _type)
             return false;
-        raw.pop_front (sizeof(objecttype_t));
+        raw.pop_front (sizeof(obj_type_t));
         return true;
     }
 
 protected:
-    objecttype_t _type;
+    obj_type_t   _type;
     bool         _modified;
 
     /* Debug functions */
@@ -185,7 +185,7 @@ public:
     static VValue* decodeFromRaw  (RawData& raw, VValue *baseObj = NULL);
 
 private:
-    static VValue* objecttypeToObj (const objecttype_t type);
+    static VValue* objecttypeToObj (const obj_type_t type);
 
 public:
     static void destroy (const VValue *m);
@@ -201,7 +201,7 @@ private:
 
 // Basic value define
 ///////////////////////////////////////
-template<VASTATE::objecttype_t TYPE_ID,typename TYPE>
+template<obj_type_t TYPE_ID,typename TYPE>
 class VSimpleValue : public VValue
 {
 protected:
@@ -288,8 +288,8 @@ template<> bool VSimpleValue<VValue::TS_STRING, std::string>::decodeFromRaw (Raw
 class VContainer : public VValue
 {
 public:
-    typedef std::map<VASTATE::short_index_t,VValue *> Box;
-    typedef std::map<VASTATE::short_index_t,bool>     BoxFlag;
+    typedef std::map<sindex_t,VValue *> Box;
+    typedef std::map<sindex_t,bool>     BoxFlag;
 
 protected:
     Box _b;
@@ -301,10 +301,10 @@ public:
         : VValue (T_CONTAINER) {}
 
 protected:
-    VContainer (const objecttype_t type)
+    VContainer (const obj_type_t type)
         : VValue (type) {}
 
-    VContainer (const VContainer& c, const objecttype_t type)
+    VContainer (const VContainer& c, const obj_type_t type)
         : VValue (type)
     {
         assign (c);
@@ -322,7 +322,7 @@ public:
         clean ();
     }
 
-    int add_attribute (VASTATE::short_index_t index, const VValue& m) 
+    int add_attribute (sindex_t index, const VValue& m) 
     {
         std::cout << "VContainer::add (" << (int) index << "," << m.encodeToStr () << ")" << endl;
         if (_b.find (index) != _b.end ())
@@ -334,7 +334,7 @@ public:
         return 0;
     }
 
-    int remove_attribute (VASTATE::short_index_t index)         
+    int remove_attribute (sindex_t index)         
     {
         if (_b.find (index) != _b.end ())
         {
@@ -345,7 +345,7 @@ public:
         return -1;
     }
 
-    VValue& get_attribute (VASTATE::short_index_t index)
+    VValue& get_attribute (sindex_t index)
     {
         std::cout << "VContainer::getItem ()" << endl;
         if (_b.find (index) == _b.end ())
@@ -399,26 +399,26 @@ public:
                 r = VValue::encodeToRaw (only_updated);
 
             // decide number of items
-            short_index_t siz = 0;
+            sindex_t siz = 0;
             if (only_updated)
             {
-                siz += (short_index_t) _bmodified.size ();
+                siz += (sindex_t) _bmodified.size ();
                 for (Box::const_iterator it = _b.begin (); it != _b.end (); it ++)
                     if (it->second->is_modified ())
                         siz ++;
             }
             else
-                siz = (short_index_t) _b.size ();
+                siz = (sindex_t) _b.size ();
 
-            r.push_array ((uchar_t *) & siz, sizeof (short_index_t));
+            r.push_array ((uchar_t *) & siz, sizeof (sindex_t));
 
             // push delta arrays
             if (only_updated)
             {
                 for (BoxFlag::const_iterator it = _bmodified.begin (); it != _bmodified.end (); it ++)
                 {
-                    r.push_array (rawdata_p (it->first), sizeof (short_index_t));
-                    r.push_array (rawdata_p (VValue::T_DELETE), sizeof (objecttype_t));
+                    r.push_array (rawdata_p (it->first), sizeof (sindex_t));
+                    r.push_array (rawdata_p (VValue::T_DELETE), sizeof (obj_type_t));
                 }
             }
 
@@ -427,7 +427,7 @@ public:
             {
                 if (!only_updated || it->second->is_modified ())
                 {
-                    r.push_array (rawdata_p(it->first), sizeof (short_index_t));
+                    r.push_array (rawdata_p(it->first), sizeof (sindex_t));
                     r.push_raw (it->second->encodeToRaw (only_updated));
                 }
             }
@@ -445,12 +445,12 @@ public:
             && !VValue::decodeFromRaw (raw))
             return false;
 
-        short_index_t siz;
-        raw.pop_array ((uchar_t *) & siz, sizeof(short_index_t));
-        for (short_index_t s = 0; s < siz; ++ s)
+        sindex_t siz;
+        raw.pop_array ((uchar_t *) & siz, sizeof(sindex_t));
+        for (sindex_t s = 0; s < siz; ++ s)
         {
-            short_index_t idx;
-            raw.pop_array ((uchar_t *) & idx, sizeof(short_index_t));
+            sindex_t idx;
+            raw.pop_array ((uchar_t *) & idx, sizeof(sindex_t));
 
             VValue *value = VValueFactory::decodeFromRaw (raw, 
                             (_b.find (idx) != _b.end ()) ? _b[idx] : NULL);
@@ -485,29 +485,29 @@ protected:
 class VObject : public VContainer
 {
 private:
-    id_t    _id;
+    obj_id_t _id;
 
 public:
     VObject ()
         : VContainer (T_OBJECT) {}
-    VObject (const id_t & id) 
+    VObject (const obj_id_t & id) 
         : VContainer(T_OBJECT), _id (id)  {}
     VObject (const VObject& o)
         : VContainer (o, T_OBJECT), _id (o._id) {}
 
 protected:
-    VObject (const objecttype_t type)
+    VObject (const obj_type_t type)
         : VContainer (type) {}
-    VObject (const id_t id, const objecttype_t type)
+    VObject (const obj_id_t id, const obj_type_t type)
         : VContainer (type), _id (id) {}
-    VObject (const VObject& o, const objecttype_t type)
+    VObject (const VObject& o, const obj_type_t type)
         : VContainer (o, type), _id (o._id) {}
 
 public:
     ~VObject () {}
 
     inline 
-    id_t get_id () const
+    obj_id_t get_id () const
     {   return _id;  }
 
     virtual bool is_modified () const
@@ -538,7 +538,7 @@ public:
         if (get_type () == VValue::T_OBJECT)
             r = VValue::encodeToRaw (only_updated);
 
-        r.push_array ((uchar_t *) & _id, sizeof (id_t));
+        r.push_array ((uchar_t *) & _id, sizeof (obj_id_t));
         r.push_raw (VContainer::encodeToRaw (only_updated));
 
         return r;
@@ -551,7 +551,7 @@ public:
             && !VValue::decodeFromRaw (raw))
             return false;
 
-        if (!raw.pop_array ((uchar_t *) & _id, sizeof(id_t)))
+        if (!raw.pop_array ((uchar_t *) & _id, sizeof(obj_id_t)))
             return false;
 
         return VContainer::decodeFromRaw (raw);
@@ -568,7 +568,7 @@ public:
         : VObject (T_VEOBJECT) {}
     ~VEObject () {}
 
-    VEObject (const VASTATE::id_t& id, const Coord3D &init_pos)
+    VEObject (const obj_id_t& id, const Coord3D &init_pos)
         : VObject (id, T_VEOBJECT), pos (init_pos) {}
 
     VEObject (const VEObject & o)
@@ -621,7 +621,7 @@ public:
 
 class VEvent : public VObject
 {
-    VEvent (const id_t & id)
+    VEvent (const obj_id_t & id)
         : VObject (id, VValue::T_EVENT)
     {}
 
@@ -656,6 +656,6 @@ class VEvent : public VObject
     }
 };
 
-} /* namespace VASTATE */
+} /* namespace VAST */
 
 #endif /* _VASTATE_VWORLD_H */

@@ -13,7 +13,7 @@
 // VValueFactory Function implementation 
 ///////////////////////////////////////
 
-namespace VASTATE {
+namespace VAST {
 
     // for VSimpleValue_string
     ///////////////////////////////////////
@@ -114,7 +114,7 @@ namespace VASTATE {
 
     VValue* VValueFactory::decodeFromRaw  (RawData& raw, VValue * baseObj)
     {
-        objecttype_t type = raw.front ();
+        obj_type_t type = raw.front ();
         VValue * value = NULL;
 
         // if baseObj at same type is provided, use that to decode, or creates new object
@@ -138,7 +138,7 @@ namespace VASTATE {
         return value;
     }
 
-    VValue* VValueFactory::objecttypeToObj (const objecttype_t type)
+    VValue* VValueFactory::objecttypeToObj (const obj_type_t type)
     {
         VValue * value = NULL;
         switch (type)
@@ -159,4 +159,4 @@ namespace VASTATE {
         delete m;
     }
 
-} /* namespace VASTATE */
+} /* namespace VAST */

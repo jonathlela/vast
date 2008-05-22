@@ -40,22 +40,7 @@
 #include "vastutil.h"
 //#include "vworld.h"
 
-namespace VASTATE {
-/* // move to typedef.h 
-// type definations
-typedef unsigned char  uchar_t;
-
-typedef unsigned char  short_index_t;
-typedef unsigned short index_t;
-
-typedef unsigned int  id_t;
-typedef unsigned long long_id_t;
-
-//typedef id_t          obj_id_t;
-//typedef id_t          event_id_t;
-typedef unsigned char objecttype_t;
-*/
-
+namespace VAST {
 //class Coord3D;
 //typedef Coord3D Coord;
 
@@ -197,7 +182,7 @@ typedef unsigned char objecttype_t;
 
     EXPORT const std::string to_string (const Coord3D& p);
 
-} /* namespace VASTATE */
+} /* namespace VAST */
 
 
 

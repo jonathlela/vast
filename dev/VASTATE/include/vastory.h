@@ -44,10 +44,10 @@ namespace VAST
         {
         }
 
-        vastate *create (vastverse *vastworld, Addr &gatewayIP, const VASTATE::system_parameter_t & sp);
+        vastate *create (vastverse *vastworld, Addr &gatewayIP, const system_parameter_t & sp);
         bool destroy (vastate *v);
     };
 
-} // end namespace VASTATE
+} // end namespace VAST
 
 #endif // VASTORY_H

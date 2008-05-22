@@ -37,7 +37,7 @@ namespace VAST
     {
     public:
         // initialize an arbitrator
-        arbitrator (id_t my_parent, VASTATE::system_parameter_t * sp)
+        arbitrator (id_t my_parent, system_parameter_t * sp)
             : self (NULL), parent (my_parent), sysparm (sp)
         {
         }
@@ -119,7 +119,7 @@ namespace VAST
         id_t   parent;
 
         // pointer to system parameter hold by vastate
-        VASTATE::system_parameter_t * sysparm;
+        system_parameter_t * sysparm;
 
         /*
         // debugging a bytestring

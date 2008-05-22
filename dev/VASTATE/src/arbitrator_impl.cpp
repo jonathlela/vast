@@ -23,7 +23,7 @@
 #include "arbitrator_impl.h"
 #include "vastutil.h"
 
-using namespace VASTATE;
+//using namespace VASTATE;
 namespace VAST
 {
     extern char VASTATE_MESSAGE[][20];
