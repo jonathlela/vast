@@ -13,8 +13,8 @@
 	<Configurations>
 		<Configuration
 			Name="Debug|Win32"
-			OutputDirectory="..\build\$(ProjectName)\$(ConfigurationName)\"
-			IntermediateDirectory="..\build\$(ProjectName)\$(ConfigurationName)\"
+			OutputDirectory="$(SolutionDir)\build\$(ProjectName)\$(ConfigurationName)\"
+			IntermediateDirectory="$(SolutionDir)\build\$(ProjectName)\$(ConfigurationName)\"
 			ConfigurationType="2"
 			UseOfMFC="0"
 			ATLMinimizesCRunTimeLibraryUsage="FALSE"
@@ -40,7 +40,7 @@
 				OutputFile="$(OutDir)$(ProjectName)d.dll"
 				LinkIncremental="0"
 				SuppressStartupBanner="TRUE"
-				AdditionalLibraryDirectories="$(SolutionDir)\..\zlib\lib"
+				AdditionalLibraryDirectories="&quot;$(SolutionDir)..\zlib\lib&quot;"
 				GenerateDebugInformation="TRUE"
 				ProgramDatabaseFile="$(OutDir)/$(TargetName).pdb"
 				TargetMachine="1"/>
@@ -54,11 +54,11 @@
 				HeaderFileName=""/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="copy &quot;$(OutDir)\$(TargetFileName)&quot; &quot;$(ProjectDir)..\bin&quot;
-copy &quot;$(OutDir)\$(TargetName).pdb&quot; &quot;$(ProjectDir)..\bin&quot;
-copy &quot;$(OutDir)\$(TargetFileName)&quot; &quot;$(ProjectDir)..\lib&quot;
-copy &quot;$(OutDir)\$(TargetName).pdb&quot; &quot;$(ProjectDir)..\lib&quot;
-copy &quot;$(OutDir)\$(TargetName).lib&quot; &quot;$(ProjectDir)..\lib&quot;
+				CommandLine="copy &quot;$(OutDir)\$(TargetFileName)&quot; &quot;$(SolutionDir)\bin&quot;
+copy &quot;$(OutDir)\$(TargetName).pdb&quot; &quot;$(SolutionDir)\bin&quot;
+copy &quot;$(OutDir)\$(TargetFileName)&quot; &quot;$(SolutionDir)\lib&quot;
+copy &quot;$(OutDir)\$(TargetName).pdb&quot; &quot;$(SolutionDir)\lib&quot;
+copy &quot;$(OutDir)\$(TargetName).lib&quot; &quot;$(SolutionDir)\lib&quot;
 "/>
 			<Tool
 				Name="VCPreBuildEventTool"/>
@@ -81,8 +81,8 @@ copy &quot;$(OutDir)\$(TargetName).lib&quot; &quot;$(ProjectDir)..\lib&quot;
 		</Configuration>
 		<Configuration
 			Name="Release|Win32"
-			OutputDirectory="..\build\$(ProjectName)\$(ConfigurationName)\"
-			IntermediateDirectory="..\build\$(ProjectName)\$(ConfigurationName)\"
+			OutputDirectory="$(SolutionDir)\build\$(ProjectName)\$(ConfigurationName)\"
+			IntermediateDirectory="$(SolutionDir)\build\$(ProjectName)\$(ConfigurationName)\"
 			ConfigurationType="2"
 			UseOfMFC="0"
 			ATLMinimizesCRunTimeLibraryUsage="FALSE"
@@ -109,7 +109,7 @@ copy &quot;$(OutDir)\$(TargetName).lib&quot; &quot;$(ProjectDir)..\lib&quot;
 				OutputFile="$(OutDir)$(ProjectName).dll"
 				LinkIncremental="0"
 				SuppressStartupBanner="TRUE"
-				AdditionalLibraryDirectories="..\zlib\lib"
+				AdditionalLibraryDirectories="&quot;$(SolutionDir)..\zlib\lib&quot;"
 				ProgramDatabaseFile="$(OutDir)/$(TargetName).pdb"
 				TargetMachine="1"/>
 			<Tool
