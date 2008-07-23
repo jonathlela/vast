@@ -55,6 +55,8 @@ public:
 	void setout (errout * out);
 	void output (const char * str);
 	virtual void outputHappened (const char * str);
+
+    static char textbuf [10240];
 private:
 	static errout * _actout;
 };
