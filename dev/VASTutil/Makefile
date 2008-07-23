@@ -4,7 +4,12 @@ AR = ar
 CC = g++
 CFLAGS = -fPIC -c -Wall -I../include -I../zlib/include
 
-sources = errout.cpp MovementGenerator.cpp  SectionedFile.cpp  StdIO_SectionedFile.cpp
+sources = Compressor.cpp \
+		  errout.cpp \
+		  MovementGenerator.cpp \
+		  SectionedFile.cpp \
+		  StdIO_SectionedFile.cpp
+
 
 objects = $(subst .cpp,.o,$(sources))
 

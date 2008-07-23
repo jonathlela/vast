@@ -23,6 +23,7 @@
 #include "vastutil.h"
 
 errout * errout::_actout = NULL;
+char errout::textbuf [10240];
 
 errout::errout ()
 {
