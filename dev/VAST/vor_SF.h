@@ -75,6 +75,9 @@ public:
     // check if a circle overlaps with a particular region
     bool overlaps (id_t id, Position &center, aoi_t radius, bool accuracy_mode = false);
 
+    // remove all sites in the diagram
+    void clear ();
+
     //
     // non Voronoi-specific methods
     //

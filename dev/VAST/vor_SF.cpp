@@ -23,6 +23,9 @@
 namespace VAST
 {
 
+// protential BUG: is small enough?
+const double EQUAL_DISTANCE = 0.000001;
+
 // insert a new site, the first inserted is myself
 void 
 vor_SF::
@@ -269,7 +272,25 @@ overlaps (id_t id, Position &pt, aoi_t radius, bool accuracy_mode)
     }
 }
 
+
+// remove all sites in the diagram
+void 
+vor_SF::
+clear ()
+{
+    int n = _sites.size ();
+    for (int i = 0; i < n; i ++)
+    {
+        remove (_sites[_sites.size () - 1].first);
+    }
+}
+
+
 // returns the closest node to a point
+// Added 20080724 by Csc
+//  an extra case added for ensuring a unique closest point is returned
+//      by checking IDs of them 
+//  (i.e. when two or more sites is closest to the point, smallest ID one is returned)
 id_t
 vor_SF::
 closest_to (Position &pt)
@@ -286,7 +307,8 @@ closest_to (Position &pt)
         Position &p = _sites[i].second;
 
         //ACE_DEBUG ((LM_DEBUG, "(%5t) closest_to() checking idx:%d id:%d\n", i, id));
-        if ((d = pt.dist (p)) < min)
+        if ((d = pt.dist (p)) < min ||
+            (d < EQUAL_DISTANCE && id < closest) )
         {
             min = d;
             closest = id;
