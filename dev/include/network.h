@@ -201,7 +201,7 @@ namespace VAST {
             receiver->_recvsize += total_size;
             if (receiver->_type2recvsize.find (msgtype) == receiver->_type2recvsize.end ())
                 receiver->_type2recvsize [msgtype] = 0;
-            receiver->_type2sendsize[msgtype] += total_size;
+            receiver->_type2recvsize[msgtype] += total_size;
         }
 
         void count_compressed_message (network *receiver, size_t length)

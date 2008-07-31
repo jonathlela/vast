@@ -113,6 +113,7 @@ namespace VAST
         {
             node = m.node;
             addr = m.addr;
+            return *this;
         }
 
         Node node;
@@ -127,7 +128,7 @@ namespace VAST
 
         // join VON to obtain an initial set of AOI neighbors, 
         // note this only initiates the process but does not guarantee a successful join
-        bool    join (id_t id, aoi_t AOI, Position &pos, Addr &gateway);
+        bool    join (VAST::id_t id, aoi_t AOI, Position &pos, Addr &gateway);
         
         // quit VON
         void    leave ();

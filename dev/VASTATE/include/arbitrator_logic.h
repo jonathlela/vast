@@ -31,16 +31,23 @@
 #include "shared.h"
 
 namespace VAST 
-{
+{  
+
     class arbitrator_logic
     {
     public:
+        virtual ~arbitrator_logic () {}
         
         // callback - for authenaticing a newly joined peer
         virtual bool join_requested (id_t from_id, char *data, int sizes) = 0;
 
         // callback - for processing a query returned by the shared storage
         //virtual bool query_returned (query_id_t query_id, char *data, int size) = 0;
+
+        // callback - for determining affecting objects by event
+        //      note: a static vector may be declared in event_affected for returning value
+        virtual const std::vector<VAST::obj_id_t> &
+                     event_affected (id_t from_id, event &e) = 0;
 
         // callback -  for receiving a remote event (arbitrator only)
         virtual bool event_received (id_t from_id, event &e) = 0;
@@ -65,7 +72,7 @@ namespace VAST
         // store access to arbitrator class
         // NOTE: the app-specific implementation of arbitrator_logic must
         //       store a pointer to an 'arbitrator' object as private variable
-        //virtual void register_interface (void *) = 0;         
+        virtual void register_interface (void *) = 0;         
 
         // store access to storage class
         // NOTE: the app-specific implementation of arbitrator_logic must
@@ -76,3 +83,4 @@ namespace VAST
 } // end namespace VAST
 
 #endif // #define VASTATE_ARBITRATOR_LOGIC_H
+

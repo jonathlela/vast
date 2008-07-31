@@ -54,9 +54,10 @@
 #define DEBUG_DETAIL  // show detail debug messages
 #endif
 
+// force to enable debug message
 //#define DEBUG_DETAIL
 
-#define ACE_DISABLED_
+#define ACE_DISABLED
 #define RECORD_INCONSISTENT_NODES_
 
 // Send all messages by bandwidth limitation

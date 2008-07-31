@@ -55,8 +55,7 @@
 				Name="VCPostBuildEventTool"
 				CommandLine="copy &quot;$(OutDir)\$(TargetFileName)&quot; &quot;$(ProjectDir)..\..\bin&quot;
 copy &quot;$(OutDir)\$(TargetFileName)&quot; &quot;$(ProjectDir)..\..\lib&quot;
-copy &quot;$(OutDir)\$(TargetName).lib&quot; &quot;$(ProjectDir)..\..\lib&quot;
-"/>
+copy &quot;$(OutDir)\$(TargetName).lib&quot; &quot;$(ProjectDir)..\..\lib&quot;"/>
 			<Tool
 				Name="VCPreBuildEventTool"/>
 			<Tool

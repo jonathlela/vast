@@ -74,11 +74,9 @@ namespace VAST
         if (target == _id)
             return 0;
         
-        /*
         // check if connection is already established
         if (_id2addr.find (target) != _id2addr.end ())
             return -1;
-        -//
 
         _id2addr[target] = addr;
 
@@ -195,7 +193,7 @@ namespace VAST
             {
 #ifdef DEBUG_DETAIL
                 // TODO: has any other side effects?
-                printf ("[%lu][net_emu_bl] send queue is full {target=%u, msgtype=%d, len=%u}.\n", _id, target, msgtype, len);
+                printf ("[%lu][net_emu_bl] send queue is full {target=%lu, msgtype=%d, len=%u}.\n", _id, target, msgtype, len);
 #endif
                 // simply return a sending failure
                 return VAST_ERR_BUFFERISFULL;

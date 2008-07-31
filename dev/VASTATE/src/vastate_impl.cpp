@@ -1,6 +1,7 @@
 /*
  * VAST, a scalable peer-to-peer network for virtual environments
  * Copyright (C) 2007 Shun-Yun Hu (syhu@yahoo.com)
+ *               2008 Shao-Chen Chang (cscxcs at gmail.com)
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -18,143 +19,122 @@
  *
  */
 
-#include "shared.h"
-#include "vworld.h"
 #include "vastate_impl.h"
-#include "gateway_impl.h"
 #include "arbitrator_impl.h"
 #include "peer_impl.h"
 #include "storage_cs.h"
 
-#define VASTATE_IMPL_DEBUGTEST
-
-using std::cout;
-
 namespace VAST
 {
-#ifdef VASTATE_IMPL_DEBUGTEST
-    // codes to testing object model operation
-    static void object_info (VValue& m)
+    vastate_impl::vastate_impl (vastverse *vastworld, Addr &gatewayIP, const system_parameter_t & sp)
+        : vastate (sp), _vastworld(vastworld), _gateway(gatewayIP), _gateway_node (NULL)
     {
-        cout << "Object information ---" << endl;
-        cout << m.encodeToStr () << endl;
-        cout << "----------------------" << endl;
+        // test data
+        /*
+  
+        attributes_impl a;
+
+        a.add (true);
+        a.add ((int)32767);
+        a.add (112343.14159269777f);       string s("abcdefg ");
+        a.add (s);      vec3_t c; c.x = 382.573829f; c.y = 2349.2431f; c.z = 5382.34234f;
+        a.add (c);
+        a.add (true);
+        //a.add (19);
+        
+        bool   v1 = false;
+        int    v2 = 777;
+        float  v3 = 0.0;
+        string v4 = "abc good";
+        vec3_t v5;
+
+        a.get (0, v1);        printf ("bool: %d\n", v1);        
+        a.get (1, v2);        printf ("int: %d\n", v2);        
+        a.get (2, v3);        printf ("float: %f\n", v3);
+        a.get (3, v4);        printf ("str: (%s)\n", v4.c_str ());        
+        a.get (4, v5);        printf ("vec3: (%f, %f, %f)\n", v5.x, v5.y, v5.z);        
+        a.get (5, v1);        printf ("bool: %d\n", v1);       
+        //a.get (6, v2);        printf ("int: %d\n", v2); 
+                
+        
+        char buf[VASTATE_BUFSIZ];
+        char *p = buf;
+        int size = a.pack_all (&p);
+        
+        string str;
+        string str1;
+        string str2;
+        
+        for (int k=0; k<size; k++)
+        {
+            str1 += buf[k];
+            str2 += buf[k];
+        }
+        str += str1;
+        str += str2;
+
+        printf ("packsize: %d string size: %d\n", size, str.size());
+        */
+        
+        /*
+        printf ("\ntransferring to another attribute (pack size: %d)\n\n", size);
+        
+        attributes_impl b;   
+        
+        b.unpack (buf);
+        
+        b.get (0, v1);        printf ("bool: %d\n", v1);        
+        b.get (1, v2);        printf ("int: %d\n", v2);        
+        b.get (2, v3);        printf ("float: %f\n", v3);
+        b.get (3, v4);        printf ("str: (%s)\n", v4.c_str ());        
+        b.get (4, v5);        printf ("vec3: (%f, %f, %f)\n", v5.x, v5.y, v5.z);        
+        b.get (5, v1);        printf ("bool: %d\n", v1);
+        //b.get (6, v2);        printf ("int: %d\n", v2); 
+        
+        printf ("\nresetting values in a\n\n");
+        
+        a.reset_dirty();
+
+        a.add (19);
+
+        a.set (0, false);
+        a.set (1, (int)512);
+        a.set (2, (float)3.14159269f);  
+        string s2("abcdefg   ");
+        a.set (3, s2);               
+        vec3_t c2; c2.x = 5.0; c2.y = 6.0; c2.z = 7.0;
+        //a.set (4, c2);
+        a.set (5, false);
+        
+        a.get (0, v1);        printf ("bool: %d\n", v1);        
+        a.get (1, v2);        printf ("int: %d\n", v2);        
+        a.get (2, v3);        printf ("float: %f\n", v3);
+        a.get (3, v4);        printf ("str: (%s)\n", v4.c_str ());        
+        a.get (4, v5);        printf ("vec3: (%f, %f, %f)\n", v5.x, v5.y, v5.z);        
+        a.get (5, v1);        printf ("bool: %d\n", v1);       
+        a.get (6, v2);        printf ("int: %d\n", v2);                 
+        
+        p = buf;
+        size = a.pack_dirty (&p);
+        //size = a.pack_all (&p);
+        printf ("\npacking to b again, size: %d\n\n", size);
+        
+        b.unpack (buf);
+        
+        int vv;
+        b.get (0, v1);        printf ("bool: %d\n", v1);        
+        b.get (1, vv);        printf ("int: %d\n", vv);        
+        b.get (2, v3);        printf ("float: %f\n", v3);
+        b.get (3, v4);        printf ("str: (%s)\n", v4.c_str ());        
+        b.get (4, v5);        printf ("vec3: (%f, %f, %f)\n", v5.x, v5.y, v5.z);        
+        b.get (5, v1);        printf ("bool: %d\n", v1);       
+        b.get (6, v2);        printf ("int: %d\n", v2);  
+        
+        printf ("\n\n");
+*/        
     }
 
-    static void debug_test ()
-    {
-                // test data
-        VEObject *mp = new VEObject (1, Coord3D (318.52, 224.3, 900.0));
-        VEObject &mpr = *mp;
-        // assignment
-        cout << "mpr.add (0, 20)" << endl;
-        mpr.add_attribute (0, VSimpleValue_string ("IlMgcer"));
-        mpr.add_attribute (1, VSimpleValue_int (100));
-        mpr.add_attribute (2, VSimpleValue_int (220));
-        mpr.add_attribute (3, VSimpleValue_double (2.5));
-        mpr.add_attribute (10, VContainer ());
-        mpr.add_attribute (15, VSimpleValue_int (50));
-        cout << endl;
-
-        // sword attributes
-        cout << "New object: sword" << endl;
-        VObject sword ((VASTATE::id_t) 2);
-        sword.add_attribute (0, VSimpleValue_string("¶Ã¤C¤KÁV¼C"));
-        sword.add_attribute (5, VSimpleValue_int(10));
-        sword.add_attribute (6, VSimpleValue_double(2.2));
-        sword.add_attribute (7, VSimpleValue_int(100));
-
-        if (mpr.get_attribute (10).get_type () != VValue::T_CONTAINER)
-            cout << "error containor type" << endl;
-
-        // find a place to put in
-        VContainer & res = * (VContainer *) (&mpr.get_attribute (10));
-        sindex_t free_index = 0;
-        for (free_index = 0; free_index < ((sindex_t) 0 - (sindex_t) 1); free_index ++)
-            if (res.get_attribute (free_index).get_type () == VValue::T_ERROR)
-                break;
-
-        res.add_attribute (free_index, sword);
-
-        object_info (mpr);
-
-        // encoding
-        cout << "encoding =================" << endl;
-        RawData r = VValueFactory::encodeToRaw (mp);
-
-        cout << "data encoded =============" << endl;
-        for (RawData::iterator it = r.begin (); it != r.end (); it ++)
-            cout << (int) *it << " ";
-        cout << " (size: " << r.size () << ") " << endl;
-
-        cout << "decodeing ================" << endl;
-        VValue * new_object = VValueFactory::decodeFromRaw (r);
-
-        cout << "object decoded ===========" << endl;
-        if (new_object != NULL)
-            object_info (*new_object);
-        else
-            cout << "(empty object pointer)" << endl;
-
-        cout << "make some changes ========" << endl;
-        mp->clear_edit ();
-        mp->get_attribute (1).set (100);
-        mp->get_attribute (10).get_attribute (0).get_attribute (6).set (4.8);
-        // or, make some demage
-        cout << "mpr[5] = 77" << endl;
-        int hp_diff = -5;
-        int hp;
-        mpr.get_attribute (1).get ((int) hp);
-        hp += hp_diff;
-        mpr.get_attribute (1).set ((int) hp);
-        cout << endl;
-
-        cout << "encoded delta ============" << endl;
-        RawData r2 = VValueFactory::encodeToRaw (mp, true);
-
-        cout << "data encoded =============" << endl;
-        for (RawData::iterator it = r2.begin (); it != r2.end (); it ++)
-            cout << (int) *it << " ";
-        cout << " (size: " << r2.size () << ") " << endl;
-
-        cout << "decodeing ================" << endl;
-        VValue * new_object2 = VValueFactory::decodeFromRaw (r2, mp);
-
-        cout << "object decoded ===========" << endl;
-        if (new_object2 != NULL)
-            object_info (*new_object2);
-        else
-            cout << "(empty object pointer)" << endl;
-
-        cout << "==========================" << endl;
-
-        cout << "delete mp" << endl;
-        delete mp;
-        cout << "delete new_object" << endl;
-        delete new_object;
-        //cout << "delete new_object2" << endl;
-        //delete new_object2;
-
-        cout << endl;
-    }
-#endif
-
-    vastate_impl::vastate_impl (vastverse *vastworld, const Addr &gatewayIP, const system_parameter_t & sp)
-        : vastate (sp), _vastworld(vastworld), _gateway_addr(gatewayIP), _started(false), _is_gateway(false)
-        , _ider (NULL), _gateway (NULL)
-    {
-#ifdef VASTATE_IMPL_DEBUGTEST
-        debug_test ();
-#endif
-    }
-
-    int vastate_impl::process_message ()
-    {
-        return this->processmsg ();
-    }
-
-    /*
-    int
+    int      
     vastate_impl::process_msg ()
     {
         //
@@ -172,10 +152,12 @@ namespace VAST
         for (i=0; i<_peers.size (); ++i)
             _peers[i]->process_msg ();
 
+        if (_gateway_node != NULL)
+            _gateway_node->tick ();
+
         //
         // check for arbitrator promotion/demotion
         //
-        /*
         Node info;
         for (i=0; i<_arbitrators.size (); ++i)
         {
@@ -188,14 +170,62 @@ namespace VAST
             if (_peers[i]->is_promoted (info) == true)
                 _arb_requests.insert (multimap<int, Node>::value_type (1, info));
         }
-        */
 
         // check for arbitrator join (after IDs are obtained)
-        /*
         id_t id;        
         arbitrator *a;
         peer *p;
+        vector<void *> remove_list;
 
+        for (map<void *, bool>::iterator it = _wait2join.begin (); it != _wait2join.end (); it ++)
+        {
+            // for arbitrator
+            if (std::find (_arbitrators.begin (), _arbitrators.end (), it->first) != _arbitrators.end ())
+            {
+                a = (arbitrator *) it->first;
+                // note that join will be called only once every MAX_JOIN_COUNTDOWN timesteps
+                if (a->is_joined () == false && (id = can_join (a)) != NET_ID_UNASSIGNED)
+                    a->join (id, _node2pos[a].pos, _gateway);
+                // remove from wait 2 join list if joined successfully
+                else if (a->is_joined () == true)
+                    remove_list.push_back (it->first);
+            }
+
+            // for peers
+            else if (std::find (_peers.begin (), _peers.end (), it->first) != _peers.end ())
+            {
+                p = (peer *) it->first;
+
+                arbitrator_impl *arb_paired = (arbitrator_impl *)
+                        ((_peerarb_pair.find (p) == _peerarb_pair.end ()) ? NULL : _peerarb_pair[p]);
+                // note that join will be called only once every MAX_JOIN_COUNTDOWN timesteps
+                if (p->is_joined () == false && (id = can_join (p)) != NET_ID_UNASSIGNED
+                    && (arb_paired == NULL || arb_paired->is_joined ())
+                    )
+                {
+                    // TODO: we assume no authentication data for now
+                    // '== Addr ()' meaning gets NULL Address
+                    if (arb_paired == NULL || arb_paired->getnet ()->getaddr (arb_paired->self->id) == Addr ())
+                        p->join (id, _node2pos[p].pos, _node2pos[p].aoi, 0, 0, NULL);
+                    else
+                        p->join (id, _node2pos[p].pos, _node2pos[p].aoi, 0, 0, & (arb_paired->getnet ()->getaddr (arb_paired->self->id)));
+
+                    // check and inform ,if exists, my child arbitrator of my id
+                    if (_peerarb_pair.find (p) != _peerarb_pair.end ())
+                    {
+                        _peerarb_pair[p]->set_parent (id);
+                    }
+                }
+                // remove from wait 2 join list if joined successfully
+                else if (p->is_joined () == true)
+                    remove_list.push_back (it->first);
+            }
+        }
+
+        for (vector<void *>::iterator it = remove_list.begin (); it != remove_list.end (); it ++)
+            _wait2join.erase (*it);
+
+        /*
         for (i=0; i<_arbitrators.size (); ++i)
         {
             a = _arbitrators[i];
@@ -209,40 +239,30 @@ namespace VAST
         {
             p = _peers[i];
 
+            arbitrator_impl *arb_paired = (arbitrator_impl *)
+                    ((_peerarb_pair.find (p) == _peerarb_pair.end ()) ? NULL : _peerarb_pair[p]);
             // note that join will be called only once every MAX_JOIN_COUNTDOWN timesteps
-            if (p->is_joined () == false && (id = can_join (p)) != NET_ID_UNASSIGNED)
+            if (p->is_joined () == false && (id = can_join (p)) != NET_ID_UNASSIGNED
+                && (arb_paired == NULL || arb_paired->is_joined ())
+                )
+            {
                 // TODO: we assume no authentication data for now
-                p->join (id, _node2pos[p].pos, _node2pos[p].aoi, 0, 0);
+                // '== Addr ()' meaning gets NULL Address
+                if (arb_paired == NULL || arb_paired->getnet ()->getaddr (arb_paired->self->id) == Addr ())
+                    p->join (id, _node2pos[p].pos, _node2pos[p].aoi, 0, 0, NULL);
+                else
+                    p->join (id, _node2pos[p].pos, _node2pos[p].aoi, 0, 0, & (arb_paired->getnet ()->getaddr (arb_paired->self->id)));
+
+                // check and inform ,if exists, my child arbitrator of my id
+                if (_peerarb_pair.find (p) != _peerarb_pair.end ())
+                {
+                    _peerarb_pair[p]->set_parent (id);
+                }
+            }
         }
         */
-        /*
+
         return 0;
-    }
-    */
-
-    // returns whether the message has been handled successfully
-    bool 
-    vastate_impl::handlemsg (id_t from_id, msgtype_t msgtype, timestamp_t recvtime, char *msg, int size)
-    {
-        return false;
-    }
-
-    // do things after messages are all handled
-    void 
-    vastate_impl::post_processmsg ()
-    {
-        if (is_started () < vastate::STATE_CAN_JOIN)
-        {
-            if (_ider != NULL && _ider->getid () != NET_ID_UNASSIGNED)
-                _started = vastate::STATE_STARTED;
-
-            return ;
-        }
-
-        if (_gateway != NULL)
-            ((gateway_impl *) _gateway)->post_processmsg ();
-
-        // TODO:invoke all rolls post_processmsg ()
     }
 
     // check if a peer or arbitrator has joined successfully
@@ -266,80 +286,29 @@ namespace VAST
         return NET_ID_UNASSIGNED;
     }
 
-    // start the node, get id
-    bool vastate_impl::start (bool is_gateway)
-    {
-        // keep the records
-        _is_gateway = is_gateway;
 
-        network * net;
-        // if is_gateway, use specified gateway port, or use a random port
-        if ((net = _vastworld->create_net (is_gateway ? _gateway_addr.publicIP.port : 0)) == NULL)
-        {
-            cerr << "vastate::start (): Creating net failed." << endl;
-            return false;
-        }
-
-        setnet (net);
-        _net->start ();
-
-        _ider = _vastworld->create_id (this, is_gateway, _gateway_addr);
-        if (_ider != NULL)
-        {
-            _ider->getid ();
-            // gateway can set as started directly
-            _started = is_gateway ? vastate::STATE_STARTED : vastate::STATE_STARTING;
-        }
-
-        return true;
-    }
-
-    // stop the node, disconnects all rolls
-    bool vastate_impl::stop ()
-    {
-        // TODO: stop all rolls (arbs and peers) also?
-        
-        if (_ider != NULL)
-        {
-            _vastworld->destroy_id (_ider);
-            _ider = NULL;
-        }
-
-        if (_net != NULL)
-        {
-            _net->stop ();
-            _vastworld->destroy_net (_net);
-            _net = NULL;
-        }
-
-        return true;
-    }
-
-    // create an initial server, if a server, must be called before any create of peers/arbitrators
-    gateway *
+    // creating a gateway node only has vnode
+    void
     vastate_impl::create_gateway ()
-    {
-        if (_started < vastate::STATE_CAN_JOIN)
-            return NULL;
+    {            
+        vast *vnode     = _vastworld->create_node (_gateway.publicIP.port, 0);
+        vastid *idgen   = _vastworld->create_id (vnode, true, _gateway);
+        
+        _gateway_node = vnode;
+        _node2id[vnode] = idgen;
 
-        if ( ! _is_gateway)
-            return NULL;
-
-        if (_gateway != NULL)
-            return _gateway;
-
-        _gateway = new gateway_impl (NET_ID_GATEWAY, *_vastworld, _net, sysparm);
-        return _gateway;
+        // send a request for ID
+        idgen->getid ();
     }
+
 
     // create an initial server
-    /*
     bool 
     vastate_impl::create_server (vector<arbitrator_logic *> &alogics, 
                                  vector<storage_logic *>    &slogics, 
                                  int dim_x, int dim_y, int n_vpeers)
     {
-        if (alogics.size () != n_vpeers || slogics.size () != n_vpeers)
+        if (alogics.size () != (size_t) n_vpeers || slogics.size () != (size_t) n_vpeers)
             return false;
 
         // calculate default AOI based on virtual peers density
@@ -355,20 +324,37 @@ namespace VAST
 
             // TODO: id generation/assignment
             n.id    = i+1;
-            n.pos   = generate_virpos (dim_x, dim_y, i, n_vpeers);            
+            // BUG: put gateway to out of map if only one virtual peers 
+            if (n_vpeers == 1)
+                n.pos   = Position (-dim_x, -dim_y);
+            else
+                n.pos   = generate_virpos (dim_x, dim_y, i, n_vpeers);            
             create_arbitrator (NET_ID_GATEWAY, alogics[i], slogics[i], n, (i == 0 ? true : false));
         }
 
         return true;
     }
-    */
+
+    std::pair<peer*, arbitrator*>
+    vastate_impl::create_peerarb_pair (peer_logic *logic, Node &peer_info, int capacity, 
+                                arbitrator_logic *alogic, storage_logic *slogic)
+    {
+        std::pair<peer*, arbitrator*> ret;
+        ret.first = create_peer (logic, peer_info, capacity);
+        ret.second = create_arbitrator (NET_ID_UNASSIGNED, alogic, slogic, peer_info, false);
+
+        // keep the record for later informing arbitrator of its parent
+        _peerarb_pair[ret.first] = ret.second;
+
+        return ret;
+    }
 
     peer *
     vastate_impl::create_peer (peer_logic *logic, Node &peer_info, int capacity)
     {
-        peer *p = new peer_impl (logic, _vastworld->create_net (_gateway_addr.publicIP.port), capacity, _gateway_addr);
+        peer *p = new peer_impl (logic, _vastworld->create_net (_gateway.publicIP.port), capacity, _gateway);
 
-        vastid *idgen = _vastworld->create_id (p, false, _gateway_addr);
+        vastid *idgen = _vastworld->create_id (p, false, _gateway);
 
         // send a request for ID
         idgen->getid ();
@@ -377,17 +363,18 @@ namespace VAST
         _node2count[p] = 0;
 
         _peers.push_back (p);
+        _wait2join[p] = true;
         return p;
     }
 
     arbitrator *
-    vastate_impl::create_arbitrator (id_t parent, arbitrator_logic *alogic, storage_logic *slogic, Node &arb_info, bool is_gateway)
+    vastate_impl::create_arbitrator (id_t parent, arbitrator_logic *alogic, storage_logic *slogic, Node &arb_info, bool is_gateway, bool is_aggregator)
     {            
-        vast *vnode     = _vastworld->create_node (_gateway_addr.publicIP.port, 0);
+        vast *vnode     = _vastworld->create_node (_gateway.publicIP.port, 0);
         storage *s      = new storage_cs (slogic);
-        arbitrator *a   = new arbitrator_impl (parent, alogic, vnode, s, is_gateway, _gateway_addr, &sysparm);
+        arbitrator *a   = new arbitrator_impl (parent, alogic, vnode, s, is_gateway, _gateway, _vastworld, &sysparm, is_aggregator);
 
-        vastid *idgen   = _vastworld->create_id (vnode, is_gateway, _gateway_addr);
+        vastid *idgen   = _vastworld->create_id (vnode, is_gateway, _gateway);
         
         // chain up event handlers, so the ordering is vastnode -> vastid -> arbitrator -> storage
         // NOTE: in the current design,
@@ -419,10 +406,10 @@ namespace VAST
         _node2id[a]    = idgen;
         _node2pos[a]   = arb_info;
         _node2count[a] = 0;
+        _wait2join[a]  = true;
 
         return a;
     }
-
 
     // close down a peer
     void
@@ -438,7 +425,8 @@ namespace VAST
 
                 if (_node2id.find (p) != _node2id.end ())
                 {
-                    delete _node2id[p];
+                    //delete _node2id[p];
+                    _vastworld->destroy_id (_node2id[p]);
                     _node2id.erase (p);
                     _node2pos.erase (p);
                 }
@@ -463,7 +451,8 @@ namespace VAST
 
                 if (_node2id.find (a) != _node2id.end ())
                 {
-                    delete _node2id[a];
+                    //delete _node2id[a];
+                    _vastworld->destroy_id (_node2id[a]);
                     _node2id.erase (a);
                     _node2pos.erase (a);
                 }
@@ -490,6 +479,7 @@ namespace VAST
         return true;
     }
 
+
     //
     // private methods
     //
@@ -511,3 +501,4 @@ namespace VAST
     }
     
 } // namespace VAST
+

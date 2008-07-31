@@ -1,4 +1,23 @@
 
+/*
+ * VAST, a scalable peer-to-peer network for virtual environments
+ * Copyright (C) 2007-2008 Shao-Chen Chang (cscxcs at gmail.com)
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ *
+ */
 
 /*
  *  arbitrator_reg.cpp (VASTATE simulation arbitrator register class)
@@ -37,10 +56,10 @@ void arbitrator_reg::food_image_clear ()
     _food_image.clear ();
 }
 
-void arbitrator_reg::update_food_image (map<id_t, object *> & obj_store)
+void arbitrator_reg::update_food_image (map<VAST::id_t, object *> & obj_store)
 {
     AttributeBuilder a;
-    map<id_t, object *>::iterator it = obj_store.begin ();
+    map<VAST::id_t, object *>::iterator it = obj_store.begin ();
     for (; it != obj_store.end (); it ++)
     {
         if (a.checkType (*(it->second), SimGame::OT_FOOD) == true)
@@ -87,22 +106,25 @@ void arbitrator_reg::delete_arbitrator (const arbitrator_info & the_arb)
     }
 }
 
-void arbitrator_reg::update_object (id_t arbitrator_id, object * the_object)
+void arbitrator_reg::update_object (VAST::id_t arbitrator_id, object * the_object)
 {
+    const obj_id_t & objid = the_object->get_id ();
     Position pos = the_object->get_pos ();
-    if (the_object != NULL && arb_voronoi->contains (arbitrator_id, pos))
+//    if (the_object != NULL && arb_voronoi->contains (arbitrator_id, pos))
+    if (the_object != NULL)
     {
-        god_store[the_object->get_id ()].id          = the_object->get_id ();
-        god_store[the_object->get_id ()].peer        = the_object->peer;
-        god_store[the_object->get_id ()].pos         = pos;
-        god_store[the_object->get_id ()].pos_version = the_object->pos_version;
-        god_store[the_object->get_id ()].version     = the_object->version;
+        god_store[objid].id          = the_object->get_id ();
+        god_store[objid].peer        = the_object->peer;
+        god_store[objid].pos         = pos;
+        god_store[objid].pos_version = the_object->pos_version;
+        god_store[objid].version     = the_object->version;
     }
 }
 
-void arbitrator_reg::delete_object (id_t arbitrator_id, object * the_object)
+void arbitrator_reg::delete_object (VAST::id_t arbitrator_id, object * the_object)
 {
-    if (the_object != NULL && arb_voronoi->contains (arbitrator_id, the_object->get_pos ()))
+    //if (the_object != NULL && arb_voronoi->contains (arbitrator_id, the_object->get_pos ()))
+    if (the_object != NULL)
     {
         if (god_store.find (the_object->get_id ()) != god_store.end ())
             god_store.erase (the_object->get_id ());

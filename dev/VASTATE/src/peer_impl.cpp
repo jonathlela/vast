@@ -1,6 +1,8 @@
+
 /*
  * VAST, a scalable peer-to-peer network for virtual environments
  * Copyright (C) 2007 Shun-Yun Hu (syhu@yahoo.com)
+ *               2008 Shao-Chen Chang (cscxcs at gmail.com)
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -68,7 +70,7 @@ namespace VAST
 
     // join VSP
     bool
-    peer_impl::join (id_t id, Position &pt, aoi_t radius, char *auth, size_t size)
+    peer_impl::join (id_t id, Position &pt, aoi_t radius, char *auth, size_t size, Addr *entrance)
     {
         // 1.1 Joining peer contacts the server for a unique ID.
         _self.id  = id;
@@ -90,16 +92,20 @@ namespace VAST
         _event_id_count = ((event_id_t)_self.id << 16)+1;                    
                 
         // send out query for managing arbitrator (JOIN command with capacity)
-        Msg_NODE node (_self, _net->getaddr (_self.id), _capacity);
-        memcpy (_buf, &node, sizeof (Msg_NODE));
+        Msg_SNODE node (_self, _net->getaddr (_self.id), _capacity);
+        memcpy (_buf, &node, sizeof (Msg_SNODE));
 
         // append app-specific authentication message
-        char *p = _buf + sizeof (Msg_NODE);
+        char *p = _buf + sizeof (Msg_SNODE);
         p[0] = _joinmsg_size;
         memcpy (p+1, _joinmsg, _joinmsg_size);
 
-        _net->connect (_gateway);
-        _net->sendmsg (NET_ID_GATEWAY, JOIN, _buf, sizeof (Msg_NODE) + 1 + _joinmsg_size);
+        //_net->connect (NET_ID_GATEWAY, _gateway);
+        if (entrance == NULL)
+            entrance = & _gateway;
+
+        _net->connect (*entrance);
+        _net->sendmsg (entrance->id, JOIN, _buf, sizeof (Msg_SNODE) + 1 + _joinmsg_size);
 
         return true;
     }
@@ -154,12 +160,16 @@ namespace VAST
         if (_curr_arbitrator.node.id == NET_ID_UNASSIGNED)
             return false;
 #ifdef DEBUG_DETAIL
-        sprintf (_str, "[%d] sends event [%d_%d] to [%d]\r\n", _self.id, e->get_id () >> 16, e->get_id () & 0xFFFF, _curr_arbitrator.node.id);
+        sprintf (_str, "[%lu] sends event [%lX_%lX] to [%lu]\n", _self.id, e->get_id () >> 16, e->get_id () & 0xFFFF, _curr_arbitrator.node.id);
         _eo.output (_str);
 #endif
 
-        int size = e->encode (_buf);
-        
+        Msg_EVENT_HEADER * eh = (Msg_EVENT_HEADER *) _buf;
+        eh->objid_count = 0;
+        eh->TTL         = 0;
+
+        int size = e->encode (_buf + sizeof (Msg_EVENT_HEADER)) + sizeof (Msg_EVENT_HEADER);
+
         // send to current arbitrator
         bool result = (size > 0 && _net->sendmsg (_curr_arbitrator.node.id, EVENT, _buf, size) == size);
         delete e;     // TODO: BUG: memory leak, but if use delete will cause program to crash
@@ -171,6 +181,7 @@ namespace VAST
             _arbitrator_error = 0;
 
         // check if there are too many errors
+        /*
         if (_arbitrator_error >= 3)
         {
             _arbitrator_error = 0;
@@ -179,6 +190,7 @@ namespace VAST
 
             check_handover ();
         }
+        */
         
         return result;
     }
@@ -203,9 +215,12 @@ namespace VAST
     {
 
 #ifdef DEBUG_DETAIL
-        sprintf (_str, "[%d] peer processmsg from [%d]: %s\r\n", 
-                 _self.id, from_id, VASTATE_MESSAGE[(int)(msgtype-100)]);
-        _eo.output (_str);
+        if (msgtype >= 100 && msgtype < VASTATE_MESSAGE_END)
+        {
+            sprintf (_str, "[%lu] peer processmsg from [%lu]: %s\n", 
+                    _self.id, from_id, VASTATE_MESSAGE[(int)(msgtype-100)]);
+            _eo.output (_str);
+        }
 #endif
         
         switch (msgtype)
@@ -229,7 +244,7 @@ namespace VAST
                     _obj_store[info.obj_id] = obj;
                     
 #ifdef DEBUG_DETAIL
-                    sprintf (_str, "[%d] peer learns of new object [%s] from %d\r\n", _self.id, obj->tostring(), from_id);
+                    sprintf (_str, "[%lu] peer learns of new object [%s] from %lu\n", _self.id, obj->tostring(), from_id);
                     _eo.output (_str);
 #endif
                 }
@@ -240,7 +255,7 @@ namespace VAST
                 if (obj->peer == get_self ().id
                     && info.pos_version == 0)
                 {
-                    printf ("[%d] receives DELETE self avatar object [%d] from [%d]\n", get_self ().id, obj->get_id (), from_id);
+                    printf ("[%lu]  receives DELETE self avatar object [%lX] from [%lu]\n", get_self ().id, obj->get_id (), from_id);
                     break;
                 }
 
@@ -274,7 +289,7 @@ namespace VAST
                 else
                     obj = _obj_store[info.obj_id];
 
-                char *p = msg + sizeof (Msg_STATE);
+                //char *p = msg + sizeof (Msg_STATE);
                 
                 // during unpacking, fields will be automatically added or updated
                 obj->reset_dirty ();
@@ -289,7 +304,7 @@ namespace VAST
 
         // Notification of arbitrator movement
         case ARBITRATOR:
-            if ((size-1) % sizeof (Msg_NODE) == 0)
+            if ((size-1) % sizeof (Msg_SNODE) == 0)
             {
 
                 /*
@@ -310,12 +325,12 @@ namespace VAST
                 // store to arbitrator list
                 int n = msg[0];
                 char *p = msg+1;
-                Msg_NODE node;
+                Msg_SNODE node;
                 for (int i=0; i<n; i++)
                 {
-                    memcpy (&node, p, sizeof (Msg_NODE));
+                    memcpy (&node, p, sizeof (Msg_SNODE));
                     _arbitrators[node.node.id] = node;
-                    p += sizeof (Msg_NODE);
+                    p += sizeof (Msg_SNODE);
                 }
                 check_handover ();
             }
@@ -323,9 +338,9 @@ namespace VAST
 
         // Info for the overloaded arbitrator
         case PROMOTE:
-            if (size == sizeof (Msg_NODE))
+            if (size == sizeof (Msg_SNODE))
             {
-                Msg_NODE requester (msg);
+                Msg_SNODE requester (msg);
                 
                 // we'll join a little bit off the requesting arbitrator's position
                 //requester.node.pos.x += 10;
@@ -351,21 +366,23 @@ namespace VAST
     void
     peer_impl::check_handover ()
     {
+        /*
 #ifdef DEBUG_DETAIL
-        sprintf (_str, "peer [%d] check_handover () called\r\n", _self.id);
+        sprintf (_str, "peer [%d] check_handover () called\n", _self.id);
         _eo.output (_str);
 #endif
+        */
 
         double shortest = _arbitrators.begin ()->second.node.pos.dist (_self.pos);
-        Msg_NODE *ptr = &(_arbitrators.begin ()->second);
+        Msg_SNODE *ptr = &(_arbitrators.begin ()->second);
 
         // find out the closest arbitrator
-        for (map<id_t, Msg_NODE>::iterator it = _arbitrators.begin (); 
+        for (map<id_t, Msg_SNODE>::iterator it = _arbitrators.begin (); 
              it != _arbitrators.end (); it++)
         {
             double dist = it->second.node.pos.dist (_self.pos);
 
-            //sprintf (str, "peer [%d] shortest: [%d] %f dist: [%d] %f\r\n", _self.id, ptr->node.id, shortest, it->second.node.id, dist);
+            //sprintf (str, "peer [%d] shortest: [%d] %f dist: [%d] %f\n", _self.id, ptr->node.id, shortest, it->second.node.id, dist);
             //_eo.output (str);
             
             if (dist < shortest)
@@ -378,7 +395,7 @@ namespace VAST
         /*
         if (_curr_arbitrator != NULL)
         {
-            sprintf (str, "[%d] curr_arbitrator [%d] selected [%d]\r\n", _self.id, _curr_arbitrator->node.id, ptr->node.id);
+            sprintf (str, "[%d] curr_arbitrator [%d] selected [%d]\n", _self.id, _curr_arbitrator->node.id, ptr->node.id);
             _eo.output (str);
         }
         */
@@ -387,7 +404,7 @@ namespace VAST
         if (ptr->node.id != _curr_arbitrator.node.id)
         {
 #ifdef DEBUG_DETAIL
-            sprintf (_str, "peer [%d] switches arbitrator from [%d] to [%d]\r\n", _self.id, _curr_arbitrator.node.id, ptr->node.id);
+            sprintf (_str, "peer [%lu] switches arbitrator from [%lu] to [%lu]\n", _self.id, _curr_arbitrator.node.id, ptr->node.id);
             _eo.output (_str);      
 #endif
             char *p = _buf;
@@ -405,14 +422,14 @@ namespace VAST
                 object *obj = it->second;
                 
                 Msg_OBJ_UPDATEINFO info;
-                info.obj_id  = obj->get_id();
-                info.version = obj->version;
+                info.obj_id      = obj->get_id();
+                info.pos_version = obj->pos_version;
+                info.version     = obj->version;
                 
                 memcpy (p, &info, sizeof (Msg_OBJ_UPDATEINFO));
                 p += sizeof (Msg_OBJ_UPDATEINFO);
             }
-                
-            //_net->connect (ptr->node.id, ptr->addr);
+
             _net->connect (ptr->addr);
             _net->sendmsg (ptr->node.id, ENTER, _buf, 
                            sizeof (Node) + 1 + sizeof (Msg_OBJ_UPDATEINFO) * _obj_store.size (), true);
@@ -497,7 +514,4 @@ namespace VAST
     }
 
 } // namespace VAST
-
-
-
 

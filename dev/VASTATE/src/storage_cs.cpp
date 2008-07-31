@@ -74,9 +74,13 @@ namespace VAST
     storage_cs::handlemsg (id_t from_id, msgtype_t msgtype, 
                             timestamp_t recvtime, char *msg, int size)
     {
-        sprintf (_str, "arb-storage handlemsg from [%d]: %s\r\n", from_id, 
-                        VASTATE_MESSAGE[(int)(msgtype-100)]);
-        _eo.output (_str);
+#ifdef DEBUG_DETAIL
+        if (msgtype >= 100 && msgtype < VASTATE_MESSAGE_END)
+        {
+            sprintf (_str, "[%lu] arb handlemsg from [%lu]: (%d)%s \n", 0 /* self->id */, from_id, msgtype, VASTATE_MESSAGE[msgtype-100]);
+            _eo.output (_str);
+        }
+#endif
 
         switch (msgtype)
         {
@@ -93,7 +97,7 @@ namespace VAST
                 p += sizeof (size_t);
 
                 // size check
-                if (query_size + sizeof(query_id_t) + sizeof (size_t) != size)
+                if (query_size + sizeof(query_id_t) + sizeof (size_t) != (size_t) size)
                     break;
 
                 // record mapping between query_id and the querying arbitrator
@@ -116,7 +120,7 @@ namespace VAST
                 p += sizeof (size_t);
 
                 // size check
-                if (reply_size + sizeof(query_id_t) + sizeof (size_t) != size)
+                if (reply_size + sizeof(query_id_t) + sizeof (size_t) != (size_t) size)
                     break;
 
                 // send the reply message to app-specific callback handler
@@ -143,7 +147,5 @@ namespace VAST
     }
 
 } // namespace VAST
-
-
 
 

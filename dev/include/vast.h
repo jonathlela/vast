@@ -37,10 +37,19 @@ using namespace std;
 
 namespace VAST 
 {
+
+    // JOIN State
+    enum {S_INIT = 1, S_JOINING, S_JOINED};
+
     // msghandler is inherented to provide support for chained message handling,
     // as a result, any subclass of vast must implement handlemsg ()
     class vast : public msghandler
     {
+    public:
+        const static short S_INIT    = 1;
+        const static short S_JOINING = 2;
+        const static short S_JOINED  = 3;
+
     public:
 
 		//
@@ -48,7 +57,7 @@ namespace VAST
 		//
 
         vast () 
-            :_joined (false)//, _time(0)
+            :_joined (S_INIT)//, _time(0)
         {
         }
 
@@ -104,6 +113,15 @@ namespace VAST
 
         bool is_joined ()
         {
+            //return _joined;
+            if (_joined >= S_JOINED)
+                return true;
+
+            return false;
+        }
+
+        short is_joined_n ()
+        {
             return _joined;
         }
 
@@ -117,7 +135,7 @@ namespace VAST
         Node                _self;   
         vector<Node *>      _neighbors;
         voronoi             *_voronoi;
-        bool                _joined;
+        short                _joined;
         //timestamp_t         _time;          // current logical time        
 	
     };

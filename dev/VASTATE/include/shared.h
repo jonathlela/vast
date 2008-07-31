@@ -44,6 +44,8 @@ namespace VAST {
 //class Coord3D;
 //typedef Coord3D Coord;
 
+#define exists_in_map(c,x) ((c).find((x))!=(c).end ())
+
 // codable
 ///////////////////////////////////////
 
@@ -59,12 +61,51 @@ namespace VAST {
     class encodable
     {
     public:
+        virtual ~encodable () {}
         virtual RawData encodeToRaw   
                         (bool only_updated = false) 
                         const                       = 0;
 
         virtual bool    decodeFromRaw 
                         (RawData& raw)              = 0;
+    };
+
+    class identifiable
+    {
+    public:
+        inline
+        VASTATE::id_t get_id ()
+        {
+            return _id;
+        }
+
+    protected:
+        identifiable (VASTATE::id_t id)
+            : _id (id)
+        {}
+
+        ~identifiable () {}
+
+    private:
+        VASTATE::id_t _id;
+    };
+
+    class AggNode : public Node
+    {
+    public:
+        AggNode ()
+        {}
+
+        AggNode (const AggNode &a)
+            : Node (a), aoi_b (a.aoi_b)
+        {}
+
+        AggNode (id_t i, aoi_t a, aoi_t a2, Position p, timestamp_t t)
+            : Node (i, a, p, t), aoi_b (a2)
+        {}
+
+        aoi_t       aoi_b;
+        timestamp_t aoi_b_lastmodify;
     };
 
     // System parameter for initialize Vastate factory class
@@ -90,6 +131,7 @@ namespace VAST {
             width = n.width;
             height = n.height;
             aoi = n.aoi;
+            return *this;
         }
 
         unsigned int width;
@@ -182,6 +224,21 @@ namespace VAST {
 
     EXPORT const std::string to_string (const Coord3D& p);
 
+
+    /*
+    class EncodableIDList : public list<id_t>, public encodable
+    {
+    // encodable interface
+    public:
+        ~EncodableIDList ();
+        RawData encodeToRaw (bool only_updated = false) const;
+        bool    decodeFromRaw (RawData& raw);
+
+    // list interface
+
+    };
+    */
+
 } /* namespace VAST */
 
 
@@ -224,15 +281,18 @@ namespace VAST
     typedef unsigned long  event_id_t;
     typedef unsigned long  query_id_t;      // unique id for referencing a given query
     typedef unsigned short version_t;       // sequential ver# for obj/attribute updates
+    typedef std::pair<version_t,version_t> version_pair_t;
 
     // Notice: change message definations must also change string mapping in shared.cpp
     typedef enum VASTATE_Message
     {
-        JOIN = 100,         // peer joins the VSP network
+        VH_CONNECT = 100,   // connects another node by net_vhost
+        JOIN,               // peer joins the VSP network
         ENTER,              // peer enters a new region
         OBJECT,             // Notification of object creation, destruction, update
         STATE,              // Notification of attribute creation and update
         ARBITRATOR,         // Allow peer to have initial and spare arbitrators to connect
+                            // or inform new neighboring arbitrator connected
         ARBITRATOR_LEAVE,   // Notification of an arbitrator goes to off-line
         EVENT,              // Notification of a peer-generated event
         TICK_EVENT,         // Tick to others for arbitrators has no event sent this step
@@ -244,8 +304,11 @@ namespace VAST
         TRANSFER_ACK,       // Acknowledgement of ownership transfer
         NEWOWNER,           // Auto ownership assumption if arbitrators fail.
         S_QUERY,            // query storage
-        S_REPLY             // response sent by storage
-    };
+        S_REPLY,            // response sent by storage
+        AGGREGATOR,         // inform new neighboring aggregator connected
+        MIGRATE,            // arbitrator migrates to an aggregator
+        MIGRATE_ACK,        // Acknowledgement of arbitrator migration
+    VASTATE_MESSAGE_END};
 
     class ID_STR 
     {        
@@ -325,6 +388,7 @@ namespace VAST
     {
     public:
         obj_id_t    obj_id;
+        version_t   pos_version;
         version_t   version;
     };
     
@@ -340,12 +404,19 @@ namespace VAST
     class Msg_EVENT
     {
     public:
-        byte_t      type;           // type = 1 is a character creation event (?)        
+        byte_t      type;           // type = 1 is a character creation event (?)
         version_t   version;
 
         event_id_t  id;             
         id_t        sender;
         timestamp_t timestamp;
+    };
+
+    class Msg_EVENT_HEADER
+    {
+    public:
+        short objid_count;
+        short TTL;
     };
 
 
@@ -370,19 +441,19 @@ namespace VAST
         id_t     orig_owner;
     };
 
-    class Msg_NODE
+    class Msg_SNODE
     {
     public:
-        Msg_NODE () 
+        Msg_SNODE () 
         {
         }
         
-        Msg_NODE (char const *p)
+        Msg_SNODE (char const *p)
         {
-            memcpy (this, p, sizeof(Msg_NODE));
+            memcpy (this, p, sizeof(Msg_SNODE));
         }
         
-        Msg_NODE (Node &n, Addr &a, int c)
+        Msg_SNODE (const Node &n, const Addr &a, int c)
             :node(n), addr(a), capacity(c)
         {
         }
@@ -395,9 +466,30 @@ namespace VAST
         }
         
         Node        node;
-        Addr        addr;    
+        Addr        addr;
         int         capacity;
-    };  
+    };
+
+    class Msg_MIGRATE
+    {
+    public:
+        Msg_MIGRATE ()
+        {
+        }
+
+        Msg_MIGRATE (char const *p)
+        {
+            memcpy (this, p, sizeof (Msg_MIGRATE));
+        }
+
+        Msg_MIGRATE (const Node & n, const Addr & a, const obj_id_t parent_obj_id)
+            : node (n), addr (a), parent_obj (parent_obj_id)
+        {}
+
+        Node     node;
+        Addr     addr;
+        obj_id_t parent_obj;
+    };
 
     // originally object definations
     ///////////////////////////////////
@@ -572,7 +664,7 @@ namespace VAST
         }
 
         event (id_t sender, event_id_t event_id, timestamp_t occur_time)
-            :_sender(sender), _id(event_id), _timestamp (occur_time)
+            :_id(event_id), _sender(sender), _timestamp (occur_time)
         {
         }
 
@@ -637,7 +729,7 @@ namespace VAST
     {
     public:
         object (obj_id_t id)
-            :_id(id), peer (0), pos_dirty(false), visible(false), pos_version (0), _alive(true)
+            : peer (0), pos_dirty (false), visible (false), pos_version (0), _id (id), _alive (true)
         {
             dirty = false;
         }
@@ -672,7 +764,7 @@ namespace VAST
 			return _alive;
 		}
 
-        bool is_AOI_object (Node &n, bool add_buffer = false)
+        bool is_AOI_object (const Node &n, bool add_buffer = false) const
         {
             if (add_buffer)
                 return n.pos.dist (_pos) <= ((double)n.aoi * VASTATE_BUFFER_MULTIPLIER);
@@ -688,7 +780,7 @@ namespace VAST
         }
             
         // encode an object header, returns the # of bytes encoded
-        int encode_pos (char *buf, bool dirty_only, bool is_request = false)
+        int encode_pos (char *buf, bool dirty_only, bool is_request = false, bool encode_delete = false)
         {
             if (dirty_only == true && pos_dirty == false)
                 return 0;
@@ -696,7 +788,7 @@ namespace VAST
             Msg_OBJECT info;
             info.obj_id      = _id;
             info.pos         = _pos;
-            info.pos_version = pos_version;
+            info.pos_version = (encode_delete ? 0 : pos_version);
             //info.version     = version;
             info.peer        = peer;
             info.is_request  = is_request;
@@ -788,3 +880,4 @@ namespace VAST
 } // end namespace VAST
 
 #endif // VASTATE_SHARED_H
+

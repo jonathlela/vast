@@ -121,9 +121,7 @@
 			</File>
 		</Filter>
 		<Filter
-			Name="標頭檔"
-			Filter="h;hpp;hxx;hm;inl;inc;xsd"
-			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}">
+			Name="標頭檔">
 		</Filter>
 		<Filter
 			Name="資源檔"

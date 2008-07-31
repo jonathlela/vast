@@ -1,5 +1,25 @@
 
 /*
+ * VAST, a scalable peer-to-peer network for virtual environments
+ * Copyright (C) 2007-2008 Shao-Chen Chang (cscxcs at gmail.com)
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ *
+ */
+
+/*
  *	VASTATESim.cpp  (VASTATE Simulation main module)
  *
  *      main module of VASTATE simulator
@@ -81,7 +101,6 @@ bool ReadPara (SimPara & para, const string & conffile)
     FILE * fp;
     if ((fp = fopen (conffile.c_str (), "r")) == NULL)
     {
-        puts ("opening flodsim.ini error.\n");
         return false;
     }
 
@@ -151,15 +170,25 @@ int CreateNode (int capacity)
 	g_players.push_back (newnode);
     newnode->join ();
 
-#ifdef CONFIG_SINGLE_VASTATE
-    g_players[0]->processmsg ();
-#else
-    for (int j=0; j<=i; ++j)
-        g_players[j]->processmsg ();
-#endif
+    while (true)
+    {
+        // for message deliver normally
+        g_world.tick ();
 
-    // for message deliver normally
-    g_world.tick ();
+#ifdef CONFIG_SINGLE_VASTATE
+        g_players[0]->processmsg ();
+        // TODO: how to check if one single peer is joined on SINGLE_VASTATE?
+        break;
+#else
+        for (int j=0; j<=i; ++j)
+            g_players[j]->processmsg ();
+
+        if (g_players[i]->is_gateway () ||
+            g_players[i]->is_joined ())
+            break;
+#endif
+    }
+
 
     // store node into stat class for later processing
     //g_stat.add_node (g_nodes[i]);    
@@ -262,7 +291,9 @@ void ProcessMsg ()
 
 	g_sta->record_step ();
     UpdateFoods ();
+#ifdef CONFIG_EXPORT_NODE_POSITION_RECORD
     g_model->RecordPositions ();
+#endif
 }
 
 
@@ -327,6 +358,16 @@ int GetArbAOI (int index, int sub_index)
 	return g_players[index]->getArbAOI (sub_index);
 }
 
+
+bool GetInfo (int index, int sub_index, int info_type, char* buffer, size_t & buffer_size)
+{
+    if (index < (int) g_players.size ())
+        return g_players[index]->get_info (sub_index, info_type, buffer, buffer_size);
+
+    return false;
+}
+
+
 //vector<object *>& GetNeighbors (int index)
 //{
 //	return g_players[index]->GetObjects ();
@@ -362,7 +403,7 @@ int GetFoods (food_reg * foods)
         return g_arb._food_image.size ();
 		//return g_arb.foods.size ();
 
-	map<id_t,food_reg>::iterator it = g_arb._food_image.begin();
+	map<VAST::id_t,food_reg>::iterator it = g_arb._food_image.begin();
 	int last = 0;
 
 	for(; it != g_arb._food_image.end () ; it ++)
@@ -374,12 +415,12 @@ int GetFoods (food_reg * foods)
 	return last;
 }
 
-const char * GetFoodInfo (id_t food_id)
+const char * GetFoodInfo (VAST::id_t food_id)
 {
 	static string _i;
 	AttributeBuilder a;
-	//map<id_t, food_reg *>::iterator fitr = g_arb.foods.find (food_id);
-    map<id_t, food_reg>::iterator fitr = g_arb._food_image.find (food_id);
+	//map<VAST::id_t, food_reg *>::iterator fitr = g_arb.foods.find (food_id);
+    map<VAST::id_t, food_reg>::iterator fitr = g_arb._food_image.find (food_id);
 	std::stringstream ssout;
 
 	if (fitr != g_arb._food_image.end())
@@ -436,6 +477,15 @@ unsigned int GetSystemState (int parm)
     case SYS_DEM_COUNT:
         return g_sys_state.demote_count;
     }
+    return 0;
+}
+
+EXPORT timestamp_t GetCurrentTimestamp ()
+{
+    // TODO: more efficient way to get current network timestamp?
+    if (g_players.size () > 0)
+        return g_players[0]->get_curr_timestamp ();
+    
     return 0;
 }
 

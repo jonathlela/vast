@@ -33,9 +33,11 @@
 
 namespace VAST 
 {  
+
     class arbitrator : public msghandler
     {
     public:
+        
         // initialize an arbitrator
         arbitrator (id_t my_parent, system_parameter_t * sp)
             : self (NULL), parent (my_parent), sysparm (sp)
@@ -46,11 +48,16 @@ namespace VAST
         {
         }
 
+        virtual void set_parent (id_t peer_id)
+        {
+            parent = peer_id;
+        }
+
         //
         // arbitrator interface
         //        
 
-        virtual bool    join (id_t id, Position &pos) = 0;
+        virtual bool    join (id_t id, Position &pos, const Addr & entrynode) = 0;
         
         // process messages (send new object states to neighbors)
         virtual int     process_msg () = 0;
@@ -78,8 +85,8 @@ namespace VAST
         virtual bool    delete_obj (object *obj) = 0;
 
         // updating an existing object
-        virtual void    update_obj (object *obj, int index, int type, void *value) = 0;
-        virtual void    change_pos (object *obj, Position &newpos) = 0;
+        virtual bool    update_obj (object *obj, int index, int type, void *value) = 0;
+        virtual bool    change_pos (object *obj, Position &newpos) = 0;
                 
         // NOTE: overload & underload should be called continously as long as the 
         //       condition still exist as viewed by the application
@@ -99,11 +106,15 @@ namespace VAST
 
         virtual bool    is_joined () = 0;
 
-        //virtual bool    
-
         //
         // for statistical purposes
         //
+
+        // return aggregator informations
+        virtual AggNode *get_aggnode () = 0;
+
+        // true if is an aggregator
+        virtual bool    is_aggregator () = 0;
 
         // obtain a copy of VAST node
         virtual vast *  get_vnode () = 0;
@@ -114,6 +125,12 @@ namespace VAST
         // get a list of neighboring arbitrators
         virtual map<id_t, Node> &get_arbitrators () = 0;
         
+        // get misc node info
+        virtual bool get_info (int info_type, char* buffer, size_t & buffer_size) = 0;
+
+        // return if a object's owner (for statistics purpose)
+        virtual bool is_obj_owner (obj_id_t object_id) = 0;
+
         // info about myself
         Node * self;
         id_t   parent;
@@ -139,3 +156,4 @@ namespace VAST
 } // end namespace VAST
 
 #endif // #define VASTATE_ARBITRATOR_H
+

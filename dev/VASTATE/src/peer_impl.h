@@ -58,7 +58,7 @@ namespace VAST
         int     process_msg ();
 
         // join VSP
-        bool    join (id_t id, Position &pt, aoi_t radius, char *auth = NULL, size_t size = 0);
+        bool    join (id_t id, Position &pt, aoi_t radius, char *auth = NULL, size_t size = 0, Addr *entrance = NULL);
         
         // quit VSP
         void    leave (bool notify);
@@ -109,14 +109,14 @@ namespace VAST
             {
                 Node & n = _curr_arbitrator.node;
 
-                sprintf (buf, "curr_arb [%d] (%d, %d)\n", n.id, (int)n.pos.x, (int)n.pos.y);
+                sprintf (buf, "curr_arb [%lu] (%d, %d)\n", n.id, (int)n.pos.x, (int)n.pos.y);
                 strcat (_str_desc, buf);
             }
 
-            for (map<id_t, Msg_NODE>::iterator it = _arbitrators.begin (); it != _arbitrators.end (); it++)
+            for (map<id_t, Msg_SNODE>::iterator it = _arbitrators.begin (); it != _arbitrators.end (); it++)
             {
                 Node &n = it->second.node;
-                sprintf (buf, "arb [%d] (%d, %d)\n", n.id, (int)n.pos.x, (int)n.pos.y);
+                sprintf (buf, "arb [%lu] (%d, %d)\n", n.id, (int)n.pos.x, (int)n.pos.y);
                 strcat (_str_desc, buf);
             }
 
@@ -157,10 +157,10 @@ namespace VAST
         Node        _self;
         bool        _joined;
 
-        Msg_NODE    _curr_arbitrator;
+        Msg_SNODE    _curr_arbitrator;
         int         _arbitrator_error;
         
-        map<id_t, Msg_NODE> _arbitrators;
+        map<id_t, Msg_SNODE> _arbitrators;
         map<obj_id_t, object *>          _obj_store;       // repository of all known objects
 
         // counters
@@ -185,3 +185,4 @@ namespace VAST
 } // end namespace VAST
 
 #endif // #define VASTATE_PEER_IMPL_H
+

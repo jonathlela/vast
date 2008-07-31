@@ -73,6 +73,9 @@ namespace VAST {
         // check if a circle overlaps with a particular region
         virtual bool overlaps (id_t id, Position &center, aoi_t radius, bool accuracy_mode = false) = 0;
         
+        // remove all sites in the diagram
+        virtual void clear () = 0;
+
         //
         // non Voronoi-specific methods
         //

@@ -1,5 +1,25 @@
 
 /*
+ * VAST, a scalable peer-to-peer network for virtual environments
+ * Copyright (C) 2007-2008 Shao-Chen Chang (cscxcs at gmail.com)
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ *
+ */
+
+/*
  *	SimGame_Peer.cpp (Vastate Simulator Game _ Peer class implementation)
  *
  *
@@ -8,10 +28,14 @@
 #include "simgame_peer.h"
 #include "vastutil.h"
 
+// simgame_peer_logic static members
+///////////////////////////////////////
 char             simgame_peer_logic::_ostr[MAXBUFFER_SIZE];
 errout           simgame_peer_logic::_eo;
 AttributeBuilder simgame_peer_logic::_ab;
 
+// simgame_peer_logic member functions
+///////////////////////////////////////
 void simgame_peer_logic::msg_received (char *msg, size_t size)
 {
 
@@ -68,7 +92,7 @@ void simgame_peer_logic::obj_deleted (object *obj)
 }
     
 // callback - learn about state changes of known AOI objects
-void simgame_peer_logic::state_updated (id_t obj_id, int index, void *value, int length, version_t version)
+void simgame_peer_logic::state_updated (VAST::id_t obj_id, int index, void *value, int length, version_t version)
 {
 	// in client: redraw screen.
 	
@@ -82,7 +106,7 @@ void simgame_peer_logic::state_updated (id_t obj_id, int index, void *value, int
 #endif
 }
 
-void simgame_peer_logic::pos_changed (id_t obj_id, Position &newpos, timestamp_t version)
+void simgame_peer_logic::pos_changed (VAST::id_t obj_id, Position &newpos, timestamp_t version)
 {
 #ifdef VASTATESIM_DEBUG
 	sprintf (_ostr, "[%d] peer_logic: pos_changed: [%d] new pos: (%d,%d) version: %d" NEWLINE,
@@ -102,7 +126,7 @@ object * simgame_peer_logic::get_self ()
 	return _player;
 }
 
-id_t simgame_peer_logic::getManagingArbiratorID ()
+VAST::id_t simgame_peer_logic::getManagingArbiratorID ()
 {
 	return 0;
 }
@@ -137,10 +161,4 @@ int simgame_peer_logic::getAOI ()
 {
 	return _peer->get_aoi();
 }
-/*
-network * simgame_peer_logic::get_network ()
-{
-    return _peer->get_network ();
-}
 
-*/

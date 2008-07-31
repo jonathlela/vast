@@ -52,7 +52,7 @@ namespace VAST
 	// destructor cleans up any previous allocation
 	vast_mc::~vast_mc ()
 	{
-		if (_joined == true)
+		if (is_joined () == true)
 			this->leave ();
 
 		delete _voronoi;
@@ -71,7 +71,7 @@ namespace VAST
 #ifdef DEBUG_DETAIL            
         printf ("[%d] attempt to join at (%d, %d)\n", (int)id, (int)pos.x, (int)pos.y);
 #endif
-		if (_joined == true)
+		if (is_joined () == true)
 			return false;
 
 		// setup self information
@@ -94,7 +94,7 @@ namespace VAST
 
 		// the first node is automatically considered joined
 		if (id == NET_ID_GATEWAY)
-			_joined = true;
+			_joined = S_JOINED;
 		else
 		{
 			// send query to find acceptor if I'm a regular peer
@@ -124,7 +124,7 @@ namespace VAST
 		for (int i = 0; i < size; ++i)
 			delete_node (remove_list[i]);
 
-		_joined = false;
+		_joined = S_INIT;
 	}
 
 	//
@@ -167,7 +167,7 @@ namespace VAST
 	{
 		// do not move if we have not joined
 		// (no neighbors are known unless I'm gateway)
-		if (_joined == true)
+		if (is_joined () == true)
 		{
 
 #ifdef DEBUG_DETAIL
@@ -374,7 +374,7 @@ namespace VAST
 				printf ("\n");
 #endif
 				// got initial list, join success
-				_joined = true;
+				_joined = S_JOINED;
 			}
 			break;
 
@@ -780,7 +780,7 @@ namespace VAST
 #endif
 
 		// if already joined then did following process
-		if (_joined == true)
+		if (is_joined () == true)
 		{
 
 #ifdef DEBUG_DETAIL
@@ -980,7 +980,7 @@ namespace VAST
 
 	// to add a node in self neighbor list
 	// this function will be called when discover a new node which isn't in neighbor list
-	bool vast_mc::insert_node (Node &node, Addr &addr, bool refresh)
+	bool vast_mc::insert_node (Node &node, const Addr &addr, bool refresh)
 	{
 
 		// check for redundency

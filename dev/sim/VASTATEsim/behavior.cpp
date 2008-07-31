@@ -1,5 +1,25 @@
 
 /*
+ * VAST, a scalable peer-to-peer network for virtual environments
+ * Copyright (C) 2007-2008 Shao-Chen Chang (cscxcs at gmail.com)
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ *
+ */
+
+/*
  * behavior.cpp (VASTATE simulation node behavior model)
  *
  *
@@ -17,7 +37,7 @@ using namespace VAST;
 //behavior::behavior (SimPara * para, const char * playfile, const char * recordfile)
 behavior::behavior (SimPara * para, int mode, const string & food_image_file, const string & action_image_file, 
                     arbitrator_reg * arbr)
-	: _para (para), _initialized (false), _mode (VS_NORMAL_MODE), _arbr (arbr)
+	: _para (para), _arbr(arbr), _initialized (false), _mode (VS_NORMAL_MODE)
 {
 	// set random seed (it should already did in vastatesim.cpp)
 	//srand (time (NULL));
@@ -58,8 +78,8 @@ behavior::behavior (SimPara * para, int mode, const string & food_image_file, co
     if (mode == VS_PLAY_MODE)
     {
         if (_rfm_food.readFood (para, food_start_index, food_store) == false)
-            return;
-        else
+        //    return;
+        //else
         {
             string s = "Reading food image file \"";
             s += food_image_file;
@@ -80,10 +100,12 @@ behavior::behavior (SimPara * para, int mode, const string & food_image_file, co
 		_attractor.push_back (CreateAttractor ());
 
     // initialize position record file
+#ifdef CONFIG_EXPORT_NODE_POSITION_RECORD
     char str[256];
     sprintf (str, "%dx%ds%dn%d.pos", _para->WORLD_WIDTH, _para->WORLD_HEIGHT, _para->TIME_STEPS, _para->NODE_SIZE);
     _rfm_pos.initRecordFile (RecordFileManager::MODE_WRITE, str);
     _rfm_pos.writeFileHeader (_para);
+#endif
 
     _initialized = true;
     _mode = mode;
@@ -125,8 +147,8 @@ void behavior::InitRegister (player_behavior_reg & r)
 void behavior::ProcessAttractor ()
 {	
 	//int r;
-	int mc = _para->ATTRACTOR_MAX_COLDDOWN;
-	int bc = _para->ATTRACTOR_BASIC_COLDDOWN;
+	//int mc = _para->ATTRACTOR_MAX_COLDDOWN;
+	//int bc = _para->ATTRACTOR_BASIC_COLDDOWN;
 
 	vector<attractor_reg *>::iterator it = _attractor.begin ();
 	for (; it != _attractor.end (); it++)
@@ -206,6 +228,26 @@ Position behavior::GetInitPosition ()
 //	action code meaning:
 //		1:Move 2:Eat 3:Attack 4:Bomb 5:do nothing
 //	    // actions done physically in peer in SimGame::NextStep ()
+
+// Behavior code meaning
+//      the behavior code shows last decided action for one avatar
+/*
+        B   food
+    -       BM  moving for a food
+    -       BE  eats a food
+        T   to attractor
+    -       TM  moving for an attractor
+    -       TR  resting under an attractor
+        A   attacking
+    -       AM  moving for attacking someone
+    -       AA  done a normal attack
+    -       AB  throws a bomb (attacking a circular range
+    -   S   staying
+        R   random moving (by Random Waypoint)
+    -       RM  random moving
+    -       RS  staying between two random walks
+*
+*/
 int behavior::NextStep (player_behavior_reg& pr, peer_object_store& os)
 {
     AttributeBuilder atrbuilder;
@@ -611,6 +653,7 @@ int behavior::RefreshFoodImageFile ()
     return 0;
 }
 
+#ifdef CONFIG_EXPORT_NODE_POSITION_RECORD
 bool behavior::RecordPositions ()
 {
     StepHeader sh;
@@ -634,7 +677,7 @@ bool behavior::RecordPositions ()
     }
 
     // write arbitrators
-    for (map<id_t, Node>::iterator it = _arbr->arbitrators.begin (); it != _arbr->arbitrators.end (); it ++)
+    for (map<VAST::id_t, Node>::iterator it = _arbr->arbitrators.begin (); it != _arbr->arbitrators.end (); it ++)
     {
         Node & node = it->second;
         n.obj_id = 0;
@@ -651,6 +694,7 @@ bool behavior::RecordPositions ()
 
     return true;
 }
+#endif
 
 
 //////////////////////////////////////////////////////////////////////
@@ -857,3 +901,4 @@ int behavior::isAngry (b_register& reg)
 	return 0;
 }
 */
+

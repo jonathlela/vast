@@ -92,6 +92,13 @@ public:
         return sqrt (pow (dx, 2) + pow (dy, 2));
     }
 
+    double distsqr (Position const &p) const
+    {        
+        double dx = (p.x - x);
+        double dy = (p.y - y);
+        return (dx*dx + dy*dy);
+    }
+
     bool operator== (Position const &p)
     {
         return (x == p.x && y == p.y);
@@ -165,7 +172,7 @@ public:
 
     static int parseIP (IPaddr & addr, const std::string & instr)
     {
-        if (instr.find (":") == -1)
+        if ((signed) instr.find (":") == -1)
             return -1;
 
         size_t port_part = instr.find (":");
@@ -201,7 +208,7 @@ class EXPORT Addr
     
 public:
     // should this correct? define an id in Addr and in typedef.h
-    id_t   id;
+    VAST::id_t   id;
     IPaddr publicIP;
     IPaddr privateIP;
 
@@ -264,7 +271,7 @@ public:
 
         size_t spt_pos = str.find ("|");
         // find no "|" mark
-        if (spt_pos == -1)
+        if ((signed) spt_pos == -1)
         {
             if (IPaddr::parseIP (publicIP, str))
                 return -1;
@@ -296,11 +303,11 @@ class EXPORT Node
 {
 public:
     Node ()
-        : pos(0,0), id(0), aoi(0),time(0)
+        : pos(0,0), id(0), aoi(0), time(0)
     {
     }
 
-    Node (id_t i, aoi_t a, Position &p, timestamp_t t = 0)
+    Node (VAST::id_t i, aoi_t a, Position &p, timestamp_t t = 0)
         : pos(p), id(i), aoi(a), time(t)
     {
     }
@@ -339,7 +346,7 @@ public:
     */
 
     Position        pos;        // current position of the node
-    id_t            id;         // unique id for the node    
+    VAST::id_t      id;         // unique id for the node    
     aoi_t           aoi;        // current AOI-radius of the node
     timestamp_t     time;       // valid time for current position
     //Addr            addr;       // IP address for this node (TODO: to be removed?)

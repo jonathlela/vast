@@ -69,3 +69,4 @@ namespace VAST
 } // end namespace VAST
 
 #endif // #define VASTATE_STORAGE_H
+

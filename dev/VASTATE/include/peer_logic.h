@@ -35,6 +35,8 @@ namespace VAST
     class peer_logic
     {
     public:
+        virtual ~peer_logic () {}
+
         // callback - any app-specific message sent to peer
         virtual void msg_received (char *msg, size_t size) = 0;
 
@@ -53,3 +55,4 @@ namespace VAST
 } // end namespace VAST
 
 #endif // #define VASTATE_PEER_LOGIC_H
+

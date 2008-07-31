@@ -1,8 +1,27 @@
 
 /*
- *	SimGame.cpp  (Von-2 Simulation Simu Game _ main class implementation)
+ * VAST, a scalable peer-to-peer network for virtual environments
+ * Copyright (C) 2007-2008 Shao-Chen Chang (cscxcs at gmail.com)
  *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
  *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ *
+ */
+
+/*
+ *  Simulator for VSM Implementation (vastatesim)
+ *  simgame.cpp - implementation of simgame_node: a "node" in simulation
  *
  */
 
@@ -23,18 +42,12 @@ using namespace VAST;
 
 extern struct system_state g_sys_state;
 
-///////////////////////////////////////////////////////////////////////////////
-//
-//		Node
-//
-///////////////////////////////////////////////////////////////////////////////
-
 char             simgame_node::_ostr [MAXBUFFER_SIZE];
 errout           simgame_node::_eo;
 AttributeBuilder simgame_node::_ab;
 
 vector<object *> simgame_node::empty_o_vector;
-map<id_t,object*> simgame_node::empty_io_map;
+map<VAST::id_t,object*> simgame_node::empty_io_map;
 
 simgame_node::simgame_node (vastate * vasts_public, 
     int capacity, behavior *model, arbitrator_reg * ar_logic, vastverse * world, SimPara * para, bool is_gateway)
@@ -45,6 +58,8 @@ simgame_node::simgame_node (vastate * vasts_public,
     if (vasts_public == NULL)
     {
 	    Addr gateway;
+        gateway.id = NET_ID_GATEWAY;
+
         system_parameter_t sp;
 
         // setup system parameters for vastate creation
@@ -102,12 +117,17 @@ bool simgame_node::join ()
     	
 		_vasts->create_server (ar_l, st_l, _para->WORLD_WIDTH, _para->WORLD_HEIGHT, _para->NUM_VIRTUAL_PEERS);
 
-        is_joined = true;
+        _joined = true;
 	}
 	else
 	{	
 		Position p;
         Node node;
+#ifndef RUNNING_MODE_CLIENT_SERVER
+#define CREATE_PEER2
+#endif 
+
+#ifndef CREATE_PEER2
 		_peer_lg = new simgame_peer_logic ();
 		_model->InitRegister(_peer_lg->_behavior_r);
     	
@@ -116,6 +136,21 @@ bool simgame_node::join ()
         node.pos = _model->GetInitPosition();
 
 		_peer = _vasts->create_peer (_peer_lg, node, _peer_capacity);
+#else
+        simgame_arbitrator_logic *new_arb = new simgame_arbitrator_logic(_para, _arbitrator_reg, _model);
+		_ar_logic.push_back (new_arb);
+
+		_peer_lg = new simgame_peer_logic ();
+		_model->InitRegister(_peer_lg->_behavior_r);
+    	
+		//p = _model->GetInitPosition();
+        node.aoi = _para->AOI_RADIUS;
+        node.pos = _model->GetInitPosition();
+
+        pair<peer*, arbitrator*> ret_pair;
+        ret_pair = _vasts->create_peerarb_pair (_peer_lg, node, _peer_capacity, new_arb, new_arb);
+        _peer = ret_pair.first;
+#endif
 
         /*
 		char auth[JOIN_REQUEST_RANDOM_CHAR_LENGTH+1];
@@ -128,7 +163,7 @@ bool simgame_node::join ()
         _peer->join (p, _para->AOI_RADIUS, auth, JOIN_REQUEST_RANDOM_CHAR_LENGTH);
         */
 
-        is_joined = true;
+        _joined = true;
 	}
 
     return true;
@@ -276,20 +311,20 @@ void simgame_node::processmsg ()
         if (promotion == 1)
         {
             // new a simgame_arbitrator_logic
-            simgame_arbitrator_logic *new_arb = new simgame_arbitrator_logic(_para, _arbitrator_reg, _model);
+            simgame_arbitrator_logic *new_arb = new simgame_arbitrator_logic(_para, _arbitrator_reg, _model, true);
 
             // push into _ar_logic
 			_ar_logic.push_back (new_arb);
 
             // create arbitrator
-            id_t peer_id;
+            VAST::id_t peer_id;
             if (is_gateway ())
                 peer_id = NET_ID_GATEWAY;
             else if (_peer_lg != NULL && _peer_lg->get_self () != NULL)
                 peer_id = _peer_lg->get_self ()->peer;
             else
                 _eo.output ("Internal error!");
-            _vasts->create_arbitrator (peer_id, (arbitrator_logic *)new_arb, (storage_logic *)new_arb, n);
+            _vasts->create_arbitrator (peer_id, (arbitrator_logic *)new_arb, (storage_logic *)new_arb, n, false, true);
 
             g_sys_state.promote_count ++;
         }
@@ -318,7 +353,7 @@ void simgame_node::processmsg ()
 
             if (!demotion_succ)
             {
-                id_t my_id;
+                VAST::id_t my_id;
                 if (_peer_lg != NULL)
                     my_id = _peer_lg->get_self ()->peer;
                 else if (_ar_logic.size () > 0)
@@ -330,14 +365,14 @@ void simgame_node::processmsg ()
                 else
                     my_id = -1;
 
-                sprintf (_ostr, "[%d] receives a unknown demotion to node.\r\n", my_id, n.id);
+                sprintf (_ostr, "[%lu] receives a unknown demotion to node [%lu].\n", my_id, n.id);
                 _eo.output (_ostr);
             }
         }
 
         else
         {
-            id_t my_id;
+            VAST::id_t my_id;
             if (_peer_lg != NULL)
                 my_id = _peer_lg->get_self ()->peer;
             else if (_ar_logic.size () > 0)
@@ -349,14 +384,13 @@ void simgame_node::processmsg ()
             else
                 my_id = -1;
 
-            sprintf (_ostr, "[%d] receives a unknown promotion request (%d).\r\n", my_id, promotion);
+            sprintf (_ostr, "[%lu] receives a unknown promotion request (%d).\n", my_id, promotion);
             _eo.output (_ostr);
         }
     }
 
     // clean up requests
     _vasts->clean_requests ();
-
 
     // update arbitrator image
     vector<simgame_arbitrator_logic *>::iterator ait = _ar_logic.begin ();
@@ -445,19 +479,37 @@ int simgame_node::getArbAOI (int index)
 	return ((simgame_arbitrator_logic*)_ar_logic[index])->getAOI();
 }
 
+bool 
+simgame_node::get_info (int index, int info_type, char* buffer, size_t & buffer_size)
+{
+    if (index >= (int)_ar_logic.size())
+		return false;
+    return ((simgame_arbitrator_logic*) _ar_logic[index])->get_info (info_type, buffer, buffer_size);
+}
+
+timestamp_t 
+simgame_node::get_curr_timestamp ()
+{
+    if (_peer != NULL)
+        return _peer->getnet ()->get_curr_timestamp ();
+    else if (_ar_logic.size () > 0)
+        return _ar_logic[0]->get_network ()->get_curr_timestamp ();
+
+    return 0;
+}
 
 void simgame_node::Move (Position& dest)
 {
 	event *e = _peer->create_event ();
 	e->type = SimGame::E_MOVE;
 	e->add ((int)_peer_lg->get_self()->get_id());
-	e->add ((int)dest.x);
-	e->add ((int)dest.y);
+	e->add ((float)dest.x);
+	e->add ((float)dest.y);
 	
 	_peer->send_event (e);
 }
 
-void simgame_node::Eat (id_t foodid)
+void simgame_node::Eat (VAST::id_t foodid)
 {
 	event *e = _peer->create_event ();
 	e->type = SimGame::E_EAT;
@@ -467,7 +519,7 @@ void simgame_node::Eat (id_t foodid)
 	_peer->send_event (e);
 }
 
-void simgame_node::Attack (id_t target)
+void simgame_node::Attack (VAST::id_t target)
 {
 	event *e = _peer->create_event ();
 	e->type = SimGame::E_ATTACK;
@@ -489,29 +541,57 @@ void simgame_node::Bomb (Position& center, int radius)
 	_peer->send_event (e);
 }
 
-pair<unsigned int,unsigned int> simgame_node::getArbitratorAccmulatedTransmit (int index)
+// return accmulated transmission size for arbitrators hosted by the node
+pair<unsigned int,unsigned int> 
+simgame_node::getArbitratorAccmulatedTransmit (int index)
 {
-    /*
     if ((unsigned) index < _ar_logic.size ())
     {
-        network * net = ((simgame_arbitrator_logic *)_ar_logic[index])->get_network ();
+        network * net = _ar_logic[index]->_arbitrator->getnet ();
         return pair<unsigned int,unsigned int>(net->sendsize (), net->recvsize ());
     }
-    */
 
     return pair<unsigned int,unsigned int>(0, 0);
 }
 
-pair<unsigned int,unsigned int> simgame_node::getAccmulatedTransmit ()
+// return accmulated transmission size for peer on the node
+pair<unsigned int,unsigned int> 
+simgame_node::getAccmulatedTransmit ()
 {
-    /*
-	//return pair<int,int>(_vasts->get);
     if (_peer_lg != NULL)
     {
-        network * net = _peer_lg->get_network ();
+        network * net = _peer->getnet ();
         return pair<unsigned int,unsigned int>(net->sendsize (),net->recvsize ());
     }
-    */
+
+    return pair<unsigned int,unsigned int>(0,0);
+}
+
+// return accmulated transmission by message type for arbitrators hosted by the node
+pair<unsigned int,unsigned int> 
+simgame_node::
+getArbitratorAccmulatedTransmit_bytype (int index, msgtype_t msgtype)
+{
+    if ((unsigned) index < _ar_logic.size ())
+    {
+        network * net = _ar_logic[index]->_arbitrator->getnet ();
+        return pair<unsigned int,unsigned int>(net->sendsize_bytype (msgtype), net->recvsize_bytype (msgtype));
+    }
+
+    return pair<unsigned int,unsigned int>(0, 0);
+}
+
+// return accmulated transmission by message type for peer on the node
+pair<unsigned int,unsigned int> 
+simgame_node::
+getAccmulatedTransmit_bytype (msgtype_t msgtype)
+{
+    if (_peer_lg != NULL)
+    {
+        network * net = _peer->getnet ();
+        return pair<unsigned int,unsigned int>(net->sendsize_bytype (msgtype), net->recvsize_bytype (msgtype));
+    }
+
     return pair<unsigned int,unsigned int>(0,0);
 }
 
@@ -571,7 +651,7 @@ const char * simgame_node::toString()
 
 			sr << "Known Objects: " << endl;
 			int to = _peer_lg->_objects.size();
-            map<id_t, object*> prs, os;
+            map<VAST::id_t, object*> prs, os;
 
 			for (int i=0; i<to; i++)
 			{
@@ -591,10 +671,10 @@ const char * simgame_node::toString()
 				//sr << PlayerObjtoString (this_object);
 				//sr << "  " << ab.objectToString(*this_object) << endl;
 			}
-            map<id_t, object*>::iterator it1 = prs.begin ();
+            map<VAST::id_t, object*>::iterator it1 = prs.begin ();
             for (; it1 != prs.end (); it1 ++)
                 sr << "  " << _ab.objectToString(*(it1->second)) << endl;
-            map<id_t, object*>::iterator it2 = os.begin ();
+            map<VAST::id_t, object*>::iterator it2 = os.begin ();
             for (; it2 != os.end (); it2 ++)
                 sr << "  " << _ab.objectToString(*(it2->second)) << endl;
 

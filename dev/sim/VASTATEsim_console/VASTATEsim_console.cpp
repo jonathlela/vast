@@ -1,16 +1,52 @@
 
 /*
- *  VASTATEsim_console.cpp (Console version Interface of VASTATEsim)
+ * VAST, a scalable peer-to-peer network for virtual environments
+ * Copyright (C) 2007-2008 Shao-Chen Chang (cscxcs at gmail.com)
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ *
+ */
+
+/*
+ *  VASTATEsim_console.cpp (Console Interface of VASTATEsim)
  *
  *      ver. 0.01  (2007/01/30)
  */
-
 
 #include "vastatesim.h"
 #include "vastate.h"
 #include "attributebuilder.h"
 
 SimPara para;
+
+void print_command_line ()
+{
+    printf (
+        "Usage:\n"
+        "    vastatesim_console [ParaFile] [MODE] [FoodFile] [ActionFile] \n"
+        "\n"
+        "       ParaFile   : simulation parameter file\n"
+        "       MODE       : (empty) | rec | play\n"
+        "       FoodFile/\n"
+        "       ActionFile : Record file for food or actions\n"
+        "\n"
+        "       Note: When MODE is play or rec, FoodFile and ActionFile \n"
+        "             must be specified.\n"
+        "\n"
+        );
+}
 
 int main (int argc, char *argv[])
 {
@@ -37,6 +73,7 @@ int main (int argc, char *argv[])
 	if (!ReadPara (para, filename))
 	{
         printf ("VASTATESIM_console: read parameter file failed.\n");
+        print_command_line ();
         return -1;
 	}
 
@@ -63,3 +100,4 @@ int main (int argc, char *argv[])
     //getchar ();
     return 0;
 }
+

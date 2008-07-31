@@ -1,5 +1,25 @@
 
 /*
+ * VAST, a scalable peer-to-peer network for virtual environments
+ * Copyright (C) 2007-2008 Shao-Chen Chang (cscxcs at gmail.com)
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ *
+ */
+
+/*
  *  statistics.cpp (VASTATE simulation statistics module implementation)
  *
  *
@@ -24,11 +44,53 @@ using namespace std;
 statistics * statistics::_inst = NULL;
 static int CheckPoints [] = {1, 2, 3, 4, 5, 6};
 
+// System Running status (declared in vastatesim.cpp)
+extern struct system_state g_sys_state;
+
+// section retrieved from vast_dc.h
+    typedef enum VAST_DC_Message
+    {
+        DC_QUERY = 10,          // find out host to contact for initial neighbor list
+        DC_HELLO,              // initial connection request
+        DC_EN,                 // query for missing enclosing neighbors
+        DC_MOVE,               // position update to normal peers
+        DC_MOVE_B,             // position update to boundary peers
+        DC_NODE,               // discovery of new nodes          
+        DC_OVERCAP,            // disconnection requiring action: shrink AOI or refuse connection
+        DC_UNKNOWN
+    };
+
+// Network message type be tracked on section tracking transmission size by type
+static msgtype_t msg_tracked [] = {
+    // network layer messages ==
+    ID, IPQUERY, // 2
+        // -- total count above: 2
+    // vast_dc messages ==
+    DC_QUERY, DC_HELLO, DC_EN, DC_MOVE, DC_MOVE_B, DC_NODE, // 6
+        // -- total count above: 8
+    // vastate messages ==
+    JOIN, ENTER, OBJECT, STATE, ARBITRATOR, 
+    EVENT, OVERLOAD_I, UNDERLOAD, PROMOTE, TRANSFER, 
+    TRANSFER_ACK, AGGREGATOR, MIGRATE, MIGRATE_ACK // 14
+        // -- total count above: 22
+};
+static int msg_tracked_count = 22;
+static char *msg_tracked_str[] = {
+    // network layer messages ==
+    "ID", "IPQUERY", 
+    // vast_dc messages ==
+    "DC_QUERY", "DC_HELLO", "DC_EN", "DC_MOVE", "DC_MOVE_B", "DC_NODE", 
+    // vastate messages ==
+    "JOIN", "ENTER", "OBJECT", "STATE", "ARBIT", 
+    "EVENT", "OVER_L", "UNDER_L", "PROMOTE", "TRANS", 
+    "TRANSACK", "AGGR", "MIGR", "MIGR_ACK"
+};
+
+
 statistics::statistics (
-		SimPara * para, vector<simgame_node *> * g_players, behavior * model, arbitrator_reg * arb_r, vastverse * world
-		)
-		: _para (para), _players (g_players), _model(model), _arb_r (arb_r), _world (world) //, _steps (0)
-		, _max_event (0), _old_event_start(0)
+	SimPara * para, vector<simgame_node *> * g_players, behavior * model, arbitrator_reg * arb_r, vastverse * world)
+	: _para (para), _players (g_players), _model(model), _arb_r (arb_r), _world (world)
+	, _max_event (0), _old_event_start(0)
 {
 	FILE * fp = NULL;
 	char filename[256];
@@ -51,9 +113,11 @@ statistics::statistics (
 		fclose (fp);
 		count++;
 	}
-	print_header (_fp);
 
-	_inst = this;
+    // record time of simulation starts
+    start_time = time (NULL);
+
+    _inst = this;
 }
 
 statistics::~statistics ()
@@ -75,18 +139,20 @@ statistics::~statistics ()
 		delete[] it->second;
 	}
 	_system_consistency.clear();
-
-	// delete snapshots
-	
 }
 
 
 void statistics::print_all ()
 {
+    // record end time of simulation
+    end_time = time (NULL);
+
 	// output simulation result
+    print_header (_fp);
 	print_attractor_record (_fp);
 	print_snapshots (_fp);
     print_size_transmitted_v2 (_fp);
+    print_type_size_transmitted (_fp);
 
 	fclose (_fp);
     _fp = NULL;
@@ -96,25 +162,39 @@ void statistics::print_header (FILE * fp)
 {
     if (fp == NULL)
         return;
+
+    time_t dt = (time_t) difftime (end_time, start_time);
+
     // 
     // basic simulation info
     //
-    fprintf (fp, "Data Structure Sizes (in bytes)\n");
-    fprintf (fp, "-------------------------------\n");
-    fprintf (fp, "id_t:%d aoi_t:%d msgtype_t:%d timestamp_t:%d Position:%d Node:%d Addr:%d\n", sizeof(VAST::id_t), sizeof(aoi_t), sizeof(msgtype_t), sizeof(timestamp_t), sizeof(Position), sizeof(Node), sizeof(Addr));
-	fprintf (fp, "\n\n");
-    
     fprintf (fp, "Simulation Parameters\n");
-    fprintf (fp, "---------------------\n");
-    fprintf (fp, "nodes: %d world: (%d, %d) %s: %d\naoi: %d buffer: %d connlimit: %d velocity: %d lossrate: %d failrate: %d\n", _para->NODE_SIZE, _para->WORLD_WIDTH, _para->WORLD_HEIGHT, (_para->FAIL_RATE > 0 ? "scenarios" : "steps"), _para->TIME_STEPS, _para->AOI_RADIUS, _para->AOI_BUFFER, _para->CONNECT_LIMIT, _para->VELOCITY, _para->LOSS_RATE, _para->FAIL_RATE);
-	fprintf (fp, "virtual peers: %d\n", _para->NUM_VIRTUAL_PEERS);
-	fprintf (fp, "\n\n");
+    fprintf (fp, "-------------------------------\n");
+    /*
+    fprintf (fp, "Data Structure Sizes (in bytes)\n");
+    fprintf (fp, "        id_t:%d aoi_t:%d msgtype_t:%d timestamp_t:%d Position:%d Node:%d Addr:%d\n", 
+        sizeof(VAST::id_t), sizeof(aoi_t), sizeof(msgtype_t), sizeof(timestamp_t), sizeof(Position), sizeof(Node), sizeof(Addr));
+	fprintf (fp, "\n");
+    */
+    
+    fprintf (fp, "Vastate parameters\n");
+    fprintf (fp, "        %s: %d  Nodes: %d  World: (%d, %d) \n", 
+        (_para->FAIL_RATE > 0 ? "Scenarios" : "Steps"), _para->TIME_STEPS, _para->NODE_SIZE, _para->WORLD_WIDTH, _para->WORLD_HEIGHT);
+    fprintf (fp, "        AOI: %d (buffer: %d)  Connlimit: %d  Velocity: %d  Lossrate: %d  Failrate: %d\n", 
+        _para->AOI_RADIUS, _para->AOI_BUFFER, _para->CONNECT_LIMIT, _para->VELOCITY, _para->LOSS_RATE, _para->FAIL_RATE);
+	fprintf (fp, "        Virtual peers: %d\n", _para->NUM_VIRTUAL_PEERS);
+    fprintf (fp, "        Prmotion     : %d     Demotion : %d \n", g_sys_state.promote_count, g_sys_state.demote_count);
+    fprintf (fp, "        Start time   : %s", ctime (&start_time));
+    fprintf (fp, "        End time     : %s", ctime (&end_time));
+    fprintf (fp, "        Time elipsed : total %d d %d h %d m %d s.\n", 
+        (int) (dt / 86400), (int) ((dt % 86400) / 3600), (int) ((dt % 3600) / 60), (int) (dt % 60));
+    fprintf (fp, "\n");
 
 	fprintf (fp, "SimGame Parameters\n");
-    fprintf (fp, "------------------\n");
-	fprintf (fp, "SCC PERIOD: %d LENGTH: %d\n", _para->SCC_PERIOD, _para->SCC_TRACE_LENGTH);
+	fprintf (fp, "        SCC PERIOD: %d LENGTH: %d\n", _para->SCC_PERIOD, _para->SCC_TRACE_LENGTH);
 	//fprintf (fp, "HP_MAX: %d THR: %d FOOD MAX: %d NeedRest: %d Attack: %d Bomb: %d Food: %d\n", _para->HP_MAX, _para->HP_LOW_THRESHOLD, _para->FOOD_MAX_QUALITY, _para->MIN_TIREDNESS_NEED_REST, _para->ATTACK_POWER, _para->BOMB_POWER, _para->FOOD_POWER);
 	//fprintf (fp, "ATTRACTOR: max: %d colddown basic: %d max: %d range: %d\n", _para->MAX_ATTRACTOR, _para->ATTRACTOR_BASIC_COLDDOWN, _para->ATTRACTOR_MAX_COLDDOWN, _para->ATTRACTOR_RANGE);
+
 	fprintf (fp, "\n\n");
 }
 
@@ -187,7 +267,7 @@ void statistics::print_events (FILE * fp)
 
 	fprintf(fp," EventID  ObjectID  TimeStamp  Version  MaxDelay  AvgDelay*  TC \n");
 	fprintf(fp," [0000]    000000    000000     000000    0000      0000     0000\n");
-	fprintf(fp," [%04d]    %6d    %6d     %6d    %4d      %4d   ");
+	//fprintf(fp," [%04d]    %6d    %6d     %6d    %4d      %4d   ");
 
 	vector<stat_event_record*>::iterator eit = _events.begin();
 	for (; eit != _events.end() ; eit ++)
@@ -224,10 +304,10 @@ void statistics::print_size_transmitted_v2 (FILE * fp)
 
     */
 
-    unsigned int itype[] = {SBW_ARB, SBW_PEER, SBW_SERVER, SBW_NODE, 0};
-    unsigned int ctype[] = {SBW_AVG, SBW_MAX, SBW_SUM, SBW_MIN, 0};
+    unsigned int itype[] = {SBW_ARB, SBW_PEER, SBW_SERVER, SBW_NODE, SBW_AGG, 0};
+    unsigned int ctype[] = {SBW_AVG, SBW_MAX, SBW_SUM, 0}; //SBW_MIN,
     unsigned int ttype[] = {SBW_SEND, SBW_RECV, 0};
-    static char *itype_name[] = {"ARBITRATOR", "PEER", "SERVER", "NODE"};
+    static char *itype_name[] = {"ARBITRATOR", "PEER", "SERVER", "NODE", "AGGREGATOR"};
     static char *ctype_name[] = {"AVERAGE", "MAXIMUM", "SUM", "MINIMUM"};
     static char *ttype_name[] = {"SEND", "RECV"};
     int ic, cc, tc, st;
@@ -276,6 +356,161 @@ void statistics::print_size_transmitted_v2 (FILE * fp)
 }
 
 
+
+void statistics::print_type_size_transmitted (FILE * fp)
+{
+#define print_type_size_transmitted_SUM
+
+    fprintf (fp, "Catelogized bandwidth consumption \n"
+                 "----------------------\n");
+    /*
+
+    Catelogized bandwidth consumption
+    ----------------------
+    ARBITRATOR
+           AVERAGE                                 ...  MAXIMUM
+           DC_NODE             OBJECT              ...  DC_NODE
+               SEND     RECV       SEND     RECV   ...      SEND     RECV     
+    0000   88888888 88888888   88888888 88888888        88888888 88888888 
+
+    MAXIMUM
+
+    */
+
+    map<unsigned int, unsigned int> overall_bytype;
+    unsigned int                    overall_transmitted = 0;
+
+    unsigned int itype[] = {SBW_ARB, SBW_PEER, SBW_AGG, 0};
+    static char *itype_name[] = {"ARBITRATOR", "PEER", "AGGREGATOR"};
+
+    unsigned int ctype[] = {SBW_AVG, 0};//SBW_AVG, SBW_MAX, 0};
+    static char *ctype_name[] = {"AVERAGE"};//"AVERAGE", "MAXIMUM"};
+
+    // msg type
+
+#ifndef print_type_size_transmitted_SUM
+    unsigned int ttype[] = {SBW_SEND, SBW_RECV, 0};
+    static char *ttype_name[] = {"SEND", "RECV"};
+    int tc;
+#endif
+    int ic, cc, mc, st;
+    int stm = (_para->current_timestamp + 1) / STEPS_PER_SECOND;
+
+    char temp_str[50];
+
+    // for node type
+    for (ic = 0; itype[ic] != 0; ++ ic)
+    {
+        // print table header
+        fprintf (fp, "%s\n", itype_name[ic]);
+        fprintf (fp, "       ");
+#ifndef print_type_size_transmitted_SUM
+        sprintf (temp_str, "%%-%ds", 20 * msg_tracked_count);
+#else
+        sprintf (temp_str, "%%-%ds", 11 * msg_tracked_count);
+#endif
+        for (cc = 0; ctype[cc] != 0; ++ cc)
+            fprintf (fp, temp_str, ctype_name[cc]);
+        fprintf (fp, "\n");
+        fprintf (fp, "       ");
+        for (cc = 0; ctype[cc] != 0; ++ cc)
+            for (mc = 0; mc < msg_tracked_count; ++ mc)
+#ifndef print_type_size_transmitted_SUM
+                fprintf (fp, "%-20s", msg_tracked_str[mc]);
+#else
+                fprintf (fp, "%-11s", msg_tracked_str[mc]);
+#endif
+        fprintf (fp, "\n");
+#ifndef print_type_size_transmitted_SUM
+        fprintf (fp, "       ");
+        for (cc = 0; ctype[cc] != 0; ++ cc)
+            for (mc = 0; mc < msg_tracked_count; ++ mc)
+            {
+                for (tc = 0; ttype[tc] != 0; tc ++)
+                    fprintf (fp, "    %4s ", ttype_name[tc]);
+                fprintf (fp, "  ");
+            }
+        fprintf (fp, "\n");
+#endif
+
+        // for all time slots
+        for (st = 0; st < stm; st ++)
+        {
+            fprintf (fp, "%4d   ", (st + 1) * STEPS_PER_SECOND);
+            for (cc = 0; ctype[cc] != 0; ++ cc)
+            {
+                for (mc = 0; mc < msg_tracked_count; ++ mc)
+                {
+#ifndef print_type_size_transmitted_SUM
+                    for (tc = 0; ttype[tc] != 0; tc ++)
+                    {
+                        unsigned int value = _trans_all [st][itype[ic] | ctype[cc] | SBW_MSG | msg_tracked[mc] | ttype[tc]];
+                        fprintf (fp, "%8u ", value);
+                        overall_bytype[ctype[cc] | SBW_MSG | msg_tracked[mc] | ttype[tc]] += value;
+                    }
+#else
+                    unsigned int value = _trans_all [st][itype[ic] | ctype[cc] | SBW_MSG | msg_tracked[mc] | SBW_SEND]
+                                        + _trans_all [st][itype[ic] | ctype[cc] | SBW_MSG | msg_tracked[mc] | SBW_RECV];
+                    fprintf (fp, "%8u ", value);
+                    overall_bytype[ctype[cc] | SBW_MSG | msg_tracked[mc]] += value;
+#endif
+                    fprintf (fp, "  ");
+                }
+            }
+            fprintf (fp, "\n");
+        }
+        //fprintf (fp, "\n");
+
+        fprintf (fp, " SUM   ");
+        for (cc = 0; ctype[cc] != 0; ++ cc)
+        {
+            for (mc = 0; mc < msg_tracked_count; ++ mc)
+            {
+#ifndef print_type_size_transmitted_SUM
+                for (tc = 0; ttype[tc] != 0; tc ++)
+                {
+                    unsigned int value = overall_bytype[ctype[cc] | SBW_MSG | msg_tracked[mc] | ttype[tc]];
+                    fprintf (fp, "%8u ", value);
+                    overall_transmitted += value;
+                }
+#else
+                unsigned int value = overall_bytype[ctype[cc] | SBW_MSG | msg_tracked[mc]];
+                fprintf (fp, "%8u ", value);
+                overall_transmitted += value;
+#endif
+                fprintf (fp, "  ");
+            }
+        }
+        fprintf (fp, "\n");
+
+        fprintf (fp, "       ");
+        for (cc = 0; ctype[cc] != 0; ++ cc)
+        {
+            for (mc = 0; mc < msg_tracked_count; ++ mc)
+            {
+#ifndef print_type_size_transmitted_SUM
+                unsigned int ratio = (int) (((double) overall_bytype[ctype[cc] | SBW_MSG | msg_tracked[mc] | ttype[tc]] * 100.0) 
+                                            / (double) overall_transmitted + 0.5);
+                for (tc = 0; ttype[tc] != 0; tc ++)
+                    fprintf (fp, "(%5u%%) ", ratio);
+#else
+                unsigned int ratio = (int) (((double) overall_bytype[ctype[cc] | SBW_MSG | msg_tracked[mc]] * 100.0) 
+                                                / (double) overall_transmitted + 0.5);
+                fprintf (fp, "   (%3u%%)", ratio);
+#endif
+                fprintf (fp, "  ");
+            }
+        }
+        fprintf (fp, "\n");
+
+        overall_bytype.clear ();
+        overall_transmitted = 0;
+    }
+
+    fprintf (fp, "\n\n");
+}
+
+
 statistics * statistics::getInstance ()
 {
 	return _inst;
@@ -317,6 +552,7 @@ int statistics::record_step ()
             int current_timeslot = _para->current_timestamp / STEPS_PER_SECOND;
             // temp variable for count bandwidth
             unsigned int sendsize, recvsize;
+            unsigned int flag;
 
             // for all nodes
             vector<simgame_node *>::iterator it = _players->begin ();
@@ -338,18 +574,24 @@ int statistics::record_step ()
                     // for each arbitrator hosted by the node
                     for (int arbc = 0; arbc < arb_count; arbc ++)
                     {
-                        // TODO: what's going on here??
+                        VAST::id_t & arb_id = arbi[arbc].id;
+
+                        // FOR OVERALL TRANSMISSION SIZE
+                        ///////////////////////////////////////
                         // fetch accmulated transmitted
-                        //unsigned int acc_sendsize = _world->sendsize (arbi[arbc].id);
-                        //unsigned int acc_recvsize = _world->recvsize (arbi[arbc].id);
-                        unsigned int acc_sendsize = 0, acc_recvsize = 0;
+                        std::pair<unsigned int, unsigned int> arb_transmitted = tp->getArbitratorAccmulatedTransmit (arbc);
+                        unsigned int acc_sendsize = arb_transmitted.first;
+                        unsigned int acc_recvsize = arb_transmitted.second;
 
                         // process send size
                         if (_pa_trans_ls[SBW_SEND].find (arbi[arbc].id) == _pa_trans_ls[SBW_SEND].end ())
                             sendsize = acc_sendsize;
                         else
                             sendsize = acc_sendsize - _pa_trans_ls[SBW_SEND][arbi[arbc].id];
-                        update_bw_count (current_timeslot, SBW_ARB | SBW_SEND, sendsize);
+                        if (arbi[arbc].is_aggr)
+                            update_bw_count (current_timeslot, SBW_AGG | SBW_SEND, sendsize);
+                        else
+                            update_bw_count (current_timeslot, SBW_ARB | SBW_SEND, sendsize);
                         this_node_trans[SBW_SEND] += sendsize;
                         
                         // process receive size
@@ -357,7 +599,10 @@ int statistics::record_step ()
                             recvsize = acc_recvsize;
                         else
                             recvsize = acc_recvsize - _pa_trans_ls[SBW_RECV][arbi[arbc].id];
-                        update_bw_count (current_timeslot, SBW_ARB | SBW_RECV, recvsize);
+                        if (arbi[arbc].is_aggr)
+                            update_bw_count (current_timeslot, SBW_AGG | SBW_RECV, recvsize);
+                        else
+                            update_bw_count (current_timeslot, SBW_ARB | SBW_RECV, recvsize);
                         this_node_trans[SBW_RECV] += recvsize;
 
                         _arb_r->node_transmitted [arbi[arbc].id] = sendsize + recvsize;
@@ -365,6 +610,42 @@ int statistics::record_step ()
                         // update last step transmitted
                         _pa_trans_ls[SBW_SEND][arbi[arbc].id] = acc_sendsize;
                         _pa_trans_ls[SBW_RECV][arbi[arbc].id] = acc_recvsize;
+
+                        // FOR MSGTYPE-CATEGORIZED TRANSMISSION SIZE
+                        ///////////////////////////////////////
+                        // for all message types to counting for
+                        for (int mt_i = 0; mt_i < msg_tracked_count; ++ mt_i)
+                        {
+                            unsigned int th_msgtype = msg_tracked[mt_i] | SBW_MSG;
+
+                            // get node transmission information
+                            std::pair<unsigned int, unsigned int> type_transed = tp->getArbitratorAccmulatedTransmit_bytype (arbc, msg_tracked[mt_i]);
+                            unsigned int & at_sendsize = type_transed.first;
+                            unsigned int & at_recvsize = type_transed.second;
+
+                            // check node type
+                            flag = ((arbi[arbc].is_aggr) ? SBW_AGG : SBW_ARB) | th_msgtype;
+
+                            // process sending size
+                            map<VAST::id_t, unsigned int> & m_send_ls = _pa_trans_ls[SBW_SEND | th_msgtype];
+                            if (m_send_ls.find (arb_id) == m_send_ls.end ())
+                                sendsize = at_sendsize;
+                            else
+                                sendsize = at_sendsize - m_send_ls[arb_id];
+                            update_bw_count (current_timeslot, flag | SBW_SEND, sendsize);
+
+                            // process receiving size
+                            map<VAST::id_t, unsigned int> & m_recv_ls = _pa_trans_ls[SBW_RECV | th_msgtype];
+                            if (m_recv_ls.find (arb_id) == m_recv_ls.end ())
+                                recvsize = at_recvsize;
+                            else
+                                recvsize = at_recvsize - m_recv_ls[arb_id];
+                            update_bw_count (current_timeslot, flag | SBW_RECV, recvsize);
+
+                            // update last step transmitted
+                            _pa_trans_ls [SBW_SEND | th_msgtype][arb_id] = at_sendsize;
+                            _pa_trans_ls [SBW_RECV | th_msgtype][arb_id] = at_recvsize; 
+                        }
                     }
 
                     delete[] arbi;
@@ -375,11 +656,10 @@ int statistics::record_step ()
                 {
                     // fetch peer information
                     object * obj = tp->GetSelfObject ();
-                    //pair<unsigned int, unsigned int> peer_transmitted = tp->getAccmulatedTransmit ();
-                    // TODO: what's goint on here??
-                    //unsigned int acc_sendsize = _world->sendsize (obj->peer);
-                    //unsigned int acc_recvsize = _world->recvsize (obj->peer);
-                    size_t acc_sendsize = 0, acc_recvsize = 0;
+                    pair<unsigned int, unsigned int> peer_transmitted = tp->getAccmulatedTransmit ();
+                    unsigned int acc_sendsize = peer_transmitted.first;
+                    unsigned int acc_recvsize = peer_transmitted.second;
+                    //size_t acc_sendsize = 0, acc_recvsize = 0;
 
                     // process send size
                     if (_pa_trans_ls[SBW_SEND].find (obj->get_id ()) == _pa_trans_ls[SBW_SEND].end ())
@@ -398,12 +678,48 @@ int statistics::record_step ()
                     this_node_trans[SBW_RECV] += recvsize;
 
                     // update last step transmitted
+                    // pontential BUG: use object id as keys, may collision with node ids used by arbitrators' statistics?
                     _pa_trans_ls[SBW_SEND][obj->get_id ()] = acc_sendsize;
                     _pa_trans_ls[SBW_RECV][obj->get_id ()] = acc_recvsize;
+
+                    // FOR MSGTYPE-CATEGORIZED TRANSMISSION SIZE
+                    ///////////////////////////////////////
+                    // for all message types to counting for
+                    for (int mt_i = 0; mt_i < msg_tracked_count; ++ mt_i)
+                    {
+                        unsigned int th_msgtype = msg_tracked[mt_i] | SBW_MSG;
+
+                        // get node transmission information
+                        std::pair<unsigned int, unsigned int> type_transed = tp->getAccmulatedTransmit_bytype (msg_tracked[mt_i]);
+                        unsigned int & at_sendsize = type_transed.first;
+                        unsigned int & at_recvsize = type_transed.second;
+
+                        // check node type
+                        flag = SBW_PEER | th_msgtype;
+
+                        // process sending size
+                        map<VAST::id_t, unsigned int> & m_send_ls = _pa_trans_ls[SBW_SEND | th_msgtype];
+                        if (m_send_ls.find (obj->get_id ()) == m_send_ls.end ())
+                            sendsize = at_sendsize;
+                        else
+                            sendsize = at_sendsize - m_send_ls[obj->get_id ()];
+                        update_bw_count (current_timeslot, flag | SBW_SEND, sendsize);
+
+                        // process receiving size
+                        map<VAST::id_t, unsigned int> & m_recv_ls = _pa_trans_ls[SBW_RECV | th_msgtype];
+                        if (m_recv_ls.find (obj->get_id ()) == m_recv_ls.end ())
+                            recvsize = at_recvsize;
+                        else
+                            recvsize = at_recvsize - m_recv_ls[obj->get_id ()];
+                        update_bw_count (current_timeslot, flag | SBW_RECV, recvsize);
+
+                        // update last step transmitted
+                        _pa_trans_ls [SBW_SEND | th_msgtype][obj->get_id ()] = at_sendsize;
+                        _pa_trans_ls [SBW_RECV | th_msgtype][obj->get_id ()] = at_recvsize; 
+                    }
                 }
 
                 // count transmit size for this node
-                unsigned int flag;
                 if (tp->is_gateway ())
                     flag = SBW_SERVER;
                 else
@@ -459,8 +775,8 @@ int statistics::record_step ()
 				int ar, arcount = player->getArbitratorInfo(NULL);
 				for (ar=0 ; ar < arcount ; ar++)
 				{
-					map<id_t,object*> & objs = player->GetOwnObjects(ar);
-					map<id_t,object*>::iterator itown = objs.begin ();
+					map<VAST::id_t,object*> & objs = player->GetOwnObjects(ar);
+					map<VAST::id_t,object*>::iterator itown = objs.begin ();
 					for (; itown != objs.end(); itown ++)
 					{
 						object * o = itown->second;
@@ -525,7 +841,7 @@ int statistics::record_step ()
 				_snapshots[currentstep][player->GetSelfObject ()->get_id ()].player_aoi = player->getAOI ();
 
 				// Count Discovery Consistency
-				map<id_t, stat_object_record>::iterator sit = _snapshots[currentstep].begin ();
+				map<VAST::id_t, stat_object_record>::iterator sit = _snapshots[currentstep].begin ();
 				stat_object_record * self_record = & _snapshots[currentstep][player->GetSelfObject()->get_id()];
 
                 // Loop through every objects in god_store
@@ -555,6 +871,16 @@ int statistics::record_step ()
                         ((self_record->pos.dist(processing_record->pos) > _para->AOI_RADIUS)
 						&& (poit == objs.end ())))
 						correct_discovered_object ++;
+#ifdef VASTATESIM_STATISTICS_DEBUG
+                    else
+                    {
+                        ssout << currentstep << " [INCONSISTENT] discovery for node [" << player->GetSelfObject ()->peer << "]";
+                        if (poit != objs.end ())
+                            ssout << " obj_id overlooked " << abr.objectIDToString ((*poit)->get_id ()) << endl;
+                        else
+                            ssout << " obj_id less looked " << abr.objectIDToString (sit->first) << endl;
+                    }
+#endif
 				}
 
 				// Count Update Consistency
@@ -569,8 +895,8 @@ int statistics::record_step ()
                     for (ss = ss_start; ss <= currentstep; ss++)
 					{
                         //ssout << "[ss:" << ss << "]";
-                        //vector<id_t> & kp = _snapshots[ss][processing_obj->get_id ()].k_peers;
-                        //vector<id_t>::iterator itkp = find (kp.begin (), kp.end (), player->GetSelfObject ()->peer);
+                        //vector<VAST::id_t> & kp = _snapshots[ss][processing_obj->get_id ()].k_peers;
+                        //vector<VAST::id_t>::iterator itkp = find (kp.begin (), kp.end (), player->GetSelfObject ()->peer);
                         
                         // check if i know the object consistent
                         // only on
@@ -586,17 +912,29 @@ int statistics::record_step ()
                             total_replica_count [ss-ss_start] ++;
                             if (processing_obj->pos_version >= _snapshots[ss][processing_obj->get_id ()].pos_version)
 								pos_consistent_replica_count[ss-ss_start] ++;
+#ifdef VASTATESIM_STATISTICS_DEBUG
                             else
                             {
                                 ;//ssout << abr.objectIDToString (*processing_obj) << "pos";
+                                if (ss == ss_start)
+                                    ssout << currentstep << " [INCONSISTENT] position of obj_id [" << abr.objectIDToString (*processing_obj) << "] "
+                                          << " node [" << player->GetSelfObject ()->peer << "]" 
+                                          << endl;
                             }
+#endif
 
                             if (processing_obj->version >= _snapshots[ss][processing_obj->get_id ()].version)
 								attr_consistent_replica_count[ss-ss_start] ++;
+#ifdef VASTATESIM_STATISTICS_DEBUG
                             else
                             {
                                 ;//ssout << abr.objectIDToString (*processing_obj) << "att";
+                                if (ss == ss_start)
+                                    ssout << currentstep << " [INCONSISTENT] state of obj_id [" << abr.objectIDToString (*processing_obj) << "] "
+                                          << " node [" << player->GetSelfObject ()->peer << "]" 
+                                          << endl;
                             }
+#endif 
                         }
                         //ssout << " ";
                     }
@@ -637,7 +975,7 @@ int statistics::record_step ()
 			}
 			/*ssout << "" NEWLINE;*/
 
-#ifdef VASTATESIM_DEBUG
+#ifdef VASTATESIM_STATISTICS_DEBUG
 			errout eo;
 			string s = ssout.str();
 			eo.output(s.c_str());
@@ -685,6 +1023,30 @@ int statistics::record_step ()
 	return 0;
 }
 
+void 
+statistics::update_count (map<unsigned int, map<unsigned int, unsigned int> > & tmap, 
+                              unsigned int current_slot, unsigned int node_type, unsigned int value)
+{
+    if (tmap[current_slot].find (node_type | SBW_SUM) == tmap[current_slot].end ())
+    {
+        tmap[current_slot][node_type | SBW_SUM]   = value;
+        tmap[current_slot][node_type | SBW_AVG]   = value;
+        tmap[current_slot][node_type | SBW_MIN]   = value;
+        tmap[current_slot][node_type | SBW_MAX]   = value;
+        tmap[current_slot][node_type | SBW_COUNT] = 1;
+    }
+    else
+    {
+        tmap[current_slot][node_type | SBW_COUNT] += 1;
+        tmap[current_slot][node_type | SBW_SUM]   += value;
+        tmap[current_slot][node_type | SBW_AVG]    = tmap[current_slot][node_type | SBW_SUM] / tmap[current_slot][node_type | SBW_COUNT];
+        tmap[current_slot][node_type | SBW_MIN]    = self_min (value, tmap[current_slot][node_type | SBW_MIN]);
+        tmap[current_slot][node_type | SBW_MAX]    = self_max (value, tmap[current_slot][node_type | SBW_MAX]);
+    }
+
+}
+
+/*
 void statistics::update_bw_count (unsigned int current_slot, unsigned int node_type, unsigned int value)
 {
     if (_trans_all[current_slot].find (node_type | SBW_SUM) == _trans_all[current_slot].end ())
@@ -704,9 +1066,10 @@ void statistics::update_bw_count (unsigned int current_slot, unsigned int node_t
         _trans_all[current_slot][node_type | SBW_MAX]    = self_max (value, _trans_all[current_slot][node_type | SBW_MAX]);
     }
 }
+*/
 
 // 1 for create_obj, 2 for delete_obj
-void statistics::objectChanged (int change_type, id_t objectid)
+void statistics::objectChanged (int change_type, VAST::id_t objectid)
 {
 	switch (change_type)
 	{
@@ -722,7 +1085,7 @@ void statistics::objectChanged (int change_type, id_t objectid)
 	}
 }
 
-void statistics::createdUpdate (id_t objectid, timestamp_t timestamp, timestamp_t update_version)
+void statistics::createdUpdate (VAST::id_t objectid, timestamp_t timestamp, timestamp_t update_version)
 {
 	stat_event_record * newev;
 
@@ -739,13 +1102,13 @@ void statistics::createdUpdate (id_t objectid, timestamp_t timestamp, timestamp_
 	_events.push_back (newev);
 }
 
-void statistics::receivedUpdate (id_t objectid, timestamp_t timestamp, timestamp_t update_version)
+void statistics::receivedUpdate (VAST::id_t objectid, timestamp_t timestamp, timestamp_t update_version)
 {
 	vector<stat_event_record*>::iterator eit = _events.begin ();
 	for(; eit != _events.end () ; eit ++)
 	{
 		stat_event_record * ev = *eit;
-		if ((ev->objectid == objectid) && (ev->update_version == update_version))
+		if (((unsigned) ev->objectid == objectid) && (ev->update_version == update_version))
 		{
 			//int difftime = timestamp - ev->timestamp;
 			//int difftime = _steps - ev->timestamp;
@@ -757,7 +1120,7 @@ void statistics::receivedUpdate (id_t objectid, timestamp_t timestamp, timestamp
 	}
 }
 
-void statistics::receivedReplicaChanged (int change_type, id_t objectid, timestamp_t timestamp, timestamp_t update_version)
+void statistics::receivedReplicaChanged (int change_type, VAST::id_t objectid, timestamp_t timestamp, timestamp_t update_version)
 {
 	if (change_type == 1)
 		_number_of_replica[objectid] = _number_of_replica[objectid] + 1;
@@ -768,7 +1131,7 @@ void statistics::receivedReplicaChanged (int change_type, id_t objectid, timesta
 	for (; eit != _events.end () ; eit ++)
 	{
 		stat_event_record * evred = *eit;
-		if (evred->objectid == objectid)
+		if ((unsigned) evred->objectid == objectid)
 		{
 			if ((change_type == 1) && (update_version < evred->update_version))
 				evred->total_replica ++;
@@ -782,3 +1145,4 @@ void statistics::attractorChanged (int iattr)
 {
     _attractor_record[iattr].push_back (_para->current_timestamp);//_steps);
 }
+

@@ -43,7 +43,7 @@
 namespace VAST {
 
     // default address record will be expired in (steps)
-    const timestamp_t EXPIRE_ADDRESS_RECORD = 20;
+    const timestamp_t EXPIRE_ADDRESS_RECORD = 10;
     // note: _id2queryip record will keeps two times to EXPIRE_ADDRESS_RECORD from inserting
 
     class net_emu : public network
@@ -76,7 +76,7 @@ namespace VAST {
         // inherent methods from class 'network'
         //
 
-        virtual void register_id (id_t my_id);
+        virtual void register_id (VAST::id_t my_id);
 
         virtual void start ()
         {
@@ -88,8 +88,8 @@ namespace VAST {
             _active = false;
             
             // remove all existing connections
-            std::vector<id_t> remove_list;
-            std::map<id_t, int>::iterator it = _id2conn.begin ();
+            std::vector<VAST::id_t> remove_list;
+            std::map<VAST::id_t, int>::iterator it = _id2conn.begin ();
             for (; it != _id2conn.end (); it++)
                 remove_list.push_back (it->first);
 
@@ -99,11 +99,11 @@ namespace VAST {
 
         // connect or disconnect a remote node (should check for redundency)
         // returns (-1) for error, (0) for success
-        virtual int connect (id_t target);
+        virtual int connect (VAST::id_t target);
         virtual int connect (Addr & addr);
-        virtual int disconnect (id_t target);
+        virtual int disconnect (VAST::id_t target);
 
-        Addr &getaddr (id_t id)
+        Addr &getaddr (VAST::id_t id)
         {
             static Addr s_addr;
             if (_id2addr.find (id) != _id2addr.end ())
@@ -113,16 +113,16 @@ namespace VAST {
         }
 
         // get a list of currently active connections' remote id and IP addresses
-        std::map<id_t, Addr> &getconn ()
+        std::map<VAST::id_t, Addr> &getconn ()
         {
-            static std::map<id_t, Addr> ret;
+            static std::map<VAST::id_t, Addr> ret;
             ret.clear ();
 
-            for (std::map<id_t, int>::iterator it = _id2conn.begin (); it != _id2conn.end (); it ++)
+            for (std::map<VAST::id_t, int>::iterator it = _id2conn.begin (); it != _id2conn.end (); it ++)
             {
                 if (_id2addr.find (it->first) == _id2addr.end ())
                 {
-                    printf ("net_emu: getconn (): Can't find IP record of id %d\n", it->first);
+                    printf ("net_emu: getconn (): Can't find IP record of id [%lu]\n", it->first);
                     ret.clear ();
                     return ret;
                 }
@@ -134,17 +134,17 @@ namespace VAST {
         }
 
         // send message to a node
-        virtual int sendmsg (id_t target, msgtype_t msgtype, char const *msg, size_t len, bool reliable = true, bool buffered = false);
+        virtual int sendmsg (VAST::id_t target, msgtype_t msgtype, char const *msg, size_t len, bool reliable = true, bool buffered = false);
         
         // obtain next message in queue before a given timestamp
         // returns size of message, or -1 for no more message
-        virtual int recvmsg (id_t &from, msgtype_t &msgtype, timestamp_t &recvtime, char **msg);
+        virtual int recvmsg (VAST::id_t &from, msgtype_t &msgtype, timestamp_t &recvtime, char **msg);
 
         // send out all pending reliable message in a single packet to each target
         virtual int flush (bool compress = false);
 
         // notify ip mapper to create a series of mapping from src_id to every one in the list map_to
-        virtual int notify_id_mapper (id_t src_id, const std::vector<id_t> & map_to);
+        virtual int notify_id_mapper (VAST::id_t src_id, const std::vector<VAST::id_t> & map_to);
 
         // get current physical timestamp
         timestamp_t get_curr_timestamp ()
@@ -155,13 +155,13 @@ namespace VAST {
         //
         // emulator-specific methods
         //
-        virtual int  storemsg (id_t from, msgtype_t msgtype, char const *msg, size_t len, timestamp_t time);
-        virtual bool remote_connect (id_t remote_id, Addr const &addr);
-        virtual void remote_disconnect (id_t remote_id);
+        virtual int  storemsg (VAST::id_t from, msgtype_t msgtype, char const *msg, size_t len, timestamp_t time);
+        virtual bool remote_connect (VAST::id_t remote_id, Addr const &addr);
+        virtual void remote_disconnect (VAST::id_t remote_id);
 
 
         // get if is connected with the node
-        inline bool is_connected (id_t id)
+        inline bool is_connected (VAST::id_t id)
         {
             if (_id2conn.find (id) == _id2conn.end ())
                 return false;
@@ -170,30 +170,30 @@ namespace VAST {
         }
 
     protected:
-        int _send_ipquery (id_t target);
-        int _query_ip (id_t target, Addr & ret);
+        int _send_ipquery (VAST::id_t target);
+        int _query_ip (VAST::id_t target, Addr & ret);
         void _refresh_database ();
 
     protected:
         // unique id for the vast class that uses this network interface
-        id_t                        _id;
+        VAST::id_t                        _id;
 
         // mapping from node ids to addresses
-        std::map<id_t, Addr>        _id2addr;
-        std::map<id_t, timestamp_t> _id2addr_add;
+        std::map<VAST::id_t, Addr>        _id2addr;
+        std::map<VAST::id_t, timestamp_t> _id2addr_add;
 
         // connection list
         // (following int has no meaning, using map for fast insert/remove)
-        std::map<id_t, int>         _id2conn;
+        std::map<VAST::id_t, int>         _id2conn;
 
         // connection delay (absolute time while connection has been established)
-        std::map<id_t, timestamp_t> _id2conndelay;
+        std::map<VAST::id_t, timestamp_t> _id2conndelay;
 
         // waiting response ip for estibilish connection (no need in emulation network)
-        //std::map<id_t, timestamp_t> _id2waitconn;
+        //std::map<VAST::id_t, timestamp_t> _id2waitconn;
 
         // nodes to query ip about id
-        std::map<id_t, vector<pair<id_t,timestamp_t> > > _id2queryip;
+        std::map<VAST::id_t, vector<pair<VAST::id_t,timestamp_t> > > _id2queryip;
 
         // a shared object among net_emu class 
         // to discover class pointer via unique id
@@ -218,7 +218,7 @@ namespace VAST {
 
 		// be compression source buffer
 		char _def_buf[VAST_BUFSIZ];
-		std::map<id_t, vastbuf *>			_all_msg_buf;		
+		std::map<VAST::id_t, vastbuf *>			_all_msg_buf;		
 
 		double _step_original_size;
 		double _step_compressed_size;

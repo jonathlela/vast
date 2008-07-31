@@ -35,6 +35,8 @@ namespace VAST
     class storage_logic
     {
     public:        
+        virtual ~storage_logic () {}
+
         // callback - process a particular query for certain data
         virtual bool query_received (int query_id, char *query, size_t size) = 0;
 

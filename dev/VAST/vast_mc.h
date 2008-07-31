@@ -127,6 +127,7 @@ namespace VAST
         {
             node = m.node;
             addr = m.addr;
+            return *this;
         }
 
         Node node;
@@ -191,7 +192,7 @@ namespace VAST
 		void post_processmsg ();
 
 		// neighbor maintainence
-		inline bool insert_node (Node &node, Addr &addr = Addr(), bool refresh = false);
+		inline bool insert_node (Node &node, const Addr &addr = Addr(), bool refresh = false);
 		inline bool delete_node (id_t id, bool disconnect = true);
 		inline bool update_node (Node &node);
 		inline vector<id_t> & select_next (Node &root_node);
@@ -295,3 +296,4 @@ namespace VAST
 		int _NM_known;
 	};
 }
+

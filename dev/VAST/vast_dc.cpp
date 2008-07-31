@@ -62,11 +62,11 @@ namespace VAST
     vast_dc::
     ~vast_dc ()
     {    
-        if (_joined == true)
+        if (is_joined () == true)
             this->leave ();
 
         // delete allocated memory                
-        map<id_t, Node>::iterator it = _id2node.begin ();
+        map<VAST::id_t, Node>::iterator it = _id2node.begin ();
         for (; it != _id2node.end (); it++)
             delete _neighbor_states[it->first];
 
@@ -77,12 +77,12 @@ namespace VAST
     // join VON to obtain unique id
     // NOTE: join is considered complete ('_joined' is set) only after node id is obtained
     bool
-    vast_dc::join (id_t id, aoi_t AOI, Position &pos, Addr &gateway)
+    vast_dc::join (VAST::id_t id, aoi_t AOI, Position &pos, Addr &gateway)
     {   
 #ifdef DEBUG_DETAIL
-        printf ("[%d] attempt to join at (%d, %d)\n", (int)id, (int)pos.x, (int)pos.y);
+        printf ("[%lu] attempt to join at (%d, %d)\n", id, (int)pos.x, (int)pos.y);
 #endif
-        if (_joined == true)
+        if (is_joined () == true)
             return false;
 
         _original_aoi     = AOI;
@@ -91,13 +91,13 @@ namespace VAST
         _self.pos         = pos;
 
         //this should be done in vastid::handlemsg  while receiving an ID from gateway
-         _net->register_id (id);
+        _net->register_id (id);
 
         insert_node (_self);//, _net->getaddr (_self.id));
 
         // the first node is automatically considered joined        
         if (id == NET_ID_GATEWAY)
-            _joined = true;
+            _joined = S_JOINED;
         else
         {
             // send query to find acceptor if I'm a regular peer
@@ -106,8 +106,11 @@ namespace VAST
             if (_net->connect (gateway) == (-1))
                 return false;
 
+            // put into joining state and wait for join
+            _joined = S_JOINING;
+
             // NOTE: gateway will disconnect me immediately after receiving QUERY
-            _net->sendmsg (NET_ID_GATEWAY, DC_QUERY, (char *)&info, sizeof (Msg_QUERY));
+            _net->sendmsg (gateway.id, DC_QUERY, (char *)&info, sizeof (Msg_QUERY));
         }
 
         return true;
@@ -118,8 +121,8 @@ namespace VAST
     vast_dc::leave ()
     {
         // remove & disconnect all connected nodes (include myself)
-        vector<id_t> remove_list;
-        map<id_t, Node>::iterator it = _id2node.begin ();
+        vector<VAST::id_t> remove_list;
+        map<VAST::id_t, Node>::iterator it = _id2node.begin ();
         for (; it != _id2node.end (); it++)
             if (it->first != _self.id)
                 remove_list.push_back (it->first);
@@ -127,8 +130,11 @@ namespace VAST
         int size = remove_list.size ();
         for (int i=0; i<size; ++i)
             delete_node (remove_list[i]);
+
+        // should I did it?
+        _notified_nodes.clear ();
         
-        _joined = false;
+        _joined = S_INIT;
     }
 
     // AOI related functions
@@ -149,14 +155,14 @@ namespace VAST
     vast_dc::setpos (Position &pt)
     {                
         // do not move if we havn't joined (no neighbors are known unless I'm gateway)
-        if (_joined == true)
+        if (is_joined () == true)
         {
             // do necessary adjustments
             adjust_aoi ();
             remove_nonoverlapped ();
             
             // check for position overlap with neighbors and make correction
-            map<id_t, Node>::iterator it; 
+            map<VAST::id_t, Node>::iterator it; 
             for (it = _id2node.begin(); it != _id2node.end(); ++it)
             {
                 if (it->first == _self.id)
@@ -175,11 +181,11 @@ namespace VAST
             update_node (_self);
             
 #ifdef DEBUG_DETAIL
-            printf ("[%3d] setpos (%d, %d)\n", (int)_self.id, (int)_self.pos.x, (int)_self.pos.y);
+            printf ("[%lu] setpos (%d, %d)\n", _self.id, (int)_self.pos.x, (int)_self.pos.y);
 #endif            
             // notify all connected neighbors
             msgtype_t msgtype;            
-            id_t target_id;
+            VAST::id_t target_id;
             
             // go over each neighbor and do a boundary neighbor check
             int n = 0;
@@ -203,12 +209,33 @@ namespace VAST
 
     // process a single message in queue
     bool 
-    vast_dc::handlemsg (id_t from_id, msgtype_t msgtype, timestamp_t recvtime, char *msg, int size)
+    vast_dc::handlemsg (VAST::id_t from_id, msgtype_t msgtype, timestamp_t recvtime, char *msg, int size)
     {
 #ifdef DEBUG_DETAIL
         printf ("%4d [%3d] processmsg from: %3d type: (%2d)%-12s size:%3d\n", (int)_net->get_curr_timestamp (), (int)_self.id, (int)from_id, 
                 msgtype, (msgtype>=10 && msgtype<=DC_UNKNOWN)?VAST_DC_MESSAGE[msgtype-10]:"UNKNOWN", size);
 #endif
+
+        // should do like this way?
+        if (_joined == S_INIT)
+        {
+            // if I'm not suppose to join, any VAST message will incur disconnect the node
+            // protential BUG: any side effects?
+            if (msgtype >= DC_QUERY && msgtype < DC_UNKNOWN)
+            {
+                // if a query message, send it back to prevent other nodes fail to join
+                if (msgtype == DC_QUERY)
+                    _net->sendmsg (from_id, msgtype, msg, size);
+
+                if (_net->is_connected (from_id))
+                    _net->disconnect (from_id);
+            }
+
+            return false;
+        }
+        else if (_joined == S_JOINING && msgtype != DC_NODE)
+            return false;
+
         switch ((VAST_DC_Message)msgtype)
         {
         case DC_QUERY:
@@ -221,7 +248,7 @@ namespace VAST
                 Msg_QUERY n (msg);
                 Node &joiner = n.node;
                 
-                id_t closest_id = (id_t)_voronoi->closest_to (joiner.pos);
+                VAST::id_t closest_id = _voronoi->closest_to (joiner.pos);
 
                 // forward the request if a more approprite node exists
                 if (_voronoi->contains (_self.id, joiner.pos) == false &&
@@ -234,7 +261,7 @@ namespace VAST
                 else
                 {
                     // I am the acceptor, send back initial neighbor list
-                    vector<id_t> list;
+                    vector<VAST::id_t> list;
                  
                     // insert first so we can properly find joiner's EN
                     // TODO: what if joiner exceeds connection limit?
@@ -276,7 +303,7 @@ namespace VAST
             break;
 
         case DC_EN:
-            if ((size-1) % sizeof(id_t) == 0)
+            if ((size-1) % sizeof(VAST::id_t) == 0)
             {
                 // ignore EN request if not properly connected
                 if (is_neighbor (from_id) == false)
@@ -286,15 +313,15 @@ namespace VAST
                 char *p = msg+1;
 
                 // BUG: potential memory leak for the allocation of map?
-                map<id_t, int>  *list = new map<id_t, int>; // list of EN received
+                map<VAST::id_t, int>  *list = new map<VAST::id_t, int>; // list of EN received
                 
-                vector<id_t>    missing;   // list of missing EN ids                                                
-                vector<id_t> &en_list = _voronoi->get_en (_self.id); // list of my own EN
+                vector<VAST::id_t>    missing;   // list of missing EN ids                                                
+                vector<VAST::id_t> &en_list = _voronoi->get_en (_self.id); // list of my own EN
                 
                 int i;
                 // create a searchable list of EN (BUG, mem leak for insert?)                   
-                for (i=0; i<n; ++i, p += sizeof (id_t))
-                    list->insert (map<id_t, int>::value_type (*(id_t *)p, STATE_OVERLAPPED));  
+                for (i=0; i<n; ++i, p += sizeof (VAST::id_t))
+                    list->insert (map<VAST::id_t, int>::value_type (*(VAST::id_t *)p, STATE_OVERLAPPED));  
 
                 // store as initial known list (clear necessary to prevent memory leak?)
                 // csc 20080305: unnecessary, destructor should do it while deleting
@@ -347,13 +374,16 @@ namespace VAST
                 char *p = msg+1;
                 Msg_NODE newnode;                    // new node discovered
 
+                if (_joined < S_JOINING)
+                    break;
+
                 // TODO: find a cleaner way than to reset everytime
-                _joined = true;
+                _joined = S_JOINED;
                 
                 // store each node notified, we'll process them later in batch
                 int i;
                 bool store;
-                map<id_t, Msg_NODE>::iterator it;
+                map<VAST::id_t, Msg_NODE>::iterator it;
 
                 for (i=0; i<n; ++i, p += sizeof (Msg_NODE))
                 {   
@@ -397,7 +427,7 @@ namespace VAST
 
                     // notify network knowledge source of IP address
                     // TODO: queue all nofities in the same step
-                    vector<id_t> idlist;
+                    vector<VAST::id_t> idlist;
                     idlist.push_back (newnode.node.id);
                     _net->notify_id_mapper (from_id, idlist);
                 }
@@ -817,7 +847,7 @@ namespace VAST
             return false;        
         
 #ifdef DEBUG_DETAIL
-        printf ("[%d] disconnecting [%d]\n", (int)_self.id, (int)id);
+        printf ("[%lu] disconnecting [%lu]\n", _self.id, id);
 #endif
         if (disconnect == true)
             _net->disconnect (id);
@@ -870,6 +900,7 @@ namespace VAST
             return;
 
         // TODO: sort the notify list by distance from target's center
+
         _buf[0] = (unsigned char)n;
         char *p = _buf+1;
 
@@ -877,7 +908,7 @@ namespace VAST
         printf ("                                      aoi: %d ", (aoi_t)(_id2node[target].aoi + _detection_buffer));
 #endif
         
-        Msg_NODE node;
+        VAST::Msg_NODE node;
         for (int i=0; i<n; ++i, p += sizeof (Msg_NODE))
         {                  
             node.set (_id2node[list[i]]);//, _net->getaddr (list[i]));
@@ -897,7 +928,6 @@ namespace VAST
 
 		// check whether to send the NODE via TCP or UDP		
 		_net->sendmsg (target, DC_NODE, _buf, 1 + n * sizeof (Msg_NODE), reliable, true);
-
     }
 
     // send to target node a list of IDs

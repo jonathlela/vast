@@ -36,68 +36,46 @@
 //       hidden object for user position
 //using namespace std;
 
-#define MAX_JOIN_COUNTDOWN      10
+#define MAX_JOIN_COUNTDOWN      15
 
 namespace VAST 
 {        
-    class vastate_impl : public vastate, public VAST::msghandler
+    class vastate_impl : public vastate
     {
     public:
-        vastate_impl (vastverse *vastworld, const Addr &gatewayIP, const system_parameter_t & sp);
+        
+    	vastate_impl (vastverse *vastworld, Addr &gatewayIP, const system_parameter_t & sp);
     	
-        ~vastate_impl ()
+        ~vastate_impl () 
         {
-            stop ();
-
             // de-allocate
             int i;
             for (i=0; i<(int)_arbitrators.size (); i++)
                 delete _arbitrators[i];
             for (i=0; i<(int)_peers.size (); i++)
                 delete _peers[i];
+            if (_gateway_node != NULL)
+            {
+                _vastworld->destroy_node (_gateway_node);
+                _vastworld->destroy_id (_node2id[_gateway_node]);
+            }
         }
-
-        // return status of the vastate node is started
-        inline 
-        int is_started ()
-        {
-            return _started;
-        }
-
-        // start the node, get id
-        bool start (bool is_gateway);
-
-        // stop the node, disconnects all rolls
-        bool stop ();
-
-        // return node id
-        id_t get_id ()
-        {
-            if (_ider != NULL)
-                return _ider->getid ();
-            else
-                return NET_ID_UNASSIGNED;
-        }
-
+        
         // process messages in queue
-        int process_message ();
+        int process_msg ();
 
-        // derived from msghandler
-        // returns whether the message has been handled successfully
-        bool handlemsg (id_t from_id, msgtype_t msgtype, timestamp_t recvtime, char *msg, int size);
-
-        // do things after messages are all handled
-        void post_processmsg ();
-    
-        // create an initial server, if a server, must be called before any create of peers/arbitrators
-        gateway *create_gateway ();
+        // creating a gateway node
+        void create_gateway ();
 
         // create an initial server
-        /*
         bool create_server (vector<arbitrator_logic *> &alogics, 
                             vector<storage_logic *> &slogics,
                             int dim_x, int dim_y, int n_vpeers);
-        */
+
+        // create a peer+arbitrator
+        std::pair<peer*, arbitrator*> 
+        create_peerarb_pair (peer_logic *logic, Node &peer_info, int capacity, 
+                                arbitrator_logic *alogic, storage_logic *slogic);
 
         // create a peer entity
         peer *create_peer (peer_logic *logic, Node &peer_info, int capacity);
@@ -105,10 +83,7 @@ namespace VAST
         // create an arbitrator
         arbitrator *create_arbitrator (id_t parent, 
                                        arbitrator_logic *alogic, storage_logic *slogic,
-                                       Node &arb_info, bool is_gateway = false);
-
-        // close down the gateway
-        void destroy_gateway (gateway *g);
+                                       Node &arb_info, bool is_gateway = false, bool is_aggregator = false);
 
         // close down a peer
         void destroy_peer (peer *p);
@@ -122,30 +97,25 @@ namespace VAST
         // clean arbitrator promotion / demotion requests
         bool clean_requests ();
 
+
     private:
-        // starting state, ref to vastate::STATE_* constants
-        int _started;
-
-        // pointer of vastworld to create vastid/vnode/net
-        vastverse * _vastworld;
-
-        // address of gateway
-        bool        _is_gateway;
-        Addr        _gateway_addr;
-
-        // id fetcher
-        vastid    * _ider;
-
-        gateway *               _gateway;
-        vector<arbitrator *>    _arbitrators;
-        vector<peer *>          _peers;
-
-        //// old codes ////////
+        
         Position generate_virpos (int dim_x, int dim_y, int num, int total);
 
         // check if a peer or arbitrator has joined successfully
         // returns the id used for joining
         id_t can_join (msghandler *handler);
+                
+        vastverse * _vastworld;
+        Addr        _gateway;
+       
+        vector<arbitrator *>      _arbitrators;        
+        vector<peer *>            _peers;
+        vast *                    _gateway_node;
+
+        map<peer *, arbitrator *> _peerarb_pair;
+
+        map<void *, bool>         _wait2join;
 
         // mapping between a node & its ID generator
         map<msghandler *, vastid *>     _node2id;
@@ -160,5 +130,4 @@ namespace VAST
 } // end namespace VAST
 
 #endif // VASTATE_IMPL_H
-
 

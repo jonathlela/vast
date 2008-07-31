@@ -82,7 +82,7 @@ namespace VAST
         // buffers
         char _buf[VASTATE_BUFSIZ];
 
-        // debug
+        // for debug purpose
         errout  _eo;
         char    _str[VASTATE_BUFSIZ];
 
@@ -91,3 +91,4 @@ namespace VAST
 } // end namespace VAST
 
 #endif // #define VASTATE_STORAGE_CS_H
+

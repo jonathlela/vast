@@ -31,7 +31,7 @@
 #include "shared.h"
 #include "peer_logic.h"
 
-namespace VAST
+namespace VAST 
 {  
     class peer : public msghandler
     {
@@ -52,7 +52,7 @@ namespace VAST
         virtual int process_msg () = 0;
 
         // join network
-        virtual bool    join (id_t id, Position &pt, aoi_t radius, char *auth, size_t size) = 0;
+        virtual bool    join (id_t id, Position &pt, aoi_t radius, char *auth, size_t size, Addr *entrance) = 0;
         
         // quit network
         virtual void    leave (bool notify) = 0;
@@ -93,3 +93,4 @@ namespace VAST
 } // end namespace VAST
 
 #endif // #define VASTATE_PEER_H
+

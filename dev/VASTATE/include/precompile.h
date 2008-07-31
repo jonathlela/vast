@@ -37,3 +37,4 @@
 //#include "vastate_typedef.h"
 
 #endif /* _VASTATE_PRECOMPILE_H */
+

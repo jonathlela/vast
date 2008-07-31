@@ -1,4 +1,28 @@
 
+/*
+ * VAST, a scalable peer-to-peer network for virtual environments
+ * Copyright (C) 2007-2008 Shao-Chen Chang (cscxcs at gmail.com)
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ *
+ */
+
+/*
+ *  attributbuilder.h -- VASTATE Simulator - SimGame attributes builder
+ *
+ */
 
 #ifndef _ATTRIBUTE_BUILDER_H
 #define _ATTRIBUTE_BUILDER_H
@@ -80,38 +104,49 @@ public:
 	{
 		std::stringstream ssout;
 		int otype;
-		obj.get (0, otype);
-        
-        ssout << objectIDToString (obj);
-		switch (otype)
-		{
-			case SimGame::OT_PLAYER:
-				ssout	
-					<< "[" << obj.peer << "]"
-					<< "(" << obj.get_pos().x << "," << obj.get_pos().y << ")"
-					<< "<v" << obj.pos_version << ">"
-					<< "  "
-					<< "\"" << getPlayerName (obj) << "\" "
-					<< getPlayerHP(obj) << "/" << getPlayerMaxHP(obj)
-					<< "<v" << obj.version << ">";
-				break;
-			case SimGame::OT_FOOD:
-				ssout	
-					<< "(" << obj.get_pos().x << "," << obj.get_pos().y << ")"
-					<< "<v" << obj.pos_version << ">"
-					<< "  "
-					<< "Count: " << getFoodCount (obj)
-					<< "<v" << obj.version << ">";
-				break;
-			default:
-				ssout   
-                    << "(" << obj.get_pos().x << "," << obj.get_pos().y << ")"
-					<< "<v" << obj.pos_version << "> "
-                    << "  "
-                    << " type: " << getType (obj) << " "
-					<< "<v" << obj.version << "> "
-					<< "Unknown Object";
-		}
+
+        ssout   << objectIDToString (obj);
+
+		if (obj.get (0, otype) == false)
+        {
+            ssout   << "(" << (int) obj.get_pos().x << "," << (int) obj.get_pos().y << ")"
+                    << "<v" << obj.pos_version << "> "
+                    << "(Type inexist!) "
+                    << "<v" << obj.version << "> ";
+        }
+        else
+        {
+		    switch (otype)
+		    {
+			    case SimGame::OT_PLAYER:
+				    ssout	
+					    << "[" << obj.peer << "]"
+					    << "(" << (int) obj.get_pos().x << "," << (int) obj.get_pos().y << ")"
+					    << "<v" << obj.pos_version << ">"
+					    << "  "
+					    << "\"" << getPlayerName (obj) << "\" "
+					    << getPlayerHP(obj) << "/" << getPlayerMaxHP(obj)
+					    << "<v" << obj.version << ">";
+				    break;
+			    case SimGame::OT_FOOD:
+				    ssout	
+					    << "(" << (int) obj.get_pos().x << "," << (int) obj.get_pos().y << ")"
+					    << "<v" << obj.pos_version << ">"
+					    << "  "
+					    << "Count: " << getFoodCount (obj)
+					    << "<v" << obj.version << ">";
+				    break;
+			    default:
+				    ssout   
+                        << "(" << (int) obj.get_pos().x << "," << (int) obj.get_pos().y << ")"
+					    << "<v" << obj.pos_version << "> "
+                        << "  "
+                        << " type: " << getType (obj) << " "
+					    << "<v" << obj.version << "> "
+					    << "Unknown Object";
+		    }
+        }
+
 		return ssout.str();
 	}
 
@@ -134,6 +169,7 @@ public:
             default:
                 printf ("AttribteBuilder::copyObject: received unknown source object.\n");
         }
+        return nobj;
     }
 
 
@@ -215,3 +251,4 @@ public:
 };
 
 #endif /* _ATTRIBUTE_BUILDER_H */
+

@@ -27,9 +27,9 @@ namespace VAST
 
     void 
     net_emu::
-    register_id (id_t my_id)
+    register_id (VAST::id_t my_id)
     {
-        id_t temp_id = _id;
+        VAST::id_t temp_id = _id;
 
         _bridge.register_id (_id, my_id);
         _id = my_id;
@@ -37,12 +37,14 @@ namespace VAST
         // register new id in _id2addr structure
         _id2addr[_id] = _id2addr[temp_id];
         _id2addr[_id].id = _id;
-        _id2addr.erase (temp_id);
+        // check for preventing call register_id using ID used currently
+        if (temp_id != _id)
+            _id2addr.erase (temp_id);
     }
 
     int 
     net_emu::
-    _send_ipquery (id_t target)
+    _send_ipquery (VAST::id_t target)
     {
         timestamp_t ct = get_curr_timestamp ();
 
@@ -50,21 +52,21 @@ namespace VAST
         if (_id2queryip.find (target) == _id2queryip.end ()
             || _id2queryip[target].size () == 0)
         {
-            printf ("[%3d] net_emu: _send_idquery: Found no IP info. Node id: %d  Nei info count: %d\n", _id, target, _id2queryip[target].size ());
+            printf ("[%lu] net_emu: _send_idquery: Found no IP info. Node id: %lu  Nei info count: %d\n", _id, target, _id2queryip[target].size ());
             return -1;
         }
 
         // for all nodes in knowledge of quering target
-        vector<pair<id_t,timestamp_t> > & q_list = _id2queryip[target];
-        vector<pair<id_t,timestamp_t> >::iterator it;
+        vector<pair<VAST::id_t,timestamp_t> > & q_list = _id2queryip[target];
+        vector<pair<VAST::id_t,timestamp_t> >::iterator it;
         for (it = q_list.end (); it != q_list.begin (); it --)
         {
-            id_t& responder = (it - 1)->first;
+            VAST::id_t& responder = (it - 1)->first;
 
             // if has no connection to inquirer, skip it
             if (!is_connected (responder))
             {
-                printf ("[%lu] net_emu: _send_idquery: can't fetch info from disconnected node %d\n", _id, responder);
+                printf ("[%lu] net_emu: _send_idquery: can't fetch info from disconnected node %lu\n", _id, responder);
                 continue;
             }
 
@@ -72,21 +74,22 @@ namespace VAST
             net_emu *responder_ptr = (net_emu *) _bridge.get_netptr (responder);
             if (responder_ptr == NULL)
             {
-                printf ("net_emu: _send_ipquery (): found NULL net pointer from bridge of id %d\n", responder);
+                printf ("[%lu] net_emu: _send_ipquery (): found NULL net pointer from bridge of id %lu\n", _id, responder);
                 continue;
             }
 
-            // 2 trip (round trip) delay will be caused by each query
+            // TODO: more realistic model?
+            // supposes 2 trip (round trip) delay will be caused by each query here
             ct += 2;
 
             // IPQUERY msg = timestamp_t + msgtype_t (IPQUERY) + id_t (ID)
-            count_message (responder_ptr, IPQUERY, sizeof_packetize (sizeof(id_t)));
+            count_message (responder_ptr, IPQUERY, sizeof_packetize (sizeof(VAST::id_t)));
 
             Addr answer;
             if (responder_ptr->_query_ip (target, answer) != 0)
             {
                 // IPQUERY_FAIL msg = timestamp_t + msgtype_t (IPQUERY_FAIL) + id_t (ID)
-                responder_ptr->count_message (this, IPQUERY, sizeof_packetize (sizeof (id_t)));
+                responder_ptr->count_message (this, IPQUERY, sizeof_packetize (sizeof (VAST::id_t)));
 
                 continue;
             }
@@ -101,7 +104,12 @@ namespace VAST
         // remove all knowledge record if found no answer
         if (it == q_list.begin ())
         {
-            printf ("[%lu] net_emu: _send_idquery: Found no IP info. Node id: %d  Nei info count: %d\n", _id, target, _id2queryip[target].size ());
+            printf ("[%lu] net_emu: _send_idquery: Found no IP info. Node id: %lu  Nei info count: %d\n", _id, target, _id2queryip[target].size ());
+            if (_id2queryip.find (target) != _id2queryip.end ())
+            {
+                for (vector<pair<VAST::id_t, timestamp_t> >::iterator ti = _id2queryip[target].begin (); ti != _id2queryip[target].end (); ti ++)
+                    printf ("[%lu]                                           Neighbor : %lu\n", _id, ti->first);
+            }
             _id2queryip.erase (target);
             return -1;
         }
@@ -119,7 +127,7 @@ namespace VAST
 
     int 
     net_emu::
-    _query_ip (id_t target, Addr & ret)
+    _query_ip (VAST::id_t target, Addr & ret)
     {
         if (_id2addr.find (target) == _id2addr.end ())
             return -1;
@@ -130,7 +138,7 @@ namespace VAST
 
     int 
     net_emu::
-    connect (id_t target)
+    connect (VAST::id_t target)
     {        
         // avoid self-connection
         if (target == _id)
@@ -138,10 +146,12 @@ namespace VAST
         
         // check if 
         //   network is actived
-        //   connection is already established
-        if (_active == false ||
-            _id2conn.find (target) != _id2conn.end ())
+        if (_active == false)
             return -1;
+
+        //   connection is already established
+        if (_id2conn.find (target) != _id2conn.end ())
+            return 0;
 
         // check if waiting for quering address
         if (_id2conndelay.find (target) != _id2conndelay.end ())
@@ -221,14 +231,14 @@ namespace VAST
 
     int 
     net_emu::
-    disconnect (id_t target)
+    disconnect (VAST::id_t target)
     {
         // check if connection exists
         if (_id2conn.find (target) == _id2conn.end ())
             return -1;
 
 #ifdef DEBUG_DETAIL
-        printf ("[%d] disconnection success\n", (int)target);
+        printf ("[%lu] disconnection success\n", target);
 #endif
         
         // update the connection relationship
@@ -247,15 +257,15 @@ namespace VAST
 
     int
     net_emu::
-    notify_id_mapper (id_t src_id, const std::vector<id_t> & map_to)
+    notify_id_mapper (VAST::id_t src_id, const std::vector<VAST::id_t> & map_to)
     {
-        vector<id_t>::const_iterator it = map_to.begin ();
+        vector<VAST::id_t>::const_iterator it = map_to.begin ();
         for (; it != map_to.end (); it ++)
         {
-            vector<pair<id_t, timestamp_t> > & this_list = _id2queryip[*it];
+            vector<pair<VAST::id_t, timestamp_t> > & this_list = _id2queryip[*it];
 
             // remove duplicate record
-            vector<pair<id_t, timestamp_t> >::iterator it = this_list.begin ();
+            vector<pair<VAST::id_t, timestamp_t> >::iterator it = this_list.begin ();
             for (; it != this_list.end (); it ++)
                 if (it->first == src_id)
                 {
@@ -263,7 +273,7 @@ namespace VAST
                     break;
                 }
 
-            this_list.push_back (pair<id_t,timestamp_t> (src_id, get_curr_timestamp ()));
+            this_list.push_back (pair<VAST::id_t,timestamp_t> (src_id, get_curr_timestamp ()));
         }
 
         return 0;
@@ -272,7 +282,7 @@ namespace VAST
     // send message to a node
     int 
     net_emu::
-    sendmsg (id_t target, msgtype_t msgtype, char const *msg, size_t len, bool reliable, bool buffered)
+    sendmsg (VAST::id_t target, msgtype_t msgtype, char const *msg, size_t len, bool reliable, bool buffered)
     {
 #ifdef DEBUG_DETAIL
         //printf ("%4d [%3d]    sendmsg   to: %3d type: %-8s size:%3d\n", time, (int)_id, target, VAST_MESSAGE[msgtype], len);
@@ -352,7 +362,7 @@ namespace VAST
 			    vastbuf *msgbuf = new vastbuf;
 			    msgbuf->reserve (size);
 			    msgbuf->add (&size, sizeof (size_t));
-			    //msgbuf.add (&_id, sizeof (id_t));
+			    //msgbuf.add (&_id, sizeof (VAST::id_t));
 			    msgbuf->add (&msgtype, sizeof (msgtype_t));
 			    msgbuf->add (&time, sizeof (timestamp_t));
 			    msgbuf->add ((void *)msg, len);
@@ -369,7 +379,7 @@ namespace VAST
     // return size of message, or 0 for no more message
     int 
     net_emu::
-    recvmsg (id_t &from, msgtype_t &msgtype, timestamp_t &recvtime, char **msg)
+    recvmsg (VAST::id_t &from, msgtype_t &msgtype, timestamp_t &recvtime, char **msg)
     {
         if (_active == false)
             return -1;
@@ -414,7 +424,7 @@ namespace VAST
     // NOTE: the list should be sorted by timestamp when inserting
     int
     net_emu::
-    storemsg (id_t from, msgtype_t msgtype, char const *msg, size_t len, timestamp_t time)
+    storemsg (VAST::id_t from, msgtype_t msgtype, char const *msg, size_t len, timestamp_t time)
     {                    
         if (_active == false)
             return 0;
@@ -434,7 +444,7 @@ namespace VAST
     // remote host has connected to me
     bool
     net_emu::
-    remote_connect (id_t remote_id, const Addr &addr)
+    remote_connect (VAST::id_t remote_id, const Addr &addr)
     {
         if (_active == false)
             return false;
@@ -460,7 +470,7 @@ namespace VAST
     // remote host has disconnected me
     void 
     net_emu::
-    remote_disconnect (id_t remote_id)
+    remote_disconnect (VAST::id_t remote_id)
     {
         // cut connection
         if (_id2conn.find (remote_id) != _id2conn.end ())
@@ -470,10 +480,10 @@ namespace VAST
         }
 
         // send a DISCONNECT notification
-        char msg[1+sizeof (id_t)];
+        char msg[1+sizeof (VAST::id_t)];
         msg[0] = 1;
-        memcpy (msg+1, &_id, sizeof (id_t));
-        storemsg (remote_id, DISCONNECT, msg, 1+sizeof (id_t), 0);
+        memcpy (msg+1, &_id, sizeof (VAST::id_t));
+        storemsg (remote_id, DISCONNECT, msg, 1+sizeof (VAST::id_t), 0);
     }
 
 	int net_emu::flush (bool compress)
@@ -482,7 +492,7 @@ namespace VAST
 
 		if (compress == true)
 		{
-			for (std::map<id_t, vastbuf *>::iterator it = _all_msg_buf.begin (); it != _all_msg_buf.end (); it++)
+			for (std::map<VAST::id_t, vastbuf *>::iterator it = _all_msg_buf.begin (); it != _all_msg_buf.end (); it++)
 			{
 				size_t after_def_size = 0;
 				size_t bufsize = it->second->size;
@@ -501,7 +511,7 @@ namespace VAST
         }
 
 		// delete the allocate memory
-		for (std::map<id_t, vastbuf *>::iterator it = _all_msg_buf.begin (); it != _all_msg_buf.end (); it++)
+		for (std::map<VAST::id_t, vastbuf *>::iterator it = _all_msg_buf.begin (); it != _all_msg_buf.end (); it++)
 			delete it->second;
 
 		// clear the msg buf for next time usage
@@ -509,22 +519,22 @@ namespace VAST
 		
         // clean expired address records
         // TODO: csc 20080310
-        //      any other method to prevent to check every step
+        //      any other method to prevent to check every step?
         _refresh_database ();
 
         // debug 
 #ifdef DEBUG_DETAIL
         /*
         printf ("%4d [%lu] connected with ", get_curr_timestamp(), _id);
-        for (map<id_t,int>::iterator it = _id2conn.begin (); it != _id2conn.end (); it ++)
+        for (map<VAST::id_t,int>::iterator it = _id2conn.begin (); it != _id2conn.end (); it ++)
             printf ("%lu ", it->first);
         printf ("\n");
         printf ("%4d [%lu] has address of ", get_curr_timestamp(), _id);
-        for (map<id_t,Addr>::iterator it = _id2addr.begin (); it != _id2addr.end (); it ++)
+        for (map<VAST::id_t,Addr>::iterator it = _id2addr.begin (); it != _id2addr.end (); it ++)
             printf ("%lu ", it->first);
         printf ("\n");
         printf ("%4d [%lu] connection delay of ", get_curr_timestamp(), _id);
-        for (map<id_t,timestamp_t>::iterator it = _id2conndelay.begin (); it != _id2conndelay.end (); it ++)
+        for (map<VAST::id_t,timestamp_t>::iterator it = _id2conndelay.begin (); it != _id2conndelay.end (); it ++)
             printf ("[%lu]->%u-%u=%u ", it->first, it->second, get_curr_timestamp (), (it->second - get_curr_timestamp ()));
         printf ("\n");
         */
@@ -539,14 +549,14 @@ namespace VAST
     net_emu::
     _refresh_database ()
     {
-        vector<id_t> remove_list;
-        vector<id_t>::iterator itr;
+        vector<VAST::id_t> remove_list;
+        vector<VAST::id_t>::iterator itr;
 
         // check expiration of _id2addr
-        map<id_t, Addr>::iterator it = _id2addr.begin ();
+        map<VAST::id_t, Addr>::iterator it = _id2addr.begin ();
         for (; it != _id2addr.end (); it ++)
         {
-            const id_t & this_id = it->first;
+            const VAST::id_t & this_id = it->first;
             // skip my address record
             if (this_id == _id)
                 continue;
@@ -577,10 +587,10 @@ namespace VAST
         remove_list.clear ();
 
         // check expiration of _id2queryip
-        std::map<id_t, vector<pair<id_t,timestamp_t> > >::iterator it2 = _id2queryip.begin ();
+        std::map<VAST::id_t, vector<pair<VAST::id_t,timestamp_t> > >::iterator it2 = _id2queryip.begin ();
         for (; it2 != _id2queryip.end (); it2 ++)
         {
-            vector<pair<id_t,timestamp_t> >::iterator itv = it2->second.end ();
+            vector<pair<VAST::id_t,timestamp_t> >::iterator itv = it2->second.end ();
             for (; itv != it2->second.end (); itv --)
             {
                 if (get_curr_timestamp () - itv->second > 2 * EXPIRE_ADDRESS_RECORD)

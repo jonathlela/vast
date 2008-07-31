@@ -30,7 +30,7 @@
 
 #include "vastate.h"
 
-namespace VAST
+namespace VAST 
 {        
     class EXPORT vastory
     {
@@ -51,3 +51,5 @@ namespace VAST
 } // end namespace VAST
 
 #endif // VASTORY_H
+
+

@@ -54,6 +54,7 @@ namespace VAST
 
     char VASTATE_MESSAGE[][20] = 
     {
+        "VH_CONNECT", 
         "JOIN",
         "ENTER",
         "OBJECT",
@@ -70,7 +71,10 @@ namespace VAST
         "TRANSFER_ACK",
         "NEWOWNER",
         "S_QUERY",
-        "S_REPLY"
+        "S_REPLY", 
+        "AGGREGATOR", 
+        "MIGRATE", 
+        "MIGRATE_ACK"
     };
 
     // store a new attribute into the list
@@ -91,7 +95,7 @@ namespace VAST
     int attributes_impl::add (int value)
     {        
         char *p = (char *)&value;
-        for (int i=0; i<sizeof(int); i++)
+        for (int i=0; i < (int) sizeof(int); i++)
             _data += p[i];
 
         _types.push_back (VASTATE_ATT_TYPE_INT);
@@ -107,7 +111,7 @@ namespace VAST
     int attributes_impl::add (float  value)
     {
         char *p = (char *)&value;
-        for (int i=0; i<sizeof(int); i++)
+        for (int i=0; i < (int) sizeof(int); i++)
             _data += p[i];        
         
         _types.push_back (VASTATE_ATT_TYPE_FLOAT);
@@ -144,7 +148,7 @@ namespace VAST
     {
 
         char *p = (char *)&value;
-        for (int i=0; i<sizeof(vec3_t); i++)
+        for (int i=0; i < (int) sizeof(vec3_t); i++)
             _data += p[i];
         
         _types.push_back (VASTATE_ATT_TYPE_VEC3);
@@ -228,7 +232,7 @@ namespace VAST
                 
         char *p = (char *)&value;
         int start = start_index (index);
-        for (int i=0; i<sizeof(bool); i++)
+        for (int i=0; i < (int) sizeof(bool); i++)
             _data[start+i] = p[i];
 
         _dirty[index] = true;
@@ -243,7 +247,7 @@ namespace VAST
         //printdata ();
         char *p = (char *)&value;
         int start = start_index (index);
-        for (int i=0; i<sizeof(int); i++)
+        for (int i=0; i < (int) sizeof(int); i++)
             _data[start+i] = p[i];
         //printdata ();
 
@@ -258,7 +262,7 @@ namespace VAST
         
         char *p = (char *)&value;
         int start = start_index (index);
-        for (int i=0; i<sizeof(float); i++)
+        for (int i=0; i < (int) sizeof(float); i++)
             _data[start+i] = p[i];
         
         _dirty[index] = true;
@@ -274,7 +278,7 @@ namespace VAST
         //printf ("original string -----\n");
         //printdata ();
         
-        char *p = (char *)&value;
+        //char *p = (char *)&value;
         int start = start_index (index);
         _data.replace (start, _length[index], value.c_str ());
         _length[index] = value.length ();        
@@ -293,7 +297,7 @@ namespace VAST
         
         char *p = (char *)&value;
         int start = start_index (index);
-        for (int i=0; i<sizeof(vec3_t); i++)
+        for (int i=0; i < (int) sizeof(vec3_t); i++)
             _data[start+i] = p[i];
 
         _dirty[index] = true;
@@ -402,7 +406,7 @@ namespace VAST
     {
         // retrieve # of update records and total length of bytestring
         int n = str[0];
-        int size = str[1];
+        //int size = str[1];
 
         // initialize pointers to attribute records and the bytestring
         char *p = str + 2;
@@ -464,7 +468,5 @@ namespace VAST
         return true;
     }
 
-
-
-
 } // namespace VAST
+

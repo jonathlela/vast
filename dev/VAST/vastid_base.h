@@ -43,6 +43,10 @@ namespace VAST
 
             _id = (is_gateway ? NET_ID_GATEWAY : NET_ID_UNASSIGNED);
             _id_count = (is_gateway ? NET_ID_GATEWAY + 1 : 0);
+
+            // should do this here? (registering gateway's ID)            
+            if (is_gateway)
+                net->register_id (NET_ID_GATEWAY);
         }
 
         ~vastid_base ()

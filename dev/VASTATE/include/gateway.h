@@ -1,11 +1,28 @@
 
-/* Copyright declaration */
+/*
+ * VAST, a scalable peer-to-peer network for virtual environments
+ * Copyright (C) 2008 Shao-Chen Chang (cscxcs at gmail.com)
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ *
+ */
 
 /*
  *  VSM Implementation: vast-state (vastate)
  *  gateway.h - gateway interface class - gateway for system enterance
  *
- *  ver. 20080521  Csc
  */
 
 /*
@@ -24,7 +41,7 @@
 
 namespace VAST {
 
-    class gateway
+    class gateway : public identifiable
     {
     public:
         // startup gateway
@@ -33,25 +50,17 @@ namespace VAST {
         // stop gateway
         virtual bool stop () = 0;
 
-        inline
-        id_t get_id ()
-        {
-            return _id;
-        }
-
     protected:
         // to enforce constrution gateway from vastate
-        gateway (id_t my_id)
-            : _id (my_id)   {}
+        gateway (VASTATE::id_t my_id)
+            : identifiable (my_id)   {}
 
         virtual ~gateway ()
         {
         }
-
-    private:
-        id_t    _id;
     };
 
 }
 
 #endif /* _VASTATE_IGATEWAY_H */
+

@@ -29,8 +29,6 @@
 #define VASTATE_H
 
 #include "shared.h"
-#include "vworld.h"
-#include "gateway.h"
 #include "arbitrator.h"
 #include "peer.h"
 #include "storage.h"
@@ -46,13 +44,6 @@ namespace VAST
     class vastate
     {
     public:
-        // Constants
-        const static int STATE_INIT     = 0;
-        const static int STATE_STARTING = 1;
-        const static int STATE_STARTED  = 2;
-        const static int STATE_CAN_JOIN = 2;
-
-    public:
         
         vastate (const system_parameter_t & sp)
             : sysparm (sp)
@@ -62,25 +53,22 @@ namespace VAST
         virtual ~vastate () 
         {
         }
-
-        // start the node, get id
-        virtual bool start (bool is_gateway = false) = 0;
-
-        // stop the node, disconnects all rolls
-        virtual bool stop () = 0;
-
+          
         // process messages in queue
-        virtual int process_message () = 0;
-    
-        // create an initial server, if a server, must be called before any create of peers/arbitrators
-        virtual gateway *create_gateway () = 0;
+        virtual int process_msg () = 0;
+
+        // creating a gateway node
+        virtual void create_gateway () = 0;
 
         // create an initial server
-        /*
         virtual bool create_server (vector<arbitrator_logic *>  &alogics, 
                                     vector<storage_logic *>     &slogics, 
                                     int dim_x, int dim_y, int n_vpeers) = 0;
-        */
+
+        // create a pair of peer+arbitrator
+        virtual std::pair<peer*, arbitrator*>
+                create_peerarb_pair (peer_logic *logic, Node &peer_info, int capacity, 
+                                arbitrator_logic *alogic, storage_logic *slogic) = 0;
 
         // create a peer entity
         virtual peer *create_peer (peer_logic *logic, Node &peer_info, int capacity) = 0;
@@ -90,7 +78,8 @@ namespace VAST
                                                arbitrator_logic *alogic, 
                                                storage_logic    *slogic, 
                                                Node &arb_info, 
-                                               bool is_gateway = false) = 0;                       
+                                               bool is_gateway = false, 
+                                               bool is_aggregator = false) = 0;
 
         // close down a peer
         virtual void destroy_peer (peer *p) = 0;
@@ -112,3 +101,4 @@ namespace VAST
 } // end namespace VAST
 
 #endif // VASTATE_H
+
