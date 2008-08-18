@@ -60,12 +60,12 @@ simgame_node::simgame_node (vastate * vasts_public,
 	    Addr gateway;
         gateway.id = NET_ID_GATEWAY;
 
-        system_parameter_t sp;
-
         // setup system parameters for vastate creation
-        sp.width = para->WORLD_WIDTH;
-        sp.height = para->WORLD_HEIGHT;
-        sp.aoi = para->AOI_RADIUS;
+        system_parameter_t sp;
+        sp.width    = para->WORLD_WIDTH;
+        sp.height   = para->WORLD_HEIGHT;
+        sp.aoi      = para->AOI_RADIUS;
+        sp.profile  = para->VASTATE_PROFILE;
 
 	    _vasts = _fac.create(world, gateway, sp);
         _b_single_vastate = false;

@@ -73,6 +73,7 @@ typedef struct {
     int     WORLD_HEIGHT;
     int     NODE_SIZE;
     int     TIME_STEPS;
+    int     VASTATE_PROFILE;
     int     AOI_RADIUS;
     int     AOI_BUFFER;
     int     CONNECT_LIMIT;

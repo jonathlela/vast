@@ -65,6 +65,7 @@ bool ReadPara (SimPara & para, const string & conffile)
         &para.WORLD_HEIGHT,
         &para.NODE_SIZE,
         &para.TIME_STEPS,
+        &para.VASTATE_PROFILE, 
         &para.AOI_RADIUS,
         &para.AOI_BUFFER,
         &para.VELOCITY,

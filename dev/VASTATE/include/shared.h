@@ -108,12 +108,19 @@ namespace VAST {
         timestamp_t aoi_b_lastmodify;
     };
 
+
+    // system profile defination
+    enum __VASTATE_PROFILE {
+        SYSP_EMPTY      = 0, 
+        SYSP_NORMAL     = 1,    /* Normal configuration */
+        SYSP_END};
+
     // System parameter for initialize Vastate factory class
     class system_parameter_t
     {
     public:
         system_parameter_t ()
-            :width (0), height (0), aoi (0)
+            :width (0), height (0), aoi (0), SYSP_EMPTY (SYSP_EMPTY)
         {
         }
 
@@ -137,6 +144,7 @@ namespace VAST {
         unsigned int width;
         unsigned int height;
         int          aoi;
+        int          profile;
     };
 
     class Coord3D
