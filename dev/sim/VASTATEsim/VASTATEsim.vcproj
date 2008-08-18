@@ -168,7 +168,6 @@
 			<Tool
 				Name="VCLinkerTool"
 				OutputFile="$(OutDir)$(ProjectName).dll"
-				LinkIncremental="0"
 				SuppressStartupBanner="true"
 				ProgramDatabaseFile="$(OutDir)/$(TargetName).pdb"
 				RandomizedBaseAddress="1"

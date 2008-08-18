@@ -139,7 +139,6 @@
 			<Tool
 				Name="VCLinkerTool"
 				OutputFile="$(OutDir)/$(ProjectName).exe"
-				LinkIncremental="1"
 				SubSystem="1"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
