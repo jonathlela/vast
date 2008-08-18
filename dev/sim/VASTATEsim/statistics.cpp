@@ -71,10 +71,11 @@ static msgtype_t msg_tracked [] = {
     // vastate messages ==
     JOIN, ENTER, OBJECT, STATE, ARBITRATOR, 
     EVENT, OVERLOAD_I, UNDERLOAD, PROMOTE, TRANSFER, 
-    TRANSFER_ACK, AGGREGATOR, MIGRATE, MIGRATE_ACK // 14
-        // -- total count above: 22
+    TRANSFER_OBJECT, TRANSFER_STATE, TRANSFER_ACK, AGGREGATOR, MIGRATE, 
+    MIGRATE_ACK // 16
+        // -- total count above: 24
 };
-static int msg_tracked_count = 22;
+static int msg_tracked_count = 24;
 static char *msg_tracked_str[] = {
     // network layer messages ==
     "ID", "IPQUERY", 
@@ -83,7 +84,8 @@ static char *msg_tracked_str[] = {
     // vastate messages ==
     "JOIN", "ENTER", "OBJECT", "STATE", "ARBIT", 
     "EVENT", "OVER_L", "UNDER_L", "PROMOTE", "TRANS", 
-    "TRANSACK", "AGGR", "MIGR", "MIGR_ACK"
+    "TRANS_O", "TRANS_S", "TRANSACK", "AGGR", "MIGR", 
+    "MIGR_ACK"
 };
 
 
@@ -359,7 +361,7 @@ void statistics::print_size_transmitted_v2 (FILE * fp)
 
 void statistics::print_type_size_transmitted (FILE * fp)
 {
-#define print_type_size_transmitted_SUM
+//#define print_type_size_transmitted_SUM
 
     fprintf (fp, "Catelogized bandwidth consumption \n"
                  "----------------------\n");

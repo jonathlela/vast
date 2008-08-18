@@ -301,6 +301,8 @@ namespace VAST
         UNDERLOAD,          // Underloaded arbitrator's request for helping others
         PROMOTE,            // Info for the overloaded and the newly promoted arbitrator.
         TRANSFER,           // Ownership transfer from old to new owner (arbitrator)
+        TRANSFER_OBJECT, 
+        TRANSFER_STATE,
         TRANSFER_ACK,       // Acknowledgement of ownership transfer
         NEWOWNER,           // Auto ownership assumption if arbitrators fail.
         S_QUERY,            // query storage

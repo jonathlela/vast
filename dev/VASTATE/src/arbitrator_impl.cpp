@@ -20,8 +20,6 @@
  *
  */
 
-// TODO: when does the arbitrator adjust its AOI?
-
 #include "arbitrator_impl.h"
 #include "vastutil.h"
 
@@ -51,9 +49,12 @@
 // time period between two full update to my neighbors about myself
 #define ARBITRATOR_FULLUPDATE_PERIOD (20) // steps
 
-// default forwarding times for a event 
+// default forwarding hops for a event 
 // (i.e. after forward DEFAULT_EVENT_TTL times, the event should be dropped)
 #define DEFAULT_EVENT_TTL (3)
+
+// distance between two position look as equal point
+#define EQUAL_DISTANCE (0.000001)
 
 namespace VAST
 {
@@ -72,9 +73,10 @@ namespace VAST
                                       bool is_aggregator)
         : arbitrator (my_parent, sp), _joined (false), _vastworld (vastworld)
         ,  _logic(logic), _vnode (vastnode), _storage (s)
-        , _is_gateway (is_gateway), _gateway (gateway), _time_diff (0), _parent_obj (NULL)
-        , _is_aggregator (is_aggregator), _is_leaving (false), _is_suspending (false), _arbitrators_lastupdate (1)
-        , _arbitrator_vor (NULL), _migration_cd (-1)
+        , _is_gateway (is_gateway), _gateway (gateway), _time_diff (0)
+        //, _parent_obj (NULL)
+        , _is_leaving (false), _is_suspending (false), _arbitrators_lastupdate (1)
+        , _arbitrator_vor (NULL)
         , _obj_id_count (1)
         , _overload_time (0), _overload_count (0), _underload_time (0), _underload_count (0)
         , _is_demoted (false)
@@ -121,25 +123,8 @@ namespace VAST
             _vnode->join (id, 10, pos, entrynode_n);
 
         self = _vnode->getself ();
-        if (! is_aggregator ())
-        {
-            _arbitrators[self->id] = *self;
-            _arbitrator_vor->insert (self->id, self->pos);
-        }
-        else
-        {
-            _aggnode.id = self->id;
-            _aggnode.aoi = self->aoi;
-            _aggnode.aoi_b = sysparm->aoi;
-            _aggnode.aoi_b_lastmodify = _net->get_curr_timestamp ();
-            _aggnode.pos = self->pos;
-            _aggnode.time = self->time;
-
-            _aggnode_dirty = false;
-
-            sprintf (_buf, "[%lu] Aggregator inserted at (%d,%d).\n", self->id, (int) self->pos.x, (int) self->pos.y);
-            _eo.output (_buf);
-        }
+        _arbitrators[self->id] = *self;
+        _arbitrator_vor->insert (self->id, self->pos);
 
         // make sure storage class is initialized to generate unique query_id        
         _storage->init_id (self->id);
@@ -157,45 +142,26 @@ namespace VAST
             _is_leaving = true;
 
         // remove myself from ownership map
-        if (! is_aggregator ())
-        {
-            _arbitrators.erase (self->id);
-            _arbitrator_vor->remove (self->id);
-        }
+        _arbitrators.erase (self->id);
+        _arbitrator_vor->remove (self->id);
 
         // packing DELETE message
-        msgtype_t msgt;
-        int size;
-        if (! is_aggregator ())
-        {
-            msgt = ARBITRATOR;
-            size = sizeof (Node);
-            Node n (*self);
-            n.aoi = -1;
-            memcpy (_buf, &n, sizeof (Node));
+        msgtype_t msgt = ARBITRATOR;
+        int size = sizeof (Node);;
 
-            sprintf (_buf, "[%lu] Arbitrator tries to sleep. \n", self->id);
-            _eo.output (_buf);
-        }
-        else
-        {
-            msgt = AGGREGATOR;
-            size = pack_aggregator (_buf, true);
+        Node n (*self);
+        n.aoi = -1;
+        memcpy (_buf, &n, sizeof (Node));
 
-            sprintf (_buf, "[%lu] Aggregator tries to leave. \n", self->id);
-            _eo.output (_buf);
-        }
+        sprintf (_buf, "[%lu] Arbitrator tries to sleep. \n", self->id);
+        _eo.output (_buf);
 
         // send DELETE node to all my neighboring nodes
         for (map<id_t, Node>::iterator arbi = _arbitrators.begin (); arbi != _arbitrators.end (); arbi ++)
             if (arbi->first != self->id)
                 _net->sendmsg (arbi->first, msgt, _buf, size);
-        for (map<id_t, AggNode>::iterator aggi = _aggregators.begin (); aggi != _aggregators.end (); aggi ++)
-            _net->sendmsg (aggi->first, msgt, _buf, size);
 
-        // aggregator: all managing nodes are migrated
-
-        // arbitrator: tell peer to leave?
+        // TODO: arbitrator: tell peer to leave?
 
         return false;
     }
@@ -234,7 +200,7 @@ namespace VAST
 #endif
 
         // locating parent object for futuring usage
-        locate_parent ();
+        //locate_parent ();
 
         // update the list of arbitrators
         update_arbitrators ();
@@ -274,12 +240,6 @@ namespace VAST
                 {
                     sprintf (_str, "[%lu] tries to leave with owning objects (count: %d)\n", self->id, _obj_owned.size ());
                     _eo.output (_str);
-                    if (_parent_obj != NULL &&
-                        _obj_owned.find (_parent_obj->get_id ()) != _obj_owned.end ())
-                    {
-                        sprintf (_str, "[%lu] tries to leave with owning its parent object.\n", self->id);
-                        _eo.output (_str);
-                    }
                 }
 
                 sprintf (_str, "[%lu] Arbitrator slept. \n", self->id);
@@ -295,9 +255,6 @@ namespace VAST
                 _arbitrators.clear ();
                 _known_neighbors.clear ();
                 _arbitrator_vor->clear ();
-                _med2ag.clear ();
-                _aggregators.clear ();
-                _aggregators_n.clear ();
                 _nodes_knowledge.clear ();
 
                 // Potential BUG: cleaning object model (should do this?)
@@ -309,7 +266,7 @@ namespace VAST
                     delete obj;
                 }
 
-                _parent_obj = NULL;
+                //_parent_obj = NULL;
                 _obj_store.clear ();
                 _obj_owned.clear ();
                 _obj_in_transit.clear ();
@@ -318,11 +275,13 @@ namespace VAST
                 return 0;
             }
         }
+        /*
         else if (_is_leaving)
         {
             if ((_obj_owned.size () == 0) && (_obj_in_transit.size () == 0) &&
                 (_peers.size () == 0) &&
-                (! is_aggregator () || (_managing_nodes.size () == 0 && _managing_nodes_intrans.size () == 0)))
+                (_managing_nodes.size () == 0 && _managing_nodes_intrans.size () == 0)
+                )
             {
                 _joined = false;
                 _vnode->leave ();
@@ -342,17 +301,8 @@ namespace VAST
                 _eo.output (_buf);
             }
         }
-
-        /*
-        if (is_aggregator ())
-        {
-            if (_aggnode.pos != _newpos->pos || _newpos.aoi != self->aoi)
-                _aggnode_dirty = true;
-
-            adjust_aggnodes_position ();
-
-        }
         */
+
         /* // position are adjusted in change_pos ()
         else
         {
@@ -363,22 +313,12 @@ namespace VAST
         // make adjustments to arbitrator AOI
         adjust_aoi ();
 
-        // update aggnode information
-        if (is_aggregator ())
-        {
-            if (_aggnode.aoi != _newpos.aoi || _aggnode.pos != _newpos.pos)
-                _aggnode_dirty = true;
-
-            _aggnode.aoi = _newpos.aoi;
-            _aggnode.pos = _newpos.pos;
-        }
-
         // update the overlay
         _vnode->setAOI (_newpos.aoi);
         _vnode->setpos (_newpos.pos);
 
         // check for aggregation
-        check_aggregation ();
+        //check_aggregation ();
 
         // delete exipred arbitrator inserting record
         list<Node>::iterator it;
@@ -521,6 +461,7 @@ namespace VAST
         // Notification/request of object creation, destruction, update by other arbitrators
         // TODO/BUG: If request update come before OBJECT, position update will NOT occur.
         case OBJECT:
+        case TRANSFER_OBJECT:
             if (size == sizeof (Msg_OBJECT))
             {                                         
                 Msg_OBJECT info (msg);
@@ -595,6 +536,7 @@ namespace VAST
         // Notification/request of attribute creation and update by other arbitrators
         // NOTE: there's no size-check on the message as the length is variable
         case STATE:
+        case TRANSFER_STATE:
             {
                 Msg_STATE info (msg);
                 //object *obj = _obj_store[info.obj_id];
@@ -908,9 +850,6 @@ namespace VAST
                 {
                     if (_arbitrators.find (new_arbnode->id) != _arbitrators.end ())
                     {
-                        // be sure the node is inserted caused by the arbitrator
-                        if (_med2ag.find (new_arbnode->id) == _med2ag.end ())
-                            _arbitrator_vor->remove (new_arbnode->id);
                         _arbitrators.erase (new_arbnode->id);
                         _nodes_knowledge.erase (new_arbnode->id);
                     }
@@ -924,104 +863,6 @@ namespace VAST
                 else
                     _arbitrator_vor->update (new_arbnode->id, new_arbnode->pos);
                 _arbitrators[new_arbnode->id] = *new_arbnode;
-            }
-            break;
-
-        case AGGREGATOR:
-            {
-                unpack_aggregator (msg, size);
-            }
-            break;
-
-        case MIGRATE:
-            if (is_aggregator() && size == sizeof (Msg_MIGRATE))
-            {
-                Msg_MIGRATE * mig = (Msg_MIGRATE *) msg;
-
-                ArbRecord & ar = _managing_nodes[mig->node.id];
-
-                if (_managing_nodes.find (ar.node.id) != _managing_nodes.end ())
-                    break;
-
-                // Pontential BUG: should remove arbitrator record directly?
-                if (_arbitrators.find (mig->node.id) != _arbitrators.end ())
-                {
-                    _arbitrators.erase (mig->node.id);
-                    _arbitrator_vor->remove (mig->node.id);
-                }
-
-                ar.node        = mig->node;
-                ar.parent_id   = mig->parent_obj;
-                ar.addr        = mig->addr;
-                // be sure the record are inserted and updated
-                _arbitrator_vor->insert (mig->node.id, mig->node.pos);
-                _arbitrator_vor->update (mig->node.id, mig->node.pos);
-                _med2ag[mig->node.id] = self->id;
-
-                if (_obj_store.find (ar.parent_id) != _obj_store.end ())
-                    ar.parent_obj = _obj_store[ar.parent_id];
-                else
-                    ar.parent_obj = NULL;
-
-                _aggnode_dirty = true;
-
-                // tell the original node to leave
-                _net->sendmsg (from_id, MIGRATE_ACK, (char *) &ar.node.id, sizeof(id_t));
-            }
-            else if (!is_aggregator () && (size == sizeof (Position) + sizeof (Addr)))
-            {
-                Position pos (msg);
-                Addr addr;
-                memcpy ((char *) & addr, msg + sizeof (Position), sizeof (Addr));
-                join (self->id, pos, addr);
-                _net->sendmsg (from_id, MIGRATE_ACK, (char *) & (self->id), sizeof (id_t));
-
-                _is_suspending = false;
-            }
-            break;
-
-        case MIGRATE_ACK:
-            if (is_aggregator ())
-            {
-                if (size == sizeof (id_t))
-                {
-                    id_t nid = * (id_t *) msg;
-                    if (_managing_nodes_intrans.find (nid) != _managing_nodes_intrans.end ())
-                    {
-                        // if is migrate back to original arbitrator
-                        if (from_id == nid)
-                        {
-                            _med2ag.erase (nid);
-                            _arbitrator_vor->remove (nid);
-                            //Node n = _managing_nodes_intrans[nid].node;
-                            //_net->sendmsg (self->id, ARBITRATOR, (char *) & n, sizeof (Node));
-                            // put the node into arbitrators list directly
-                            //_arbitrators[nid] = _managing_nodes_intrans[nid].node;
-                        }
-                        // or from another aggregator
-                        else if (_aggregators.find (from_id) != _aggregators.end ())
-                        {
-                            _med2ag.erase (nid);
-                            _arbitrator_vor->remove (nid);
-                            //_med2ag[nid] = from_id;
-                            //_aggregators_n[from_id][nid] = _managing_nodes_intrans[nid].node;
-                        }
-#ifdef DEBUG_DETAIL
-                        else
-                        {
-                            // where comes??
-                            sprintf (_str, "[%lu] bad MIGRATE_ACK from unknown node [%lu]\n", self->id, from_id);
-                            _eo.output (_str);
-                        }
-#endif
-                        _managing_nodes_intrans.erase (nid);
-                    }
-                }
-            }
-            else
-            {
-                // calling leave with only_sleeping
-                leave (true);
             }
             break;
 
@@ -1147,22 +988,9 @@ namespace VAST
             _peers[obj->peer].pos = obj->get_pos ();
         }
 
+        // adjust arbitrator's position to follow up parent object
         if (parent != NET_ID_UNASSIGNED && parent == obj->peer)
             _newpos.pos = obj->get_pos ();
-        
-        // TODO: more efficient to update way?
-        if (is_aggregator ())
-        {
-            for (map<id_t, ArbRecord>::iterator im = _managing_nodes.begin (); im != _managing_nodes.end (); im ++)
-            {
-                if (im->second.parent_id == obj->get_id ())
-                {
-                    im->second.node.pos = obj->get_pos ();
-                    _arbitrator_vor->update (im->first, obj->get_pos ());
-                    break;
-                }
-            }
-        }
 
         // increase version number
         obj->pos_version ++;
@@ -1175,6 +1003,7 @@ namespace VAST
     bool
     arbitrator_impl::overload (int level)
     {
+        /*
         if (is_aggregator ())
         {
             // adjust aoi to balancing the load
@@ -1194,6 +1023,7 @@ namespace VAST
             }
         }
         else
+        */
         {
             //char buffer[128];
             vector<Position> insert_pos;
@@ -1320,6 +1150,7 @@ namespace VAST
     bool 
     arbitrator_impl::underload (int level)
     {
+        /*
         if (is_aggregator ())
         {
             if (_net->get_curr_timestamp () - _aggnode.aoi_b_lastmodify >= AGGREGATOR_AOI_ADJ_CD)
@@ -1341,6 +1172,7 @@ namespace VAST
                 }
             }
         }
+        */
         // Nothing to do if underloaded for an arbitrator (actually, there's pretty good for system)
         /*
         else
@@ -1455,15 +1287,15 @@ namespace VAST
         id_t peer_id = _obj_store[obj_id]->peer;
 
         // check if is my parent object (should not happened)
-        if (obj == _parent_obj)
-            _parent_obj = NULL;
+        //if (obj == _parent_obj)
+        //    _parent_obj = NULL;
 
         // notify object deletion
         _logic->obj_deleted (obj);
 
         // check if the object my parent (possible?)
-        if (obj == _parent_obj)
-            _parent_obj = NULL;
+        //if (obj == _parent_obj)
+        //    _parent_obj = NULL;
 
         // remove from repository
         delete obj; 
@@ -1578,10 +1410,6 @@ namespace VAST
 
             id_t id     = obj->get_id ();
 
-            // prevent my parent object to be transfered (should do this?)
-            if (_parent_obj != NULL && obj->get_id () == _parent_obj->get_id ())
-                continue;
-
             // if this object is no longer within my region, then send message to new owner
             if (is_owner (id) == false)
                 //|| v->contains (self->id, obj->get_pos ()) == true)
@@ -1589,18 +1417,21 @@ namespace VAST
 
             id_t closest = v->closest_to (obj->get_pos ());
 
-            if (_med2ag.find (closest) != _med2ag.end ())
-                closest = _med2ag[closest];
-
             // continue if need not to transfer ownership
             if (closest == self->id)
                 continue;
 
-            if (_parent_obj != NULL && _parent_obj == obj)
+            /*
+            // prevent my parent object to be transferred (should do this?)
+            if (parent != NET_ID_UNASSIGNED && obj->peer == parent)
+                continue;
+
+            if (parent != NET_ID_UNASSIGNED && obj->peer == parent)
             {
                 sprintf (_str, "[%lu] try to transfer parent object [%lX] ownership to [%lu].\n", self->id, it->first, closest);
                 _eo.output (_str);
             }
+            */
 
             // transfer ownership (force send an copy of object to ensure consistency)
             if (send_ownership (obj, closest, true))
@@ -1672,10 +1503,10 @@ namespace VAST
         int size, obj_size, states_size;
 
         if ((obj_size = obj->encode_pos (_buf, false)) > 0)
-            _net->sendmsg (target, OBJECT, _buf, obj_size);
+            _net->sendmsg (target, TRANSFER_OBJECT, _buf, obj_size);
 
         if ((states_size = obj->encode_states (_buf, false)) > 0)
-            _net->sendmsg (target, STATE, _buf, states_size);
+            _net->sendmsg (target, TRANSFER_STATE, _buf, states_size);
 
         size = pack_transfer (obj, target, _buf);
         if (_net->sendmsg (target, TRANSFER, _buf, size) != size)
@@ -1695,8 +1526,9 @@ namespace VAST
 
 
 //#define MIN_ARB_MOVE_DIST (sysparm->aoi)
-#define MIN_ARB_MOVE_DIST (1)
+//#define MIN_ARB_MOVE_DIST (1)
     // make adjustments of arbitrator's position
+    /*
     void 
     arbitrator_impl::adjust_position ()
     {
@@ -1726,50 +1558,7 @@ namespace VAST
                 _newpos.pos = _parent_obj->get_pos ();
         }
     }
-
-    // for aggregator, make adjustments for all my manaing nodes
-    void 
-    arbitrator_impl::adjust_aggnodes_position ()
-    {
-        // loop through all managing arbitrators
-        for (map<id_t, ArbRecord>::iterator it = _managing_nodes.begin (); it != _managing_nodes.end (); it ++)
-        {
-            //const id_t & node_id = it->first;
-            ArbRecord & are = it->second;
-
-            // find parect object if it's null or not matching to parent_id
-            if ((are.parent_obj == NULL && are.parent_id != NET_ID_UNASSIGNED) ||
-                (are.parent_obj != NULL && are.parent_id != are.parent_obj->get_id ()))
-            {
-                if (_obj_store.find (are.parent_id) != _obj_store.end ())
-                    are.parent_obj = _obj_store[are.parent_id];
-                else
-                    are.parent_obj = NULL;
-            }
-
-            // if known parent_obj, update the position record
-            if (are.parent_obj != NULL && are.node.pos != are.parent_obj->get_pos ())
-            {
-                are.node.pos = are.parent_obj->get_pos ();
-                _arbitrator_vor->update (are.node.id, are.node.pos);
-                _aggnode_dirty = true;
-            }
-        }
-
-        // if changed, send updates to neighboring arbitrators and peers
-        if (_aggnode_dirty && !_is_leaving)
-        {
-            int size = pack_aggregator (_buf);
-            for (map<id_t, Node>::iterator arbi = _arbitrators.begin (); arbi != _arbitrators.end (); arbi ++)
-                if (arbi->first != self->id)
-                    _net->sendmsg (arbi->first, AGGREGATOR, _buf, size);
-
-            for (map<id_t, AggNode>::iterator agi = _aggregators.begin (); agi != _aggregators.end (); agi ++)
-                _net->sendmsg (agi->first, AGGREGATOR, _buf, size);
-
-            _aggnode_dirty = false;
-        }
-    }
+    */
 
     // make adjustments to arbitrator AOI
     void 
@@ -1779,6 +1568,7 @@ namespace VAST
         // basically, find the lower-left and upper right corner of the radius of all peers
                 
         // start with a very small AOI then expands it accordingly to peers' actual AOI
+        // Protential BUG: too small AOI when managing no peers
         _newpos.aoi = 5;
 
         for (map<id_t, Node>::iterator it = _peers.begin (); it != _peers.end (); it++)
@@ -1790,11 +1580,6 @@ namespace VAST
             if (dist >= _newpos.aoi)
                 _newpos.aoi = (aoi_t)(dist * (1.05));
         }
-
-        // for aggregator, overlay aoi should always larger than taking over aoi
-        if (is_aggregator () &&
-            _aggnode.aoi_b > _newpos.aoi)
-            _newpos.aoi = _aggnode.aoi_b;
     }
 
     // check with VON to refresh current connected arbitrators
@@ -1808,9 +1593,9 @@ namespace VAST
 
         // loop through new list of arbitrators and update my current list
         int i;
-        //bool has_changed = false;
+        bool has_changed = false;
         bool packed = false;
-        int packedsize;
+        //int packedsize;
 
         for (i=0; i < (int) nodes.size (); ++i)
         {
@@ -1825,18 +1610,7 @@ namespace VAST
                 if (!exists_in_map (_known_neighbors, id) || 
                     _net->get_curr_timestamp () - _arbitrators_lastupdate >= ARBITRATOR_FULLUPDATE_PERIOD)
                 {
-                    if (is_aggregator ())
-                    {
-                        if (!packed)
-                        {
-                            packedsize = pack_aggregator (_buf);
-                            packed = true;
-                        }
-                        _net->sendmsg (id, AGGREGATOR, (char *) _buf, packedsize);
-                    }
-                    else
-                        _net->sendmsg (id, ARBITRATOR, (char *) self, sizeof(Node));
-
+                    _net->sendmsg (id, ARBITRATOR, (char *) self, sizeof(Node));
                     _known_neighbors[id] = *(nodes[i]);
                     new_node[id] = true;
                 }
@@ -1855,20 +1629,6 @@ namespace VAST
                     //has_changed = true;
                 }
             }
-            /*
-            else if (is_aggregator () && nodes[i]->id == self->id)
-            {
-                // if has any change, apply and mark dirty to distributes them
-                if (_aggnode.aoi != nodes[i]->aoi ||
-                    _aggnode.pos == nodes[i]->pos)
-                {
-                    _aggnode_dirty = true;
-
-                    _aggnode.aoi = nodes[i]->aoi;
-                    _aggnode.pos = nodes[i]->pos;
-                }
-            }
-            */
 
             // create map for later removal
             node_map[id] = nodes[i];
@@ -1880,12 +1640,6 @@ namespace VAST
         // loop through current list of arbitrators to remove those no longer connected
         vector<id_t> remove_list;
         for (map<id_t, Node>::iterator it = _arbitrators.begin (); it != _arbitrators.end (); ++it)
-        {
-            if (node_map.find (it->first) == node_map.end ())
-                remove_list.push_back (it->first);
-        }
-
-        for (map<id_t, AggNode>::iterator it =_aggregators.begin (); it != _aggregators.end (); it ++)
         {
             if (node_map.find (it->first) == node_map.end ())
                 remove_list.push_back (it->first);
@@ -1909,29 +1663,11 @@ namespace VAST
 
                 _arbitrators.erase (remove_list[i]);
                 _arbitrator_vor->remove (remove_list[i]);
-                //_arbitrator_lasttick.erase (remove_list[i]);
 
 #ifdef DEBUG_DETAIL
                 sprintf (_str, "[%lu] removes old enclosing arbitrator [%lu]\n", self->id, remove_list[i]);
                 _eo.output (_str);
 #endif
-            }
-            else if (_aggregators.find (remove_list[i]) != _aggregators.end ())
-            {
-                // do it before _arbitrators list updates
-                send_objects (remove_list[i], true, true);
-
-                _aggregators.erase (remove_list[i]);
-                for (map<id_t, Node>::iterator it = _aggregators_n[remove_list[i]].begin (); it != _aggregators_n[remove_list[i]].end (); it ++)
-                {
-                    if (_med2ag.find (it->first) != _med2ag.end () &&
-                        _med2ag [it->first] == remove_list[i])
-                    {
-                        _arbitrator_vor->remove (it->first);
-                        _med2ag.erase (it->first);
-                    }
-                }
-                _aggregators_n.erase (remove_list[i]);
             }
 #ifdef DEBUG_DETAIL
             else
@@ -1940,21 +1676,6 @@ namespace VAST
                 _eo.output (_str);
             }
 #endif
-        }
-
-        // if changed, send updates to neighboring arbitrators and peers
-        if (_aggnode_dirty && !_is_leaving)
-        {
-            int size = pack_aggregator (_buf);
-            for (map<id_t, Node>::iterator arbi = _arbitrators.begin (); arbi != _arbitrators.end (); arbi ++)
-                if (arbi->first != self->id && new_node.find (arbi->first) == new_node.end ())
-                    _net->sendmsg (arbi->first, AGGREGATOR, _buf, size);
-
-            for (map<id_t, AggNode>::iterator agi = _aggregators.begin (); agi != _aggregators.end (); agi ++)
-                if (new_node.find (agi->first) == new_node.end ())
-                    _net->sendmsg (agi->first, AGGREGATOR, _buf, size);
-
-            _aggnode_dirty = false;
         }
 
         // notify peers of arbitrator change
@@ -1971,7 +1692,7 @@ namespace VAST
         */
     }
 
-
+/*
     void 
     arbitrator_impl::locate_parent ()
     {
@@ -2021,8 +1742,10 @@ namespace VAST
             }
         }
     }
+    */
 
     // send aggregator and managing node list to a specified node
+    /*
     int 
     arbitrator_impl::pack_aggregator (char *buf, bool pack_delete)
     {
@@ -2140,6 +1863,7 @@ namespace VAST
 
         return 0;
     }
+    */
 
     // remove any invalid avatar objects
     void 
@@ -2216,16 +1940,6 @@ namespace VAST
                 {
                     object * obj = _obj_store[af_oid];
                     id_t obj_owner = _arbitrator_vor->closest_to (obj->get_pos ());
-                    if (_med2ag.find (obj_owner) != _med2ag.end ())
-                        obj_owner = _med2ag[obj_owner];
-
-                    // debug 20080731
-                    if (is_owner (af_oid) && obj_owner != self->id)
-                    {
-                        sprintf (_str, "[%lu] try to forward self-owned affected obj to others [%lu].\n", self->id, af_oid);
-                        _eo.output (_str);
-                    }
-
                     affected_owners [obj_owner].push_back (af_oid);
                 }
                 else
@@ -2480,10 +2194,6 @@ namespace VAST
 
                 check_knowledge (obj, itn->first, itn->second, &cb);
             }
-
-            // check obj is discovered correctly for all aggregators
-            for (map<id_t, AggNode>::iterator itg = _aggregators.begin (); itg != _aggregators.end (); itg ++)
-                check_knowledge (obj, itg->first, itg->second, &cb);
         }
     }
 
@@ -2538,7 +2248,7 @@ namespace VAST
 
         }
     }
-
+/*
     // check for aggregation
     void 
     arbitrator_impl::check_aggregation ()
@@ -2631,7 +2341,7 @@ namespace VAST
             }
         }
     }
-
+*/
     // refreshing arbitrator voronoi map
     void 
     arbitrator_impl::refresh_voronoi ()
@@ -2641,23 +2351,9 @@ namespace VAST
         // insert arbitrators
         for (map<id_t, Node>::iterator it = _arbitrators.begin (); it != _arbitrators.end (); it ++)
             _arbitrator_vor->insert (it->second.id, it->second.pos);
-
-        // insert aggregator's managing nodes
-        for (map<id_t, map<id_t, Node> >::iterator it =_aggregators_n.begin (); it != _aggregators_n.end (); it ++)
-        {
-            map<id_t, Node> & ns = it->second;
-            for (map<id_t, Node>::iterator nsi = ns.begin (); nsi != ns.end (); nsi ++)
-                _arbitrator_vor->insert (nsi->second.id, nsi->second.pos);
-        }
-
-        // if i'm aggregator, also insert nodes im managing
-        if (is_aggregator ())
-        {
-            for (map<id_t, ArbRecord>::iterator it =_managing_nodes.begin (); it != _managing_nodes.end (); it ++)
-                _arbitrator_vor->insert (it->second.node.id, it->second.node.pos);
-        }
     }
 
+    /*
     // migrating this node to target aggregator
     bool
     arbitrator_impl::migrate_to_aggregator (id_t target_aggr_id, id_t src_node)
@@ -2684,18 +2380,6 @@ namespace VAST
             if (src_node == NET_ID_UNASSIGNED ||
                 _arbitrator_vor->closest_to (obj->get_pos ()) == src_node)
             {
-                /*
-                // send object states
-                if ((buff_size = obj->encode_pos (buff, false)) > 0)
-                    _net->sendmsg (target_aggr_id, OBJECT, buff, buff_size);
-
-                if ((buff_size = obj->encode_states (buff, false)) > 0)
-                    _net->sendmsg (target_aggr_id, STATE, buff, buff_size);
-
-                // ownership transfer
-                buff_size = pack_transfer (obj, target_aggr_id, buff);
-                _net->sendmsg (target_aggr_id, TRANSFER, buff, buff_size);
-                */
                 if (send_ownership (obj, target_aggr_id, true))
                 {
                     remove_list.push_back (obj->get_id ());
@@ -2750,21 +2434,14 @@ namespace VAST
         Msg_MIGRATE msg_h (*n_tosend, addr, parent_id);
         _net->sendmsg (target_aggr_id, MIGRATE, (char *) & msg_h, sizeof (Msg_MIGRATE));
 
-        /*
-        if (is_aggregator () && src_node != NET_ID_UNASSIGNED)
-        {
-            _managing_nodes_intrans [src_node] = _managing_nodes[src_node];
-            _managing_nodes.erase (src_node);
-            _med2ag.erase (src_node);
-        }
-        */
-
         // leave the overlay to put self to suspend
         // TODO: when should I leave?
         //_vnode->leave ();
         return true;
     }
+    */
 
+    /*
     // wake up arbitrator handled by peers
     bool
     arbitrator_impl::wakeup_node (id_t node_id)
@@ -2814,6 +2491,7 @@ namespace VAST
 
         return true;
     }
+    */
 
     // notify local node of updates and send updated object states I own to affected nodes
     bool
@@ -2930,23 +2608,6 @@ namespace VAST
                     // send update only on the arbitrator already knew the object
                     if (node_id != self->id && 
                         _nodes_knowledge[node_id].find (obj->get_id ()) != _nodes_knowledge[node_id].end ())
-                    {
-                        if (obj_size > 0)
-                            _net->sendmsg (node_id, OBJECT, obj_buf, obj_size);
-
-                        if (states_size > 0)
-                            _net->sendmsg (node_id, STATE, states_buf, states_size);
-
-                        // set nodes's knowledge as new version
-                        _nodes_knowledge[node_id][obj->get_id ()] = version_pair_t (obj->pos_version, obj->version);
-                    }
-                }
-
-                for (map<id_t, AggNode>::iterator agi = _aggregators.begin (); agi != _aggregators.end (); agi ++)
-                {
-                    const id_t & node_id = agi->first;
-
-                    if (_nodes_knowledge[node_id].find (obj->get_id ()) != _nodes_knowledge[node_id].end ())
                     {
                         if (obj_size > 0)
                             _net->sendmsg (node_id, OBJECT, obj_buf, obj_size);
@@ -3210,9 +2871,10 @@ namespace VAST
     bool 
     arbitrator_impl::get_info (int info_type, char* buffer, size_t & buffer_size)
     {
+        /*
         switch (info_type)
         {
-        case 1:
+         case 1:
             size_t old_bufsize = buffer_size;
 
             // calculate space needed
@@ -3232,12 +2894,14 @@ namespace VAST
             }
 
             return true;
+            
         }
+        */
 
         return false;
     }
 
-    // return if a object's owner (for statistics purpose)
+    // return if I'm a object's owner (for statistics purpose)
     bool 
     arbitrator_impl::is_obj_owner (obj_id_t object_id)
     {
@@ -3256,13 +2920,14 @@ namespace VAST
         /*
         sprintf (buf, "AOI2: %d\n", _aggnode.aoi_b);
         string_out.append (buf);
-        */
+        
         if (_parent_obj != NULL)
             sprintf (buf, "Parent: peer %d %X (obj_id %X pos (%d,%d))\n", parent, _parent_obj, _parent_obj->get_id (), 
                                                                  (int) _parent_obj->get_pos ().x, (int) _parent_obj->get_pos ().y);
         else
             sprintf (buf, "Parent: peer %d %X\n", parent, _parent_obj);
         string_out.append (buf);
+        */
 
         sprintf (buf, "Arbitrators: \n");
         string_out.append (buf);
@@ -3281,51 +2946,6 @@ namespace VAST
             Node * n = *it;
             sprintf (buf, "  [%lu] (%d,%d)\n", n->id, (int) n->pos.x, (int) n->pos.y);
             string_out.append (buf);
-        }
-
-        string_out.append ("Aggregators ==\n");
-
-        for (map<id_t, AggNode>::iterator it = _aggregators.begin (); it != _aggregators.end (); it ++)
-        {
-            const AggNode & a = it->second;
-            sprintf (buf, "  [%lu] (%d,%d) %d %d\n", it->first, (int) a.pos.x, (int) a.pos.y, a.aoi, a.aoi_b);
-            string_out.append (buf);
-
-            if (_aggregators_n.find (it->first) != _aggregators_n.end ())
-            {
-                for (map<id_t, Node>::iterator itn = _aggregators_n[a.id].begin (); itn != _aggregators_n[a.id].end (); itn ++)
-                {
-                    const Node & n = itn->second;
-                    sprintf (buf, "  - [%lu] (%d,%d) %d\n", n.id, (int) n.pos.x, (int) n.pos.y, n.aoi);
-                    string_out.append (buf);
-                }
-            }
-            string_out.append ("\n");
-        }
-
-        if (is_aggregator ())
-        {
-            if (_managing_nodes.size () > 0)
-            {
-                string_out.append ("Managing nodes ==\n");
-                for (map<id_t, ArbRecord>::iterator it = _managing_nodes.begin (); it != _managing_nodes.end (); it ++)
-                {
-                    const ArbRecord & ar = it->second;
-                    sprintf (buf, "  [%lu] (%d,%d) parent %lX_%lX\n", ar.node.id, (int) ar.node.pos.x, (int) ar.node.pos.y, ar.parent_id >> 16, ar.parent_id & 0x00FF);
-                    string_out.append (buf);
-                }
-            }
-
-            if (_managing_nodes_intrans.size () > 0)
-            {
-                string_out.append ("Managing nodes (intrans) ==\n");
-                for (map<id_t, ArbRecord>::iterator it = _managing_nodes_intrans.begin (); it != _managing_nodes_intrans.end (); it ++)
-                {
-                    const ArbRecord & ar = it->second;
-                    sprintf (buf, "  [%lu] (%d,%d) parent %lX_%lX\n", ar.node.id, (int) ar.node.pos.x, (int) ar.node.pos.y, ar.parent_id >> 16, ar.parent_id & 0x00FF);
-                    string_out.append (buf);
-                }
-            }
         }
 
         if (_peers.size () > 0)

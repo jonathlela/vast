@@ -159,16 +159,17 @@ namespace VAST
             return _joined && _vnode->is_joined ();
         }
 
-        // true if is an aggregator
-        bool is_aggregator ()
-        {
-            return _is_aggregator;
-        }
-
         // return aggregator informations
         AggNode *get_aggnode ()
         {
-            return &_aggnode;
+            //return &_aggnode;
+            return NULL;
+        }
+
+        // true if is an aggregator
+        bool    is_aggregator ()
+        {
+            return false;
         }
 
         // obtain a copy of VAST node
@@ -251,10 +252,10 @@ namespace VAST
         int check_owner_transfer ();
         
         // make adjustments of arbitrator's position
-        void adjust_position ();
+        //void adjust_position ();
 
         // for aggregator, make adjustments for all my manaing nodes
-        void adjust_aggnodes_position ();
+        //void adjust_aggnodes_position ();
 
         // make adjustments to arbitrator AOI
         void adjust_aoi ();
@@ -269,22 +270,22 @@ namespace VAST
         void update_interests ();
 
         // check for aggregation
-        void check_aggregation ();
+        //void check_aggregation ();
 
         // refreshing arbitrator voronoi map
         void refresh_voronoi ();
 
         // migrating this node to target aggregator
-        bool migrate_to_aggregator (id_t target_aggr_id, id_t src_node = NET_ID_UNASSIGNED);
+        //bool migrate_to_aggregator (id_t target_aggr_id, id_t src_node = NET_ID_UNASSIGNED);
 
         // wake up arbitrator handled by peers
-        bool wakeup_node (id_t node_id);
+        //bool wakeup_node (id_t node_id);
 
         // checking the nodes knowing about the object
         void check_knowledge (object *obj, const id_t & id, const Node & node, CodingBuffer *buffers);
 
         // locating parent object for futuring usage
-        void locate_parent ();
+        //void locate_parent ();
 
         // encode a list of enclosing arbitrators
         int encode_arbitrators (char *buf, bool only_myself = false);
@@ -315,10 +316,10 @@ namespace VAST
         int unpack_transfer (char *buf);
 
         // pack aggregator and managing node list
-        int pack_aggregator (char *buf, bool pack_delete = false);
+        //int pack_aggregator (char *buf, bool pack_delete = false);
 
         // unpack and store information about the aggregator
-        int unpack_aggregator (char *buf, int size);
+        //int unpack_aggregator (char *buf, int size);
 
         // find a suitable new arbitrator given a certain need/stress level
         bool find_arbitrator (int level, Msg_SNODE &new_arb);
@@ -334,9 +335,9 @@ namespace VAST
         bool              _is_gateway;      // flag to indicate if I'm a gateway
         Addr              _gateway;         // gateway IP
         int               _time_diff;       // time difference between clcok of node and time source
-        object           *_parent_obj;      // object pointer of my parent (avatar object)
+        //object           *_parent_obj;      // object pointer of my parent (avatar object)
 
-        bool              _is_aggregator;   // if act as aggregator
+        //bool              _is_aggregator;   // if act as aggregator
         bool              _is_leaving;      // if the node gonna to leave (so stop all possible distributing self process)
         bool              _is_suspending;   // if the node gonna to sleep
 
@@ -351,10 +352,10 @@ namespace VAST
         voronoi                        * _arbitrator_vor;       // voronoi diagram of current arbitrators
                                                                 // note: because voronoi diagram from _vnode->get_voronoi () and _arbitrators will not consistent
                                                                 //       so maintain a extra version of arbitrators' voronoi diagram
-        map<id_t, AggNode>               _aggregators;          // list of known aggregators, and nodes they represented
-        map<id_t, map<id_t, Node> >      _aggregators_n;        // list of managing nodes of known aggregators
-        map<id_t, id_t>                  _med2ag;               // mapping from managed nodes to its aggregator
-        int                              _migration_cd;         // migration count down, the time waiting for MIGRATE_ACK
+        //map<id_t, AggNode>               _aggregators;          // list of known aggregators, and nodes they represented
+        //map<id_t, map<id_t, Node> >      _aggregators_n;        // list of managing nodes of known aggregators
+        //map<id_t, id_t>                  _med2ag;               // mapping from managed nodes to its aggregator
+        //int                              _migration_cd;         // migration count down, the time waiting for MIGRATE_ACK
 
         //vector<pair<id_t, event *> >     _unforward_event;      // list of all un-forwarded event
         vector<ExtendedEvent>            _unforward_event;
@@ -380,10 +381,12 @@ namespace VAST
 
         // aggregator data members
         ///////////////////////////////////
+        /*
         AggNode                          _aggnode;
         map<id_t, ArbRecord>             _managing_nodes;
         map<id_t, ArbRecord>             _managing_nodes_intrans;
         bool                             _aggnode_dirty;
+        */
 
         // buffers
         char _buf[VASTATE_BUFSIZ];

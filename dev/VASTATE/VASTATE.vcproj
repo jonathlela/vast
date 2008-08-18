@@ -1,92 +1,144 @@
 <?xml version="1.0" encoding="big5"?>
 <VisualStudioProject
 	ProjectType="Visual C++"
-	Version="7.10"
+	Version="9.00"
 	Name="VASTATE"
 	ProjectGUID="{B42AA38D-C125-48A5-B76B-A90267835B8D}"
 	RootNamespace="VASTATE"
-	SccProjectName=""
-	SccLocalPath="">
+	TargetFrameworkVersion="131072"
+	>
 	<Platforms>
 		<Platform
-			Name="Win32"/>
+			Name="Win32"
+		/>
 	</Platforms>
+	<ToolFiles>
+	</ToolFiles>
 	<Configurations>
 		<Configuration
 			Name="Release|Win32"
 			OutputDirectory="$(SolutionDir)\build\$(ProjectName)\$(ConfigurationName)\"
 			IntermediateDirectory="$(SolutionDir)\build\$(ProjectName)\$(ConfigurationName)\"
 			ConfigurationType="2"
+			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			UseOfMFC="0"
-			ATLMinimizesCRunTimeLibraryUsage="FALSE"
+			ATLMinimizesCRunTimeLibraryUsage="false"
 			CharacterSet="2"
-			DeleteExtensionsOnClean="*.obj;*.ilk;*.pdb;*.tlb;*.tli;*.tlh;*.tmp;*.rsp;*.bat;$(TargetPath);$(TargetPath);&quot;$(SolutionDir)\bin\$(TargetFileName)&quot;;&quot;$(SolutionDir)\bin\$(TargetName).pdb&quot;;&quot;$(SolutionDir)\lib\$(TargetFileName)&quot;;&quot;$(SolutionDir)\lib\$(TargetName).lib&quot;;">
+			DeleteExtensionsOnClean="*.obj;*.ilk;*.pdb;*.tlb;*.tli;*.tlh;*.tmp;*.rsp;*.bat;$(TargetPath);$(TargetPath);&quot;$(SolutionDir)\bin\$(TargetFileName)&quot;;&quot;$(SolutionDir)\bin\$(TargetName).pdb&quot;;&quot;$(SolutionDir)\lib\$(TargetFileName)&quot;;&quot;$(SolutionDir)\lib\$(TargetName).lib&quot;;"
+			>
+			<Tool
+				Name="VCPreBuildEventTool"
+			/>
+			<Tool
+				Name="VCCustomBuildTool"
+			/>
+			<Tool
+				Name="VCXMLDataGeneratorTool"
+			/>
+			<Tool
+				Name="VCWebServiceProxyGeneratorTool"
+			/>
+			<Tool
+				Name="VCMIDLTool"
+				PreprocessorDefinitions="NDEBUG"
+				MkTypLibCompatible="true"
+				SuppressStartupBanner="true"
+				TargetEnvironment="1"
+				TypeLibraryName=".\..\bin/VASTATE.tlb"
+				HeaderFileName=""
+			/>
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				InlineFunctionExpansion="1"
 				AdditionalIncludeDirectories="&quot;$(SolutionDir)\include&quot;;&quot;$(ProjectDir)\include&quot;"
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;VASTATE_EXPORTS"
-				StringPooling="TRUE"
+				StringPooling="true"
 				RuntimeLibrary="0"
-				EnableFunctionLevelLinking="TRUE"
-				UsePrecompiledHeader="2"
+				EnableFunctionLevelLinking="true"
+				UsePrecompiledHeader="0"
 				PrecompiledHeaderThrough="precompile.h"
 				ProgramDataBaseFileName="$(IntDir)/$(ProjectName).pdb"
 				WarningLevel="3"
-				SuppressStartupBanner="TRUE"
-				CompileAs="0"/>
+				SuppressStartupBanner="true"
+				CompileAs="0"
+			/>
 			<Tool
-				Name="VCCustomBuildTool"/>
+				Name="VCManagedResourceCompilerTool"
+			/>
+			<Tool
+				Name="VCResourceCompilerTool"
+				PreprocessorDefinitions="NDEBUG"
+				Culture="1028"
+			/>
+			<Tool
+				Name="VCPreLinkEventTool"
+			/>
 			<Tool
 				Name="VCLinkerTool"
 				OutputFile="$(OutDir)$(ProjectName).dll"
 				LinkIncremental="0"
-				SuppressStartupBanner="TRUE"
+				SuppressStartupBanner="true"
 				ProgramDatabaseFile="$(OutDir)/$(TargetName).pdb"
-				TargetMachine="1"/>
+				RandomizedBaseAddress="1"
+				DataExecutionPrevention="0"
+				TargetMachine="1"
+			/>
 			<Tool
-				Name="VCMIDLTool"
-				PreprocessorDefinitions="NDEBUG"
-				MkTypLibCompatible="TRUE"
-				SuppressStartupBanner="TRUE"
-				TargetEnvironment="1"
-				TypeLibraryName=".\..\bin/VASTATE.tlb"
-				HeaderFileName=""/>
+				Name="VCALinkTool"
+			/>
+			<Tool
+				Name="VCManifestTool"
+			/>
+			<Tool
+				Name="VCXDCMakeTool"
+			/>
+			<Tool
+				Name="VCBscMakeTool"
+			/>
+			<Tool
+				Name="VCFxCopTool"
+			/>
+			<Tool
+				Name="VCAppVerifierTool"
+			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="copy &quot;$(OutDir)\$(TargetFileName)&quot; &quot;$(SolutionDir)\bin&quot;
-copy &quot;$(OutDir)\$(TargetFileName)&quot; &quot;$(SolutionDir)\lib&quot;
-copy &quot;$(OutDir)\$(TargetName).lib&quot; &quot;$(SolutionDir)\lib&quot;
-"/>
-			<Tool
-				Name="VCPreBuildEventTool"/>
-			<Tool
-				Name="VCPreLinkEventTool"/>
-			<Tool
-				Name="VCResourceCompilerTool"
-				PreprocessorDefinitions="NDEBUG"
-				Culture="1028"/>
-			<Tool
-				Name="VCWebServiceProxyGeneratorTool"/>
-			<Tool
-				Name="VCXMLDataGeneratorTool"/>
-			<Tool
-				Name="VCWebDeploymentTool"/>
-			<Tool
-				Name="VCManagedWrapperGeneratorTool"/>
-			<Tool
-				Name="VCAuxiliaryManagedWrapperGeneratorTool"/>
+				CommandLine="copy &quot;$(OutDir)\$(TargetFileName)&quot; &quot;$(SolutionDir)\bin&quot;&#x0D;&#x0A;copy &quot;$(OutDir)\$(TargetFileName)&quot; &quot;$(SolutionDir)\lib&quot;&#x0D;&#x0A;copy &quot;$(OutDir)\$(TargetName).lib&quot; &quot;$(SolutionDir)\lib&quot;&#x0D;&#x0A;"
+			/>
 		</Configuration>
 		<Configuration
 			Name="Debug|Win32"
 			OutputDirectory="$(SolutionDir)\build\$(ProjectName)\$(ConfigurationName)\"
 			IntermediateDirectory="$(SolutionDir)\build\$(ProjectName)\$(ConfigurationName)\"
 			ConfigurationType="2"
+			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			UseOfMFC="0"
-			ATLMinimizesCRunTimeLibraryUsage="FALSE"
+			ATLMinimizesCRunTimeLibraryUsage="false"
 			CharacterSet="2"
-			DeleteExtensionsOnClean="*.obj;*.ilk;*.pdb;*.tlb;*.tli;*.tlh;*.tmp;*.rsp;*.bat;$(TargetPath);&quot;$(SolutionDir)\bin\$(TargetFileName)&quot;;&quot;$(SolutionDir)\bin\$(TargetName).pdb&quot;;&quot;$(SolutionDir)\lib\$(TargetFileName)&quot;;&quot;$(SolutionDir)\lib\$(TargetName).lib&quot;;">
+			DeleteExtensionsOnClean="*.obj;*.ilk;*.pdb;*.tlb;*.tli;*.tlh;*.tmp;*.rsp;*.bat;$(TargetPath);&quot;$(SolutionDir)\bin\$(TargetFileName)&quot;;&quot;$(SolutionDir)\bin\$(TargetName).pdb&quot;;&quot;$(SolutionDir)\lib\$(TargetFileName)&quot;;&quot;$(SolutionDir)\lib\$(TargetName).lib&quot;;"
+			>
+			<Tool
+				Name="VCPreBuildEventTool"
+			/>
+			<Tool
+				Name="VCCustomBuildTool"
+			/>
+			<Tool
+				Name="VCXMLDataGeneratorTool"
+			/>
+			<Tool
+				Name="VCWebServiceProxyGeneratorTool"
+			/>
+			<Tool
+				Name="VCMIDLTool"
+				PreprocessorDefinitions="_DEBUG"
+				MkTypLibCompatible="true"
+				SuppressStartupBanner="true"
+				TargetEnvironment="1"
+				TypeLibraryName=".\..\bin/VASTATE.tlb"
+				HeaderFileName=""
+			/>
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
@@ -94,59 +146,60 @@ copy &quot;$(OutDir)\$(TargetName).lib&quot; &quot;$(SolutionDir)\lib&quot;
 				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;_USRDLL;VASTATE_EXPORTS"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="1"
-				BufferSecurityCheck="TRUE"
-				UsePrecompiledHeader="2"
+				BufferSecurityCheck="true"
+				UsePrecompiledHeader="0"
 				PrecompiledHeaderThrough="precompile.h"
 				ProgramDataBaseFileName="$(IntDir)/$(ProjectName).pdb"
 				WarningLevel="3"
-				SuppressStartupBanner="TRUE"
+				SuppressStartupBanner="true"
 				DebugInformationFormat="4"
-				CompileAs="0"/>
+				CompileAs="0"
+			/>
 			<Tool
-				Name="VCCustomBuildTool"/>
+				Name="VCManagedResourceCompilerTool"
+			/>
+			<Tool
+				Name="VCResourceCompilerTool"
+				PreprocessorDefinitions="_DEBUG"
+				Culture="1028"
+			/>
+			<Tool
+				Name="VCPreLinkEventTool"
+			/>
 			<Tool
 				Name="VCLinkerTool"
 				OutputFile="$(OutDir)$(ProjectName)d.dll"
 				LinkIncremental="0"
-				SuppressStartupBanner="TRUE"
+				SuppressStartupBanner="true"
 				AdditionalLibraryDirectories=""
-				GenerateDebugInformation="TRUE"
+				GenerateDebugInformation="true"
 				ProgramDatabaseFile="$(OutDir)/$(TargetName).pdb"
-				TargetMachine="1"/>
+				RandomizedBaseAddress="1"
+				DataExecutionPrevention="0"
+				TargetMachine="1"
+			/>
 			<Tool
-				Name="VCMIDLTool"
-				PreprocessorDefinitions="_DEBUG"
-				MkTypLibCompatible="TRUE"
-				SuppressStartupBanner="TRUE"
-				TargetEnvironment="1"
-				TypeLibraryName=".\..\bin/VASTATE.tlb"
-				HeaderFileName=""/>
+				Name="VCALinkTool"
+			/>
+			<Tool
+				Name="VCManifestTool"
+			/>
+			<Tool
+				Name="VCXDCMakeTool"
+			/>
+			<Tool
+				Name="VCBscMakeTool"
+			/>
+			<Tool
+				Name="VCFxCopTool"
+			/>
+			<Tool
+				Name="VCAppVerifierTool"
+			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="copy &quot;$(OutDir)\$(TargetFileName)&quot; &quot;$(SolutionDir)\bin&quot;
-copy &quot;$(OutDir)\$(TargetName).pdb&quot; &quot;$(SolutionDir)\bin&quot;
-copy &quot;$(OutDir)\$(TargetFileName)&quot; &quot;$(SolutionDir)\lib&quot;
-copy &quot;$(OutDir)\$(TargetName).pdb&quot; &quot;$(SolutionDir)\lib&quot;
-copy &quot;$(OutDir)\$(TargetName).lib&quot; &quot;$(SolutionDir)\lib&quot;
-"/>
-			<Tool
-				Name="VCPreBuildEventTool"/>
-			<Tool
-				Name="VCPreLinkEventTool"/>
-			<Tool
-				Name="VCResourceCompilerTool"
-				PreprocessorDefinitions="_DEBUG"
-				Culture="1028"/>
-			<Tool
-				Name="VCWebServiceProxyGeneratorTool"/>
-			<Tool
-				Name="VCXMLDataGeneratorTool"/>
-			<Tool
-				Name="VCWebDeploymentTool"/>
-			<Tool
-				Name="VCManagedWrapperGeneratorTool"/>
-			<Tool
-				Name="VCAuxiliaryManagedWrapperGeneratorTool"/>
+				CommandLine="copy &quot;$(OutDir)\$(TargetFileName)&quot; &quot;$(SolutionDir)\bin&quot;&#x0D;&#x0A;copy &quot;$(OutDir)\$(TargetName).pdb&quot; &quot;$(SolutionDir)\bin&quot;&#x0D;&#x0A;copy &quot;$(OutDir)\$(TargetFileName)&quot; &quot;$(SolutionDir)\lib&quot;&#x0D;&#x0A;copy &quot;$(OutDir)\$(TargetName).pdb&quot; &quot;$(SolutionDir)\lib&quot;&#x0D;&#x0A;copy &quot;$(OutDir)\$(TargetName).lib&quot; &quot;$(SolutionDir)\lib&quot;&#x0D;&#x0A;"
+			/>
 		</Configuration>
 	</Configurations>
 	<References>
@@ -154,102 +207,134 @@ copy &quot;$(OutDir)\$(TargetName).lib&quot; &quot;$(SolutionDir)\lib&quot;
 	<Files>
 		<Filter
 			Name="Source Files"
-			Filter="cpp;c;cxx;rc;def;r;odl;idl;hpj;bat">
+			Filter="cpp;c;cxx;rc;def;r;odl;idl;hpj;bat"
+			>
 			<File
-				RelativePath=".\src\arbitrator_impl.cpp">
+				RelativePath=".\src\arbitrator_impl.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\src\gateway_impl.cpp">
+				RelativePath=".\src\gateway_impl.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\src\peer_impl.cpp">
+				RelativePath=".\src\peer_impl.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\src\precompile.cpp">
+				RelativePath=".\src\precompile.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\src\rawdata.cpp">
+				RelativePath=".\src\rawdata.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\src\shared.cpp">
+				RelativePath=".\src\shared.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\src\storage_cs.cpp">
+				RelativePath=".\src\storage_cs.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\src\vastate_impl.cpp">
+				RelativePath=".\src\vastate_impl.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\src\vastory.cpp">
+				RelativePath=".\src\vastory.cpp"
+				>
 			</File>
 			<File
-				RelativePath=".\src\vworld.cpp">
+				RelativePath=".\src\vworld.cpp"
+				>
 			</File>
 		</Filter>
 		<Filter
 			Name="Header Files"
-			Filter="h;hpp;hxx;hm;inl">
+			Filter="h;hpp;hxx;hm;inl"
+			>
 			<File
-				RelativePath=".\include\arbitrator.h">
+				RelativePath=".\include\arbitrator.h"
+				>
 			</File>
 			<File
-				RelativePath=".\src\arbitrator_impl.h">
+				RelativePath=".\src\arbitrator_impl.h"
+				>
 			</File>
 			<File
-				RelativePath=".\include\arbitrator_logic.h">
+				RelativePath=".\include\arbitrator_logic.h"
+				>
 			</File>
 			<File
-				RelativePath=".\include\gateway.h">
+				RelativePath=".\include\gateway.h"
+				>
 			</File>
 			<File
-				RelativePath=".\src\gateway_impl.h">
+				RelativePath=".\src\gateway_impl.h"
+				>
 			</File>
 			<File
-				RelativePath=".\include\peer.h">
+				RelativePath=".\include\peer.h"
+				>
 			</File>
 			<File
-				RelativePath=".\src\peer_impl.h">
+				RelativePath=".\src\peer_impl.h"
+				>
 			</File>
 			<File
-				RelativePath=".\include\peer_logic.h">
+				RelativePath=".\include\peer_logic.h"
+				>
 			</File>
 			<File
-				RelativePath=".\include\precompile.h">
+				RelativePath=".\include\precompile.h"
+				>
 			</File>
 			<File
-				RelativePath=".\include\rawdata.h">
+				RelativePath=".\include\rawdata.h"
+				>
 			</File>
 			<File
-				RelativePath=".\include\shared.h">
+				RelativePath=".\include\shared.h"
+				>
 			</File>
 			<File
-				RelativePath=".\include\storage.h">
+				RelativePath=".\include\storage.h"
+				>
 			</File>
 			<File
-				RelativePath=".\src\storage_cs.h">
+				RelativePath=".\src\storage_cs.h"
+				>
 			</File>
 			<File
-				RelativePath=".\include\storage_logic.h">
+				RelativePath=".\include\storage_logic.h"
+				>
 			</File>
 			<File
-				RelativePath=".\include\vastate.h">
+				RelativePath=".\include\vastate.h"
+				>
 			</File>
 			<File
-				RelativePath=".\src\vastate_impl.h">
+				RelativePath=".\src\vastate_impl.h"
+				>
 			</File>
 			<File
-				RelativePath=".\include\vastate_typedef.h">
+				RelativePath=".\include\vastate_typedef.h"
+				>
 			</File>
 			<File
-				RelativePath=".\include\vastory.h">
+				RelativePath=".\include\vastory.h"
+				>
 			</File>
 			<File
-				RelativePath=".\include\vworld.h">
+				RelativePath=".\include\vworld.h"
+				>
 			</File>
 		</Filter>
 		<Filter
 			Name="Resource Files"
-			Filter="ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe">
+			Filter="ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe"
+			>
 		</Filter>
 	</Files>
 	<Globals>
