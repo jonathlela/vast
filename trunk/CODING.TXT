@@ -1,0 +1,92 @@
+
+VAST Coding Convention:
+
+1. All indentions are 4 spaces (do NOT use tabs)
+
+2. Class names should capitalize on each of the first letters.
+   Function names should begin with lower-case verbs, followed by upper-case nouns. Ex.
+
+    class MyClass
+    {
+        bool insertRecord ();
+        int  queryRecord ();
+        ...
+    }
+
+3. Add spaces before and after parenthesis, Ex.
+
+        myobj->myFunc ();       // correct
+        myobj->myFunc();        // incorrect
+
+4. Brackets are aligned directly under the function name. Ex.
+
+    // correct
+    void foo (void)
+    {
+        ...
+    }
+
+    // incorrect
+    void foo (void) {
+        ...
+    }
+
+5. Start all private variables with a "_". Ex.
+
+    private:
+        int _var1;          // correct
+        int var1;           // incorrect
+
+6. Add spaces around all comparisons, assignments. Ex.
+
+    if (width < 3 && height > 5)
+        ...
+        ...
+
+7. Please use Doxygen (see: http://www.stack.nl/~dimitri/doxygen/docblocks.html)
+   Specifically, the following types of typical blocks are used
+
+    /**
+     *
+     *  Block comments here
+     *
+     */
+
+   ///  Line comments here
+   ///  Line comments here
+
+   Also, in block comment, the following types of comments may be used:
+        @param      - for explaining the parameters passed to a function
+        @note       - for adding additional explanations
+
+    For example (from OGRE)
+
+            /** Define a box from left, top, right and bottom coordinates
+                This box will have depth one (front=0 and back=1).
+            	@param	l	x value of left edge
+            	@param	t	y value of top edge
+            	@param	r	x value of right edge
+            	@param	b	y value of bottom edge
+            	@note Note that the left, top, and front edges are included
+ 		           	but the right, bottom and back ones are not.
+            */
+            Box (size_t l, size_t t, size_t r, size_t b):
+
+
+8. When designing structures, make sure that all data fields are "padded" and "aligned" to
+   8 bytes, for cross-platform compatibility. Ex.
+
+        struct
+        {
+            short   a;      // 2 bytes
+            int     i;      // 4 bytes
+        };
+
+   should be
+
+        struct
+        {
+            short   a;      // 2 bytes
+            short   pad;    // 2 bytes
+            int     i;      // 4 bytes
+        };
