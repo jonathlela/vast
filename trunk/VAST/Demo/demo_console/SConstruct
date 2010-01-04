@@ -1,0 +1,35 @@
+import glob
+
+dst = '../../bin/'
+lib = '../../lib/'
+target = 'demo_console'
+targetso = 'lib' + target + '.so'
+source = 'demo_console.cpp' 
+
+inc1 = '../../common/'
+inc2 = '../../VASTnet/'
+inc3 = '../../VAST/'
+inc4 = '../../VASTATE/'
+inc5 = '../../VASTsim/'
+inc6 = '../../VASTATEsim/'
+
+incs = [inc1, inc2, inc3, inc4, inc5, inc6, '.']
+
+lib1 = 'common'
+lib2 = 'VASTnet'
+lib3 = 'VAST'
+lib4 = 'VASTATE'
+lib5 = 'VASTATEsim'
+lib6 = 'VASTsim'
+lib7 = 'z'
+lib8 = 'ACE'
+libs = [lib1, lib2, lib3, lib4, lib5, lib6, lib7, lib8]
+
+env = Environment(CPPPATH = ['.'])
+env.Program(source, LIBS=libs, LIBPATH=lib)
+
+Repository(incs)
+
+ret = env.Install(dst, target)  # this is target
+env.Default(ret)
+    

@@ -1,0 +1,104 @@
+
+*********
+IMPORTANT
+*********
+
+ACE is required for using the real network layer (as opposed to an emulated one
+for simulation purposes). For VC++ Express 2008, this is done automatically by
+the post-build scripts, make sure the appropriate libraries in
+"\Dependencies\lib" are copied to the "\bin" directory if you're using other
+compilers.
+
+Right now we've only tested VAST on VC++ Express 2008 (downloadable at:
+http://www.microsoft.com/express/ as of 2009/08/03)
+
+Note that there are some important global flags in /common/Config.h you might
+need to set for your particular needs:
+
+// if only simulation is desired
+#define SIMULATION_ONLY
+
+// whether ACE is enabled, must not be defined if real network is used
+#define ACE_DISABLED
+
+// still experimental and if enabled, must copy the files in /dataset to /bin
+#define  ENABLE_LATENCY
+#define  ENABLE_TOPOLOGY_AWARE
+
+
+
+Win32 Instructions
+------------------
+
+To build VAST in Win32, simply click on "VAST.sln" for VC++ 2008 then choose the
+appropriate projects. All compiled binaries are put into the "bin" directory.
+
+It's recommended to build the project "VASTsim_gui" first and adjust the
+"VASTsim.ini" parameters in "/bin" after compile to get a basic idea of VAST.
+
+Afterwards, you may build "demo_chatva" to see how VAST is used in a small
+chat application over real network.
+
+run "demo_chatva" directly to start a first node (a gateway node).
+run "demo_chatva [coord_x] [coord_y] [IP]" to start subsequent nodes.
+    
+    For example, "demo_chatva 150 130 127.0.0.1" will start a 2nd node.
+
+
+
+
+Linux Instructions
+------------------
+
+***
+
+NOTE: currently we have not yet tested this release of VAST on Linux or GCC.
+Below is the previous instruction for VAST 0.3.3, see if it may be helpful.
+If you want a buildable / tested version, please use release 0.3.3. But note
+that this new release (0.4.0+) contains significantly different designs from
+the previous version by supporting Spatial Publish Subscribe (SPS).
+
+***
+
+
+1. Unzip the source files into a work directory
+
+    unzip -a vast-c++-x.x.x.zip
+
+
+2. Build the static library of VAST
+
+    cd vast-x.x.x
+    make        (this should create "libvast.a" and "libvastsim.a" under the /lib directory)
+
+    or
+
+    make noace  (if you have turn on the ACE_DISABLED flag in /include/config.h)
+
+
+3. Build related library
+
+    ACE and zlib are required for VAST to build properly, please see the instructions
+    above for how to obtain and build ACE. zlib may have already been installed on
+    your Linux system, if not, you can obtain a copy and build instructions at
+    http://www.zlib.net/
+
+
+4. Build demo programs
+
+    depend on which one you'd like to build, just go into the directory under
+    /demo and type "make", the compiled binary will be placed under "/bin"
+
+    NOTE: currently, only "demo/demo_gateway" and "sim/VASTsim_console" have
+    been tested under Linux
+
+
+5. Execute the demo
+
+    run the demo under /bin
+
+
+6. clean up the library
+
+    make TARGET=clean
+

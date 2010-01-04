@@ -1,0 +1,33 @@
+import glob
+
+dst = '../lib/'
+
+target = 'VASTnet'
+source = glob.glob('*.cpp')
+targetlib = 'lib' + target + '.so'
+
+inc1 = '../common/'
+
+incs = [inc1, '.']
+
+env = Environment(CPPPATH = ['.'])
+env.Append(CCFLAGS = '-O3')
+
+
+static_build = ARGUMENTS.get('static', 0)
+
+if int(static_build):
+	env.Append(LINKFLAGS = '-static')
+	env.StaticLibrary(target, source)
+	targetlib = 'lib' + target + '.a'
+else:
+	env.SharedLibrary(target, source)
+	targetlib = 'lib' + target + '.so'
+	
+
+
+Repository(incs)
+
+ret = env.Install(dst, targetlib)
+env.Default(ret)
+    

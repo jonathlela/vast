@@ -1,0 +1,7 @@
+# "Analyzing and Improving a BitTorrent Network's Performance Mechanisms", INFOCOM in 2006
+# Bandwidth distribution of nodes derived from actual distribution of Gnutella nodes
+# Downlink(bytes)	Uplink(bytes)	Fraction of nodes (%)
+100352	16384	0
+192000	49152	20
+384000	128000	60
+1280000	640000	85

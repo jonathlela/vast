@@ -1,0 +1,610 @@
+
+/*
+ *  demo_console    a console-based minimal VAST application 
+ *  
+ *  version:    2009/06/12      init
+ *
+ */
+
+#ifdef WIN32
+// disable warning about "unsafe functions"
+#pragma warning(disable: 4996)
+#endif
+
+#include "ace/ACE.h"
+#include "ace/OS.h"
+
+#include <stdio.h>
+
+#ifdef WIN32
+#include <windows.h>
+#include <conio.h>
+#endif
+
+#include "Movement.h"
+
+#define USE_VAST_
+
+#ifdef USE_VAST
+// use VAST for functions
+#include "VASTVerse.h"
+#else
+// use VASTATE for main functions
+#include "VASTATE.h"
+#include "VASTATEsim.h"       
+#endif
+
+#include "VASTUtil.h"
+
+#define VAST_EVENT_LAYER    1                   // layer ID for sending events 
+#define VAST_UPDATE_LAYER   2                   // layer ID for sending updates
+
+using namespace Vast;
+using namespace std;
+
+#ifdef ACE_DISABLED
+#error "ACE needs to be enabled to build demo_console, please modify /common/Config.h"
+#endif
+
+#define DEFAULT_AOI         200
+#define DIM_X               800
+#define DIM_Y               600
+
+// target game cycles per second
+const int FRAMES_PER_SECOND      = 40;
+
+// global
+Area        g_aoi;               // my AOI (with center as current position)
+Area        g_prev_aoi;          // my AOI (with center as current position)
+bool        g_finished = false;
+NodeState   g_state = ABSENT;
+char        g_lastcommand = 0;
+
+VASTPara_Net g_netpara;            // network parameters
+
+MovementGenerator g_movement;
+FILE       *g_logfile = NULL;       // logfile for neighbor positions
+
+int g_node_no = (-1);               // which node to simulate (-1 indicates none, manual control)
+
+
+
+#ifdef USE_VAST
+
+    // VAST-specific variables
+    VASTVerse *     g_world = NULL;
+    VAST *          g_self  = NULL;    
+    id_t            g_sub_no = 0;        // subscription # for my client (peer)
+  
+#else
+    
+    // VASTATE-specific variables
+    VASTATE *       g_world = NULL;
+    SimAgent *      g_self  = NULL;
+    SimArbitrator * g_arbitratorlogic = NULL;
+    Agent *         g_agent = NULL;
+    Arbitrator *    g_arbitrator = NULL;
+
+#endif
+
+#ifdef WIN32
+void getInput ()
+{
+    // get input
+    while (kbhit ())
+    {
+        char c = (char)getch ();
+        //printf ("%d ", c);
+        switch (c)
+        {
+        case 'q':
+            g_finished = true;
+            break;
+        
+        // movements
+        case -32:
+            switch (getch ())
+            {
+            // LEFT
+            case 75:
+                g_aoi.center.x -= 5;
+                break;
+            // RIGHT
+            case 77:
+                g_aoi.center.x += 5;
+                break;                            
+            // UP
+            case 72:
+                g_aoi.center.y -= 5;
+                break;
+            // DOWN
+            case 80:
+                g_aoi.center.y += 5;
+                break;
+            }
+            break;
+
+        default:
+            g_lastcommand = c;
+            break;
+        }
+    }
+}
+#endif
+
+void checkJoin ()
+{
+#ifdef USE_VAST
+        // create the VAST node
+    switch (g_state)
+    {
+    case ABSENT:
+        if ((g_self = g_world->createClient ()) != NULL)
+        {                
+            g_self->join (g_aoi.center, true);
+            g_state = JOINING;
+        }
+        break;
+
+    case JOINING:
+        if (g_self->isJoined ())
+        {
+            g_sub_no = g_self->subscribe (g_self->getSelf ()->aoi, VAST_EVENT_LAYER);
+            g_state = JOINED;
+        }
+        break;
+
+    default:
+        break;
+    }
+#else
+
+    // created the agent & arbitrator
+    if (g_state == ABSENT)
+    {
+        string password ("abc\0");
+        g_world->createNode (g_aoi, g_arbitratorlogic, g_self, password, (g_netpara.is_gateway ? &g_aoi.center : NULL));
+        g_state = JOINING;
+    }
+            
+    // check if our agent & arbitrator have properly joined the network
+    else if (g_state == JOINING && g_world->isLogined ())
+    {
+        g_arbitrator = g_world->getArbitrator ();
+        g_agent = g_world->getAgent ();
+
+        g_state = JOINED;     
+
+        // record join time
+        time_t rawtime;          
+        time (&rawtime);
+
+        tm *timeinfo = gmtime (&rawtime);
+         
+        ACE_Time_Value startTime = ACE_OS::gettimeofday();
+        fprintf (g_logfile, "#Node joined, Neighbor Log starts (CLOCKS_PER_SEC=%ld)\n\n", CLOCKS_PER_SEC);
+        
+        fprintf (g_logfile, "#Start date/time\n"); 
+        fprintf (g_logfile, "#%s", asctime (timeinfo)); 
+        fprintf (g_logfile, "#GMT (hour:min:sec)\n%2d:%02d:%02d\n", timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);        
+        fprintf (g_logfile, "#second:millisec\n%d:%d\n", (int)startTime.sec (), (int)(startTime.usec () / 1000));        
+       
+        // simulating which node
+        fprintf (g_logfile, "#node path number simulated (-1 indicates manual control)\n");
+        fprintf (g_logfile, "%d\n\n", g_node_no);
+
+        // format
+        fprintf (g_logfile, "#tick (clock) [nodeID] (posX, posY) ... \n\n");
+
+        fflush (g_logfile); 
+    }
+    
+#endif
+}
+
+void TestSerialization ()
+{
+    // test data       
+    AttributesImpl a;
+
+    a.add (true);
+    a.add ((int)32767);
+    a.add (112343.14159269777f);       string s("abcdefg ");
+    a.add (s);      Position c; c.x = 382.573829f; c.y = 2349.2431f; c.z = 5382.34234f;
+    a.add (c);
+    a.add (true);
+    //a.add (19);
+    
+    bool   v1 = false;
+    int    v2 = 777;
+    float  v3 = 0.0;
+    string v4 = "abc good";
+    Position v5;
+
+    a.get (0, v1);        printf ("bool: %d\n", v1);        
+    a.get (1, v2);        printf ("int: %d\n", v2);        
+    a.get (2, v3);        printf ("float: %f\n", v3);
+    a.get (3, v4);        printf ("str: (%s)\n", v4.c_str ());        
+    a.get (4, v5);        printf ("vec3: (%f, %f, %f)\n", v5.x, v5.y, v5.z);        
+    a.get (5, v1);        printf ("bool: %d\n", v1);       
+    //a.get (6, v2);        printf ("int: %d\n", v2); 
+            
+    
+    char buf[VASTATE_BUFSIZ];
+    char *p = buf;
+    int size = a.pack (&p);
+    
+    string str;
+    string str1;
+    string str2;
+    
+    for (int k=0; k<size; k++)
+    {
+        str1 += buf[k];
+        str2 += buf[k];
+    }
+    str += str1;
+    str += str2;
+
+    printf ("packsize: %d string size: %d\n", size, str.size());
+    
+
+    printf ("\ntransferring to another attribute (pack size: %d)\n\n", size);
+    
+    AttributesImpl b;   
+    
+    b.unpack (buf);
+    
+    b.get (0, v1);        printf ("bool: %d\n", v1);        
+    b.get (1, v2);        printf ("int: %d\n", v2);        
+    b.get (2, v3);        printf ("float: %f\n", v3);
+    b.get (3, v4);        printf ("str: (%s)\n", v4.c_str ());        
+    b.get (4, v5);        printf ("vec3: (%f, %f, %f)\n", v5.x, v5.y, v5.z);        
+    b.get (5, v1);        printf ("bool: %d\n", v1);
+    //b.get (6, v2);        printf ("int: %d\n", v2); 
+    
+    printf ("\nresetting values in a\n\n");
+    
+    a.resetDirty();
+
+    a.add (19);
+
+    a.set (0, false);
+    a.set (1, (int)512);
+    a.set (2, (float)3.14159269f);  
+    string s2("abcdefg   ");
+    a.set (3, s2);               
+    Position c2; c2.x = 5.0; c2.y = 6.0; c2.z = 7.0;
+    //a.set (4, c2);
+    a.set (5, false);
+    
+    a.get (0, v1);        printf ("bool: %d\n", v1);        
+    a.get (1, v2);        printf ("int: %d\n", v2);        
+    a.get (2, v3);        printf ("float: %f\n", v3);
+    a.get (3, v4);        printf ("str: (%s)\n", v4.c_str ());        
+    a.get (4, v5);        printf ("vec3: (%f, %f, %f)\n", v5.x, v5.y, v5.z);        
+    a.get (5, v1);        printf ("bool: %d\n", v1);       
+    a.get (6, v2);        printf ("int: %d\n", v2);                 
+    
+    p = buf;
+    size = a.pack (&p, true);
+    
+    printf ("\npacking to b again, size: %d\n\n", size);
+    
+    b.unpack (buf);
+    
+    int vv;
+    b.get (0, v1);        printf ("bool: %d\n", v1);        
+    b.get (1, vv);        printf ("int: %d\n", vv);        
+    b.get (2, v3);        printf ("float: %f\n", v3);
+    b.get (3, v4);        printf ("str: (%s)\n", v4.c_str ());        
+    b.get (4, v5);        printf ("vec3: (%f, %f, %f)\n", v5.x, v5.y, v5.z);        
+    b.get (5, v1);        printf ("bool: %d\n", v1);       
+    b.get (6, v2);        printf ("int: %d\n", v2);  
+    
+    printf ("\n\n");
+}
+
+int main (int argc, char *argv[])
+{        
+    ACE::init ();
+
+    // check correctness of parameter serialization
+    //TestSerialization ();
+
+    // initialize seed
+    srand ((unsigned int)time (NULL));
+    
+    // set default values
+    VASTATEPara para;
+    para.default_aoi    = DEFAULT_AOI;
+    para.world_height   = DIM_Y;
+    para.world_width    = DIM_X;
+        
+    g_aoi.center.x = (coord_t)(rand () % DIM_X);
+    g_aoi.center.y = (coord_t)(rand () % DIM_Y);
+    g_aoi.radius   = (length_t)DEFAULT_AOI;
+
+    g_netpara.port  = GATEWAY_DEFAULT_PORT;
+    g_netpara.step_persec = 10;
+
+    bool simulate_behavior = false;
+
+    // get gateway IP (if exists)
+    char gateway[80];    
+    gateway[0] = 0;
+            
+    // first optional para is port
+    if (argc >= 2)
+        g_netpara.port = (unsigned short)atoi (argv[1]);
+
+    // second & 3rd parameter is join coordinate
+    if (argc >= 4)
+    {
+        g_aoi.center.x = (coord_t)atoi (argv[2]);
+        g_aoi.center.y = (coord_t)atoi (argv[3]);               
+    }
+    // 4th parameter is gateway IP
+    if (argc >= 5)
+        strcpy (gateway, argv[4]);
+
+    // 5th parameter is which node to simulate
+    if (argc >= 6)
+    {
+        simulate_behavior = true;
+        g_node_no = atoi (argv[5]);
+    }
+
+    // see if simulation behavior file exists for simulated behavior    
+    SimPara simpara;
+    if (ReadPara (simpara) == true)
+    {
+        // override defaults
+        para.default_aoi        = simpara.AOI_RADIUS;
+        para.world_height       = simpara.WORLD_HEIGHT;
+        para.world_width        = simpara.WORLD_WIDTH;        
+        g_netpara.step_persec   = simpara.STEPS_PERSEC;            
+    }
+    else  
+    {   
+        printf ("warning: INI file is not found at working directory, it's required for simulation\n");
+        if (simulate_behavior)
+            exit (0);
+    }
+
+    // valid node number begin from zero, use assigned node # or a random one
+    if (g_node_no > 0)
+        g_node_no--;
+    else if (g_node_no <= 0)
+        g_node_no = rand () % simpara.NODE_SIZE;
+
+    g_prev_aoi = g_aoi;
+
+    // default gateway set to localhost
+    g_netpara.is_gateway = (gateway[0] == '\0' ? true : false);
+    if (gateway[0] == 0)
+        strcpy (gateway, "127.0.0.1");
+
+    g_netpara.gateway.publicIP = IPaddr (gateway, g_netpara.port);
+    g_netpara.model = VAST_NET_ACE;
+    
+    // if physical coordinate is not supplied, VAST will need to obtain it itself
+    //g_netpara.phys_coord = g_aoi.center;    
+
+    // create VAST node factory (with default physical coordinate)          
+#ifdef USE_VAST
+    // create VAST node factory
+    g_world = new VASTVerse (&g_netpara, NULL);
+#else
+
+    g_world = new VASTATE (para, g_netpara, NULL);    
+    g_self  = CreateSimAgent ();
+    g_arbitratorlogic = CreateSimArbitrator ();
+
+#endif
+
+    // create logfile to record neighbors at each step
+    char poslog[] = "neighbor";
+    g_logfile = LogFileManager::open (poslog);
+
+    if (simulate_behavior)
+    {
+        // create movement model
+        //g_move_model = new MovementGenerator;
+    
+        // create / open position log file
+        char filename[80];
+        sprintf (filename, VAST_POSFILE_FORMAT, simpara.NODE_SIZE, simpara.WORLD_WIDTH, simpara.WORLD_HEIGHT, simpara.TIME_STEPS);
+
+        FileClassFactory fcf;
+        SectionedFile *pos_record = fcf.CreateFileClass (0);
+        bool replay = true;
+        if (pos_record->open (filename, SFMode_Read) == false)
+        {
+            replay = false;
+            pos_record->open (filename, SFMode_Write);
+        }
+    
+        // create behavior model
+        g_movement.initModel (VAST_MOVEMENT_CLUSTER, pos_record, replay, 
+                                Position (0,0), Position ((coord_t)simpara.WORLD_WIDTH, (coord_t)simpara.WORLD_HEIGHT),
+                                simpara.NODE_SIZE, simpara.TIME_STEPS, simpara.VELOCITY);
+
+        // close position log file
+        fcf.DestroyFileClass (pos_record);
+
+        // load initial position
+        g_aoi.center = *g_movement.getPos (g_node_no, 0);
+    }
+
+    size_t count = 0, count_per_sec = 0;
+    int num_moves = 0;
+
+    // how much time in millisecond
+    size_t time_budget = 1000/FRAMES_PER_SECOND;
+    
+    long curr_sec = 0;               // current seconds since start
+                                     // time of last movement
+
+    ACE_Time_Value last_move = ACE_OS::gettimeofday(); 
+    
+    // record beginning of main loop    
+    while (!g_finished)
+    {   
+        // record starting time of this cycle
+        ACE_Time_Value start = ACE_OS::gettimeofday();
+
+        count++;
+        count_per_sec++;
+
+        if (g_state != JOINED)
+            checkJoin ();
+
+        else
+        {
+#ifdef WIN32
+            getInput ();
+#endif
+            // fix movement at STEPS_PERSEC            
+            // elapsed time in microseconds
+            long long elapsed = (long long)(start.sec () - last_move.sec ()) * 1000000 + (start.usec () - last_move.usec ());
+                                   
+            if (simulate_behavior && (elapsed > (1000000 / simpara.STEPS_PERSEC)))
+            {               
+                //printf ("elapsed time since last move %ld\n", elapsed);
+                last_move = start;
+
+                // in simulated mode, we only move TIME_STEPS times
+                if (num_moves >= simpara.TIME_STEPS)
+                    g_finished = true;
+               
+                g_aoi.center = *g_movement.getPos (g_node_no, num_moves);
+                num_moves++;      
+
+                Node *self = g_agent->getSelf ();
+                fprintf (g_logfile, "[%d] moves to (%d, %d) at %d:%d (elapsed: %d us)\n", (int)(self->id/2), (int)self->aoi.center.x, (int)self->aoi.center.y, (int)start.sec (), (int)(start.usec () / 1000), (int)elapsed);
+            }
+
+            // move only if position changes
+            if (!(g_prev_aoi == g_aoi))
+            {
+                printf ("move to (%d, %d)\n", (int)g_aoi.center.x, (int)g_aoi.center.y); 
+                g_prev_aoi = g_aoi;
+
+#ifdef USE_VAST
+                g_self->move (g_sub_no, g_aoi);
+#else
+                g_agent->move (g_aoi.center);
+#endif
+            }
+
+#ifndef USE_VAST
+            // send out other commands
+            if (g_lastcommand != 0)
+            {
+                switch (g_lastcommand)
+                {
+                // create new objects
+                case 'c':
+                    SimPeerAction action = CREATE_OBJ;
+                    Event *e = g_agent->createEvent ((msgtype_t)action);
+                    g_agent->act (e);
+                    break;
+                }
+                g_lastcommand = 0;
+            }
+#endif
+
+        }
+
+        ACE_Time_Value now = ACE_OS::gettimeofday();
+
+        // elapsed time in microseconds
+        long long elapsed = (long long)(now.sec () - start.sec ()) * 1000000 + (now.usec () - start.usec ());
+              
+        // execute tick while obtaining time left
+        size_t sleep_time = g_world->tick ((time_budget - (size_t)(elapsed / 1000))) * 1000;
+       
+        // print only once per second, 
+        // NOTE: we assume this takes little time and does not currently count in as time spent in cycle       
+        if (start.sec () > curr_sec)
+        {
+            curr_sec = (long)start.sec ();
+            printf ("%ld s, tick %u, tick_persec %u, sleep: %ld us\n", 
+                     curr_sec, count, count_per_sec, (long) sleep_time);
+            count_per_sec = 0;
+
+            // record neighbor position to log if joined
+            if (g_state == JOINED)
+            {
+                fprintf (g_logfile, "%d (%ld) ", count, curr_sec);
+
+                // print currently known neighbors
+#ifdef USE_VAST
+                vector<Node *>& neighbors = g_self->list ();
+#else
+                vector<Node *>& neighbors = g_self->getNeighbors ();    
+#endif
+
+                // print a list of known neighbors
+                for (size_t i=0; i < neighbors.size (); i++)
+                {
+                    // NOTE: the ID is divided by 2, to make the record indicate which node
+                    //       (as arbitrators get odd IDs and agents get even IDs)
+                    fprintf (g_logfile, "[%ld] (%d, %d) ", (neighbors[i]->id/2), (int)neighbors[i]->aoi.center.x, (int)neighbors[i]->aoi.center.y);
+                    printf ("[%ld] (%d, %d) ", (neighbors[i]->id/2), (int)neighbors[i]->aoi.center.x, (int)neighbors[i]->aoi.center.y);
+                }
+                fprintf (g_logfile, "\n");
+                printf ("\n");
+
+                fflush (g_logfile);
+            }
+        } 
+
+        if (sleep_time > 0)
+        {
+            // NOTE the 2nd parameter is specified in microseconds (us) not milliseconds
+            ACE_Time_Value duration (0, sleep_time);            
+            ACE_OS::sleep (duration); 
+        }   
+    }
+
+    // depart
+#ifdef USE_VAST
+    g_self->leave ();
+    g_world->destroyClient (g_self);
+#else
+    g_agent->leave ();
+    g_agent->logout ();
+    g_world->tick ((size_t)0);
+    
+    ACE_Time_Value tv (1, 0);
+    ACE_OS::sleep (tv);
+
+    g_world->destroyNode ();
+
+    if (g_self != NULL)
+        DestroySimAgent (g_self);
+
+    if (g_arbitratorlogic != NULL)
+        DestroySimArbitrator (g_arbitratorlogic);
+
+#endif
+            
+    delete g_world;        
+
+    LogFileManager::close (g_logfile);
+    
+    /*
+    while (true)
+    {
+        ACE_Time_Value tv (1, 0);
+        ACE_OS::sleep (tv);
+        printf ("paused\n");
+    }
+    */
+
+    return 0;
+}
+
+

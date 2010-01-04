@@ -1,0 +1,84 @@
+
+
+VAST C++ 0.4.0  (Spatial Publish Subscribe, SPS support)
+--------------
+2009/08/03      extract VON functions into VONpeer class
+                provide Spatial Publish Subscribe (SPS) functions via a client-relay architecture
+                partial implementation of VASTATE (supporting Voronoi State Managment, VSM)
+
+                this version was used to generate the simulation results for a paper submission
+
+
+VAST C++ 0.3.3  (new movement models, VASTutil class)
+--------------
+2007/12/24      extract common functions into VASTutil class, including logger, movement models
+
+                cluster movement added (as part of VASTutil class)
+                group movement added   (as part of VASTutil class)
+                adopted from OverSim (http://www.oversim.org/) sourcecode
+
+                VASTsim has very poor consistency in 10,000x10,000 world with 500 nodes.
+                solve this problem by requiring all nodes to properly join before movement
+
+VAST C++ 0.3.2  (bandwidth-limited emulator, ID separation)
+--------------
+2007/04/19      add a new bandwidth-limited emulation network layer, NET_EMULATED_BL
+
+                network interface change,
+                    move sendsize / recvsize in,
+                    add sendsize_by_msgtype / recvsize_by_msgtype,
+
+                introduce flush() to the VAST interface (reliable send does not occur immediately)
+                bug fix when terminating VAST
+
+                VASTATE (VAST State Management) is also included in this distribution, however,
+                as they're still under development no functionality is currently documented.
+
+2007/03/22      add a new buffering class 'vastbuf' for VAST, which allows messages of unlimited size
+                be sent and received (constrained by only by memory)
+
+2007/01/15      separate unique ID assignment from VAST, now VAST does not handle ID assignments,
+                but a 'vastid' class is introduced and can be used for centralized ID assignments.
+
+                move all build files into a '/build' directory
+
+
+VAST C++ 0.3.1  (ACE_DISABLED fix)
+--------------
+2006/11/21      bug fix for the ACE_DISABLE flag in include/config.h
+                store all *.dll *.lib files into /lib directory
+2006/11/14      bug fix for loopback message (message sent to self) in net_ace.cpp
+
+
+VAST C++ 0.3.0  (Forwarding Model)
+--------------
+2006/10/04      VON Forwarding Model and "zlib" compression library added
+2006/09/19      convert project files to VC.net2003
+2006/09/08      directory re-structure. "errout" module added (for printing debug messages).
+2006/07/28      revise net_emu to solve an ordering issue. Messages are now handled by
+                a multimap with timestep as index, as opposed to the linklist.
+
+
+VAST C++ 0.2.1
+--------------
+2006/05/30      added "gateway" node, compilable under Linux
+2006/04/05      revise the stat collection mechanism, time-series of all data are now recorded
+2006/04/03      rename the VAST node factory class 'metaverse' to 'vastverse'
+2006/03/20      change the record for node positions in VASTsim from text to binary format
+                (also change the log filename from *.txt to *.pos)
+2006/03/19      change the memory allocation of SFVoronoi from static to dynamic
+                (to support more nodes during simulation)
+
+VAST C++ 0.2.0
+--------------
+2006/03/15      demo program "chatva" completed
+2006/03/10      UDP support added (for movement and neighbor discovery messages, MOVE & NODE)
+2006/02/17      multiple clients connectable using real networks based on ACE (TCP only)
+2006/02/06      re-organized directory structures and inclusion of the ACE library
+
+                OLD                 NEW
+                ===                 ===
+                include, src        vast
+                src_sim             vastsim
+                src_test            demo
+                

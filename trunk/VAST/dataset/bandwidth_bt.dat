@@ -1,0 +1,11 @@
+# in paper "Donnybrook: Enabling Large-Scale, High-Speed, Peer-to-Peer Games"
+# Bandwidth distribution of nodes derived from actual distribution of BT nodes
+# Figure.7 (Lognormal approximation)
+# Downlink(bytes)	Uplink(bytes)	Fraction of nodes (%)
+81920	40960	0
+117760	58880	20
+171520	85760	40
+230400	115200	60
+307200	153600	70
+460800	230400	80
+768000	384000	90

@@ -1,0 +1,16 @@
+cd common
+scons -c
+cd ../VASTnet
+scons -c
+cd ../VAST
+scons -c
+cd ../VASTATE
+scons -c
+cd ../VASTsim
+scons -c
+cd ../VASTATEsim
+scons -c
+cd ../Demo/demo_console
+scons -c
+cd ../../
+
