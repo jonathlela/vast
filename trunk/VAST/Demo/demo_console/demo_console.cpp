@@ -313,7 +313,13 @@ int main (int argc, char *argv[])
     //TestSerialization ();
 
     // initialize seed
-    srand ((unsigned int)time (NULL));
+    //srand ((unsigned int)time (NULL));
+
+    // NOTE: do not use time () as nodes starting concurrently at different sites may have 
+    //       very close time () values
+    ACE_Time_Value now = ACE_OS::gettimeofday ();
+    printf ("Setting random seed as: %d\n", now.usec ());
+    srand (now.usec ());
     
     // set default values
     VASTATEPara para;
@@ -482,7 +488,7 @@ int main (int argc, char *argv[])
                 num_moves++;      
 
                 Node *self = g_agent->getSelf ();
-                fprintf (g_logfile, "[%d] moves to (%d, %d) at %d:%d (elapsed: %d us)\n", (int)(self->id/2), (int)self->aoi.center.x, (int)self->aoi.center.y, (int)start.sec (), (int)(start.usec () / 1000), (int)elapsed);
+                fprintf (g_logfile, "[%d] moves to (%d, %d) at %d:%d (elapsed: %d us)\n", (int)(self->id), (int)self->aoi.center.x, (int)self->aoi.center.y, (int)start.sec (), (int)(start.usec () / 1000), (int)elapsed);
             }
 
             // move only if position changes
@@ -551,8 +557,8 @@ int main (int argc, char *argv[])
                 {
                     // NOTE: the ID is divided by 2, to make the record indicate which node
                     //       (as arbitrators get odd IDs and agents get even IDs)
-                    fprintf (g_logfile, "[%ld] (%d, %d) ", (neighbors[i]->id/2), (int)neighbors[i]->aoi.center.x, (int)neighbors[i]->aoi.center.y);
-                    printf ("[%ld] (%d, %d) ", (neighbors[i]->id/2), (int)neighbors[i]->aoi.center.x, (int)neighbors[i]->aoi.center.y);
+                    fprintf (g_logfile, "[%ld] (%d, %d) ", (neighbors[i]->id), (int)neighbors[i]->aoi.center.x, (int)neighbors[i]->aoi.center.y);
+                    printf ("[%ld] (%d, %d) ", (neighbors[i]->id), (int)neighbors[i]->aoi.center.x, (int)neighbors[i]->aoi.center.y);
                 }
                 fprintf (g_logfile, "\n");
                 printf ("\n");
