@@ -242,10 +242,11 @@ void PrintNeighbors (long long curr_msec)
 		vector<Node *>& neighbors = g_self->getNeighbors ();
 	
 		printf ("Neighbors: ");
+		fprintf (g_neilog, "%lld,", curr_msec);
 
 		for (size_t i = 0; i < neighbors.size(); i++)
 		{
-			fprintf (g_neilog, "%lld,\"%ld,%d,%d\"", curr_msec, (neighbors[i]->id), 
+			fprintf (g_neilog, "\"%ld,%d,%d\"", (neighbors[i]->id), 
 					(int)neighbors[i]->aoi.center.x, (int)neighbors[i]->aoi.center.y);
 			printf ("[%ld] (%d, %d) ", (neighbors[i]->id), 
 					(int)neighbors[i]->aoi.center.x, (int)neighbors[i]->aoi.center.y);
