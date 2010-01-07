@@ -755,8 +755,7 @@ namespace Vast
                 // or a previously admitted JOIN request
                 if (in_msg.from == _self.id || 
                     _accepted.find (in_msg.from) != _accepted.end ())                
-                    addPeer (in_msg.from, sub_no, area, layer);
-                
+                    addPeer (in_msg.from, sub_no, area, layer);                
             }
             break;
 

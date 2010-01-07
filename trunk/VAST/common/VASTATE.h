@@ -53,6 +53,7 @@ namespace Vast
         // create a VASTATE node at a specified AOI (includes both an arbitrator and agent component)
         // if 'arb_pos' is given then the node will attempt to join as an arbitrator at the given position
         // returns the created node index
+        // NOTE: the 1st arbitrator (gateway) must supply arb_pos so that it can be ready to accept other join requests
         bool createNode (Area &aoi, ArbitratorLogic *arb_logic, AgentLogic *agent_logic, std::string &password, Position *arb_pos = NULL);
 
         // destroy the current VASTATE node

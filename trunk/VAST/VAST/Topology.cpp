@@ -244,10 +244,10 @@ namespace Vast
                 // call the Vivaldi algorithm to update my physical coordinate
                 vivaldi (rtt, _temp_coord, xj, _error, ej);
 
-#ifdef DEBUG_DETAIL
+//#ifdef DEBUG_DETAIL
                 printf ("[%ld] physcoord (%.3f, %.3f) rtt to [%ld]: %.3f error: %.3f requests: %d\n", 
                          _host_id, _temp_coord.x, _temp_coord.y, in_msg.from, rtt, _error, _request_times);
-#endif
+//#endif
 
                 // check if the local error value is small enough, 
                 // if so we've got our physical coordinate

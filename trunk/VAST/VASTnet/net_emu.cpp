@@ -107,7 +107,7 @@ namespace Vast
     // return the number of bytes sent
     size_t 
     net_emu::send (id_t target, char const *msg, size_t size, bool reliable)
-    {
+    {        
         if (_active == false || isConnected (target) == false)
             return 0;
 
@@ -148,11 +148,6 @@ namespace Vast
             p += msg_size;
         }
 
-        // record transmission stat
-        // TODO: right now the stat collection is done at different places, do at same place?        
-        // TODO: msgtype distinction?
-        updateTransmissionStat (target, 0, size, 1);
-
         return size;
     }
 
@@ -182,12 +177,6 @@ namespace Vast
             if (time > qmsg->senttime)
             {
                 _msgqueue.erase (it);
-
-                // collect download transmission stat
-                // TODO: msgtype distinction?
-                //size_t total_size = sizeof (size_t) + sizeof (id_t) + sizeof (timestamp_t) + qmsg->msg->size;
-                //updateTransmissionStat (qmsg->fromhost, 0, total_size, 2);
-
                 return qmsg;
             }
         }

@@ -59,6 +59,7 @@ Area        g_prev_aoi;          // my AOI (with center as current position)
 bool        g_finished = false;
 NodeState   g_state = ABSENT;
 char        g_lastcommand = 0;
+size_t      g_count = 0;        // # of ticks so far (# of times the main loop has run)
 
 VASTPara_Net g_netpara;            // network parameters
 
@@ -163,7 +164,13 @@ void checkJoin ()
     if (g_state == ABSENT)
     {
         string password ("abc\0");
-        g_world->createNode (g_aoi, g_arbitratorlogic, g_self, password, (g_netpara.is_gateway ? &g_aoi.center : NULL));
+
+        // do not create agent for gateway node
+        if (g_netpara.is_gateway)
+            g_world->createNode (g_aoi, g_arbitratorlogic, NULL, password, &g_aoi.center);
+        else
+            g_world->createNode (g_aoi, g_arbitratorlogic, g_self, password, NULL);
+
         g_state = JOINING;
     }
             
@@ -200,6 +207,35 @@ void checkJoin ()
     }
     
 #endif
+}
+
+void PrintNeighbors ()
+{
+    // record neighbor position to log if joined
+    if (g_state == JOINED)
+    {
+        fprintf (g_logfile, "%d ", g_count);
+
+        // print currently known neighbors
+    #ifdef USE_VAST
+        vector<Node *>& neighbors = g_self->list ();
+    #else
+        vector<Node *>& neighbors = g_self->getNeighbors ();    
+    #endif
+
+        // print a list of known neighbors
+        for (size_t i=0; i < neighbors.size (); i++)
+        {
+            fprintf (g_logfile, "[%ld] (%d, %d) ", (neighbors[i]->id), (int)neighbors[i]->aoi.center.x, (int)neighbors[i]->aoi.center.y);
+            printf ("[%ld] (%d, %d) ", (neighbors[i]->id), (int)neighbors[i]->aoi.center.x, (int)neighbors[i]->aoi.center.y);
+        }
+
+        fprintf (g_logfile, "\n");
+        printf ("\n");
+
+        // make sure the logfile gets updated
+        fflush (g_logfile);
+    }
 }
 
 void TestSerialization ()
@@ -443,7 +479,7 @@ int main (int argc, char *argv[])
         g_aoi.center = *g_movement.getPos (g_node_no, 0);
     }
 
-    size_t count = 0, count_per_sec = 0;
+    size_t count_per_sec = 0;
     int num_moves = 0;
 
     // how much time in millisecond
@@ -460,7 +496,7 @@ int main (int argc, char *argv[])
         // record starting time of this cycle
         ACE_Time_Value start = ACE_OS::gettimeofday();
 
-        count++;
+        g_count++;
         count_per_sec++;
 
         if (g_state != JOINED)
@@ -486,9 +522,6 @@ int main (int argc, char *argv[])
                
                 g_aoi.center = *g_movement.getPos (g_node_no, num_moves);
                 num_moves++;      
-
-                Node *self = g_agent->getSelf ();
-                fprintf (g_logfile, "[%d] moves to (%d, %d) at %d:%d (elapsed: %d us)\n", (int)(self->id), (int)self->aoi.center.x, (int)self->aoi.center.y, (int)start.sec (), (int)(start.usec () / 1000), (int)elapsed);
             }
 
             // move only if position changes
@@ -500,7 +533,16 @@ int main (int argc, char *argv[])
 #ifdef USE_VAST
                 g_self->move (g_sub_no, g_aoi);
 #else
-                g_agent->move (g_aoi.center);
+                // only non-gateway nodes move
+                if (g_agent != NULL)
+                {
+                    Node *self = g_agent->getSelf ();
+                    fprintf (g_logfile, "[%d] moves to (%d, %d) at %d:%d (elapsed: %d us)\n", (int)(self->id), (int)self->aoi.center.x, (int)self->aoi.center.y, (int)start.sec (), (int)(start.usec () / 1000), (int)elapsed);
+
+                    PrintNeighbors ();
+
+                    g_agent->move (g_aoi.center);
+                }
 #endif
             }
 
@@ -513,8 +555,11 @@ int main (int argc, char *argv[])
                 // create new objects
                 case 'c':
                     SimPeerAction action = CREATE_OBJ;
-                    Event *e = g_agent->createEvent ((msgtype_t)action);
-                    g_agent->act (e);
+                    if (g_agent != NULL)
+                    {
+                        Event *e = g_agent->createEvent ((msgtype_t)action);
+                        g_agent->act (e);
+                    }
                     break;
                 }
                 g_lastcommand = 0;
@@ -531,40 +576,16 @@ int main (int argc, char *argv[])
         // execute tick while obtaining time left
         size_t sleep_time = g_world->tick ((time_budget - (size_t)(elapsed / 1000))) * 1000;
        
-        // print only once per second, 
+        // do per-second things / checks
         // NOTE: we assume this takes little time and does not currently count in as time spent in cycle       
         if (start.sec () > curr_sec)
         {
             curr_sec = (long)start.sec ();
             printf ("%ld s, tick %u, tick_persec %u, sleep: %ld us\n", 
-                     curr_sec, count, count_per_sec, (long) sleep_time);
+                     curr_sec, g_count, count_per_sec, (long) sleep_time);
             count_per_sec = 0;
-
-            // record neighbor position to log if joined
-            if (g_state == JOINED)
-            {
-                fprintf (g_logfile, "%d (%ld) ", count, curr_sec);
-
-                // print currently known neighbors
-#ifdef USE_VAST
-                vector<Node *>& neighbors = g_self->list ();
-#else
-                vector<Node *>& neighbors = g_self->getNeighbors ();    
-#endif
-
-                // print a list of known neighbors
-                for (size_t i=0; i < neighbors.size (); i++)
-                {
-                    // NOTE: the ID is divided by 2, to make the record indicate which node
-                    //       (as arbitrators get odd IDs and agents get even IDs)
-                    fprintf (g_logfile, "[%ld] (%d, %d) ", (neighbors[i]->id), (int)neighbors[i]->aoi.center.x, (int)neighbors[i]->aoi.center.y);
-                    printf ("[%ld] (%d, %d) ", (neighbors[i]->id), (int)neighbors[i]->aoi.center.x, (int)neighbors[i]->aoi.center.y);
-                }
-                fprintf (g_logfile, "\n");
-                printf ("\n");
-
-                fflush (g_logfile);
-            }
+            
+            //PrintNeighbors ();
         } 
 
         if (sleep_time > 0)
@@ -580,8 +601,12 @@ int main (int argc, char *argv[])
     g_self->leave ();
     g_world->destroyClient (g_self);
 #else
-    g_agent->leave ();
-    g_agent->logout ();
+    if (g_agent != NULL)
+    {
+        g_agent->leave ();
+        g_agent->logout ();
+    }
+
     g_world->tick ((size_t)0);
     
     ACE_Time_Value tv (1, 0);

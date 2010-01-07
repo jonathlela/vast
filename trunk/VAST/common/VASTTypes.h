@@ -548,9 +548,14 @@ public:
         return 0;        
     }
 
+    // NOTE: that pad right now is used to store layer info in VASTATE
+    // see Relay::addPeer (). do not change it without also modifying VASTATE
+    // TODO: cleaner way?
+
     unsigned long       host;
     unsigned short      port;   
-    unsigned short      pad;
+    unsigned short      pad;        
+    
 };
 
 /*

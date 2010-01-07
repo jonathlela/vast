@@ -138,6 +138,10 @@ namespace Vast
         if (_active == false)
             return 0;
 
+        // collect download transmission stat
+        //size_t total_size = sizeof (size_t) + sizeof (id_t) + sizeof (timestamp_t) + qmsg->msg->size;
+        updateTransmissionStat (target, msg.msgtype, msg.size, 1);
+
         timestamp_t sent_time = getTimestamp ();
 
 #ifdef DEBUG_DETAIL
@@ -204,7 +208,7 @@ namespace Vast
         buf->add (&_id, sizeof (id_t));
         buf->add (&sent_time, sizeof (timestamp_t));
         buf->add (&msg);
-        
+
         return total_size;
     }
 
@@ -234,12 +238,9 @@ namespace Vast
         senttime = nextmsg->senttime;
 
         delete nextmsg;
-        
-        // collect download transmission stat
-        // TODO: msgtype distinction?
-        size_t total_size = sizeof (size_t) + sizeof (id_t) + sizeof (timestamp_t) + _recvmsg->size;
-        updateTransmissionStat (fromhost, 0, total_size, 2);
 
+        updateTransmissionStat (_recvmsg->from, _recvmsg->msgtype, _recvmsg->size, 2); 
+        
         return _recvmsg;
     }
 
@@ -550,9 +551,9 @@ namespace Vast
     // type 1: send, type 2: receive
     void 
     VASTnet::updateTransmissionStat (id_t target, msgtype_t msgtype, size_t size, int type)
-    {
+    {       
         // skip send / receive from the same host
-        if (_local_targets.find (target) != _local_targets.end ())
+        if (target == _id || _local_targets.find (target) != _local_targets.end ())
             return;
 
         // record send stat

@@ -61,17 +61,28 @@ namespace Vast
         // we currently only support one VASTATE node 
         // TODO: more arbitrators / agents at the same host?
         if (_arbitrators.size () > 0 || _agents.size () > 0)
+        {
+            printf ("VASTATE::createNode () VASTATE node already created\n");
             return false;
-
-        // store references to logics & login password
-        _arb_logics.push_back (arb_logic);
-        _agent_logics.push_back (agent_logic);
-        _agent_aoi = aoi;
-        _pass = password;
+        }
 
         // store initial relay join position, if any
         if (arb_pos != NULL)
             _arb_position = *arb_pos;
+        else if (_netpara.is_gateway)
+        {
+            printf ("VASTATE::createNode () warning: VASTATE node created as gateway but no initial position is supplied for arbitrator\n");
+            return false;
+        }
+
+        // store references to logics & login password
+        if (arb_logic != NULL)
+            _arb_logics.push_back (arb_logic);
+        if (agent_logic != NULL)
+            _agent_logics.push_back (agent_logic);
+
+        _agent_aoi = aoi;
+        _pass = password;
 
         // we perform actual join in isLogin () as may require multiple calls 
         return true;
@@ -102,25 +113,23 @@ namespace Vast
     bool 
     VASTATE::isLogined ()
     {
-        // do not login if references to logics do not exist (that is, createNode () must be called first)
-        if (_arb_logics.size () == 0)
+        // do not login if references to logics do not exist 
+        // (that is, createNode () must be called first)
+        if (_arb_logics.size () == 0 && _agent_logics.size () == 0)
             return false;
         else if (_state == JOINED)
             return true;
 
-        // see if arbitrator join location is specified
-        // NOTE: Position is initialized at the origin (x = 0, y = 0), 
-        bool init_pos = !(_arb_position.x == 0 && _arb_position.y == 0);
-        
         // create arbitrator & agent
         if (_state == ABSENT)
         {
             // create arbitrator first (to handle incoming LOGIN request from agents)
-            if (_arbitrators.size () == 0)
+            // but only if there are valid arbitrator logic specified
+            if (_arbitrators.size () < _arb_logics.size ())
                 createArbitrator (_arb_logics[0]);
         
             // we create agent AFTER arbitrator is created first
-            else if (_agents.size () == 0)                
+            else if (_agents.size () < _agent_logics.size ())                
             {                       
                 Agent *agent = createAgent (_agent_logics[0]);
         
@@ -134,32 +143,46 @@ namespace Vast
                 }
             }
         
-            // if agent is created successfully, move to next stage (wait for join success)
+            // if both arbitrator & agent are created successfully, move to next stage (wait for join success)
             // NOTE: arbitrator may not be created if public IP is not available at this host
-            if (_agents.size () > 0)
+            if (_arbitrators.size () == _arb_logics.size () &&
+                _agents.size () == _agent_logics.size ())
                 _state = JOINING;
         }
 
-        // check if our agent & arbitrator have properly joined the network
+        // check if arbitrator has properly joined the network
         else if (_state == JOINING)
         {
-            if (init_pos)
+            // see if arbitrator join location is specified
+            // NOTE: Position is initialized at the origin (x = 0, y = 0), 
+            bool init_pos = !(_arb_position.x == 0 && _arb_position.y == 0);
+        
+            // if no arbitrator logic or initial position specified, ignore arbitrator join
+            // otherwise, check if arbitrator join is already completed
+            if (_arb_logics.size () == 0 || 
+                init_pos == false || 
+                _arbitrators[0]->isJoined ())
+                _state = JOINING_2;
+            else                 
                 _arbitrators[0]->join (_arb_position);
-
-            bool join_successful = (init_pos ? _arbitrators[0]->isJoined () : true);
-
-            if (join_successful && _agents[0]->isAdmitted ())
-            {
-                // attempt to join    
-                _agents[0]->setAOI (_agent_aoi.radius);
-    
-                if (_agents[0]->join (_agent_aoi.center) == true)
-                    _state = JOINING_2;
-            }
         }
-        else if (_state == JOINING_2 && _agents[0]->isJoined ())
+        // check if agent has properly joined the network
+        else if (_state == JOINING_2)
         {
-            _state = JOINED;                                
+            // if no agent logic specified or if join is already completed, 
+            // then join is considered done
+            if (_agent_logics.size () == 0 ||
+                _agents[0]->isJoined ())
+                _state = JOINED;
+        
+            else if (_agents[0]->isAdmitted ())
+            {
+                // attempt to join
+                // NOTE: only the first call to join () after admitted is valid, 
+                // so it can be called repetitively
+                _agents[0]->setAOI (_agent_aoi.radius);    
+                _agents[0]->join (_agent_aoi.center);
+            }                                            
         }
 
         return (_state == JOINED);
@@ -222,7 +245,7 @@ namespace Vast
     Agent *
     VASTATE::getAgent ()
     {
-        if (_state != JOINED)
+        if (_state != JOINED || _agent_logics.size () == 0)
             return NULL;
 
         return _agents[0];
@@ -233,7 +256,7 @@ namespace Vast
     Arbitrator *
     VASTATE::getArbitrator ()
     {
-        if (_state != JOINED)
+        if (_state != JOINED || _arb_logics.size () == 0)
             return NULL;
 
         return _arbitrators[0];
