@@ -242,6 +242,9 @@ namespace Vast
         // returns number of ownership changes
         int transferOwnership ();
         
+        // change position of this arbitrator in response to overload signals
+        void moveArbitrator ();
+
         // check with VON to refresh current connected arbitrators
         void updateArbitrators ();
 
@@ -371,7 +374,7 @@ namespace Vast
         
         timestamp_t _tick;                                  // # of ticks since the execution of arbitrator
         
-        // states                       
+        // position states
         Node _newpos;                                       // new AOI & position to be updated
 
         vector<Position> _legal_pos;                        // legal positions for inserting new arbitrator

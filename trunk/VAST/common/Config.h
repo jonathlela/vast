@@ -54,6 +54,9 @@
 // when only simulation is run
 #define SIMULATION_ONLY_
 
+// whether to record statistics during simulation runs
+#define SIM_RECORD_STAT
+
 // enable latency table be used (make sure it's in the working directory)
 #define  ENABLE_LATENCY_
 

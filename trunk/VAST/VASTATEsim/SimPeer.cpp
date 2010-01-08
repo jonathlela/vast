@@ -385,8 +385,15 @@
         {
             string password ("abc\0");
 
-            // NOTE: only the first node is joined as arbitrator
-            _factory->createNode (_self.aoi, _arb_logic, _agent_logic, password, (_nodeindex == 1 ? &_self.aoi.center : NULL));
+            // only gateway is added as first arbitrator
+            //_factory->createNode (_self.aoi, _arb_logic, _agent_logic, password, (_nodeindex == 1 ? &_self.aoi.center : NULL));
+            
+            // NOTE: any node that is relay is added as arbitrator, other nodes are strictly agents
+            if (_netpara.is_relay)
+                _factory->createNode (_self.aoi, _arb_logic, _agent_logic, password, &_self.aoi.center);
+            else
+                _factory->createNode (_self.aoi, NULL, _agent_logic, password, NULL);
+
             state = WAITING;
         }
 

@@ -271,6 +271,9 @@ int NextStep ()
     for (i=0; i < n; ++i)
         g_nodes->at (i)->processmsg ();    
 
+    int inconsistent_count = 0;
+
+#ifdef SIM_RECORD_STAT
     // each node calculates stats
     for (i=0; i < n; ++i)
         g_nodes->at (i)->record_stat ();
@@ -278,7 +281,8 @@ int NextStep ()
     //
     // stat collection 
     //
-    int inconsistent_count = g_stat->record_step ();    
+    inconsistent_count = g_stat->record_step ();    
+#endif
 
     //
     // returns (-1) for terminating the simulation, or # of inconsistent nodes
