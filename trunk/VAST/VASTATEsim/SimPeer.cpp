@@ -51,7 +51,8 @@
         _netpara.phys_coord  = _self.aoi.center;         // use virtual coord as temp physical coord
         _netpara.is_relay    = as_relay;
         _netpara.peer_limit  = _para.PEER_LIMIT;
-        _netpara.relay_limit = _para.RELAY_LIMIT;                              
+        _netpara.relay_limit = _para.RELAY_LIMIT;    
+
         _netpara.conn_limit  = _para.CONNECT_LIMIT;
         _netpara.recv_quota  = _para.DOWNLOAD_LIMIT;
         _netpara.send_quota  = _para.UPLOAD_LIMIT;
@@ -60,11 +61,12 @@
         _simpara.fail_rate   = _para.FAIL_RATE;
         _simpara.loss_rate   = _para.LOSS_RATE;
 
-        VASTATEPara vpara;
+        VASTATEPara vpara;        
 
-        vpara.default_aoi   = _para.AOI_RADIUS;
-        vpara.world_height  = _para.WORLD_HEIGHT;
-        vpara.world_width   = _para.WORLD_WIDTH;
+        vpara.default_aoi    = _para.AOI_RADIUS;
+        vpara.world_height   = _para.WORLD_HEIGHT;
+        vpara.world_width    = _para.WORLD_WIDTH;
+        vpara.overload_limit = _para.OVERLOAD_LIMIT;
         
         _factory = new VASTATE (vpara, _netpara, &_simpara);
 
@@ -385,14 +387,17 @@
         {
             string password ("abc\0");
 
-            // only gateway is added as first arbitrator
-            //_factory->createNode (_self.aoi, _arb_logic, _agent_logic, password, (_nodeindex == 1 ? &_self.aoi.center : NULL));
+
+            // case 1: only gateway is added as first arbitrator, but others are potential arbitrators
+            _factory->createNode (_self.aoi, _arb_logic, _agent_logic, password, (_nodeindex == 1 ? &_self.aoi.center : NULL));
             
-            // NOTE: any node that is relay is added as arbitrator, other nodes are strictly agents
+            /*
+            // case 2: any node that is relay is added as arbitrator, other nodes are strictly agents
             if (_netpara.is_relay)
                 _factory->createNode (_self.aoi, _arb_logic, _agent_logic, password, &_self.aoi.center);
             else
-                _factory->createNode (_self.aoi, NULL, _agent_logic, password, NULL);
+                _factory->createNode (_self.aoi, NULL, _agent_logic, password, NULL);            
+            */
 
             state = WAITING;
         }

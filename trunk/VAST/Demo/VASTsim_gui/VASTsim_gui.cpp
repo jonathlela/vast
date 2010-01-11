@@ -567,6 +567,7 @@ INT WINAPI WinMain( HINSTANCE hInst, HINSTANCE, LPSTR, INT )
         g_para.DOWNLOAD_LIMIT  =  10000;
         g_para.PEER_LIMIT      =  100;
         g_para.RELAY_LIMIT     =  10;
+        g_para.OVERLOAD_LIMIT  =  10;
     }
     
     InitSim (g_para);

@@ -385,6 +385,7 @@ int main (int argc, char *argv[])
     para.default_aoi    = DEFAULT_AOI;
     para.world_height   = DIM_Y;
     para.world_width    = DIM_X;
+    para.overload_limit = 0;
         
     g_aoi.center.x = (coord_t)(rand () % DIM_X);
     g_aoi.center.y = (coord_t)(rand () % DIM_Y);
@@ -442,6 +443,7 @@ int main (int argc, char *argv[])
         para.default_aoi        = simpara.AOI_RADIUS;
         para.world_height       = simpara.WORLD_HEIGHT;
         para.world_width        = simpara.WORLD_WIDTH;        
+        para.overload_limit     = simpara.OVERLOAD_LIMIT;
         g_netpara.step_persec   = simpara.STEPS_PERSEC;            
     }
     else  

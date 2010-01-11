@@ -64,10 +64,11 @@ typedef struct {
     int     VELOCITY;       
     int     LOSS_RATE;
     int     FAIL_RATE;
-    int     UPLOAD_LIMIT;
-    int     DOWNLOAD_LIMIT;
-    int     PEER_LIMIT;
-    int     RELAY_LIMIT;
+    int     UPLOAD_LIMIT;       // send limit
+    int     DOWNLOAD_LIMIT;     // receive limit
+    int     PEER_LIMIT;         // # of peers kept at each relay
+    int     RELAY_LIMIT;        // # how many neighbor relays to keep
+    int     OVERLOAD_LIMIT;     // # of agents considered overloaded for an arbitrator
 } SimPara;
 
 typedef enum  

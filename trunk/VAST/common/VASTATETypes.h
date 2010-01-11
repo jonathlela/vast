@@ -90,11 +90,6 @@
 //
 // various system parameters (thresholds & countdown values)
 //
-//#define THRESHOLD_ARBITRATOR      80  // on capacity scale 1 - 100  (max capacity)
-#define THRESHOLD_OVERLOAD       5      // # of agents considerd overload
-#define THRESHOLD_UNDERLOAD      0      // # of agents considered underload
-                                        // TODO: if UNDERLOAD threshold is not 0,
-                                        // then we need proper mechanism to transfer objects out before arbitrator departs
 
 #define COUNTDOWN_REMOVE_AVATAR 20      // # of steps to delete disconnected avatar object
 #define COUNTDOWN_PROMOTE       20      // # of steps can insert a new Arbitrator in the same area after an Arbitrator inserted
@@ -104,7 +99,7 @@
 
 #define TIMEOUT_EXPIRING_OBJECT     (10)    // time-steps to delete an un-ownered object (assuming 25 steps / sec * 10 sec)
 #define TIMEOUT_JOINING             (25*3)  // time-steps to re-send a join request
-#define TIMEOUT_OVERLOAD_REQUEST    (25*2)  // time-steps to re-send a overload help request
+#define TIMEOUT_OVERLOAD_REQUEST    (25*1)  // time-steps to re-send a overload help request
 
 #define STAT_REPORT_INTERVAL_IN_SEC 10      // # of seconds to report a stat collection
 
@@ -133,6 +128,7 @@ namespace Vast
         length_t    world_width;        // dimension of the whole world
         length_t    world_height;       // to determine initial subscription area, also to check arbitrator insertion position, 
         length_t    default_aoi;        // default AOI size (to check if arbitrator insertion position is legal)        
+        unsigned    overload_limit;     // # of agents considered overloaded at an arbitrator
     };
 
     // NOTE: change in message ID should also reflect in VASTATETypes.cpp 
@@ -171,6 +167,7 @@ namespace Vast
         OVERLOAD_M,             // Overloaded arbitrator's request for moving closer
         OVERLOAD_I,             // Overloaded arbitrator's request for inserting new arbitrator
         UNDERLOAD,              // Underloaded arbitrator's request for helping others        
+        LOADING,                // reporting current loading (supported agent #) to neighbor arbitrators
 
         // fault tolerance
         SWITCH,                 // switching backup arbitrator 

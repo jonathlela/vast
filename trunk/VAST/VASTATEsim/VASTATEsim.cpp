@@ -73,6 +73,7 @@ bool ReadPara (SimPara &para, char *inifile)
         &para.DOWNLOAD_LIMIT,
         &para.PEER_LIMIT,
         &para.RELAY_LIMIT,
+        &para.OVERLOAD_LIMIT,
         0
     };
 

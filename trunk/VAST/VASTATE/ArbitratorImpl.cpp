@@ -31,7 +31,7 @@ namespace Vast
         : Arbitrator (), _state (ABSENT), _VONpeer (NULL), 
           _vastnode (vastnode), _sub_no (0), _logic (logic),  
           obj_msg (0), pos_msg (0), state_msg (0),
-          _obj_id_count (1), _load_counter (0), _tick (0), 
+          _obj_id_count (1), _load_counter (0), _overload_requests (0), _tick (0), 
           _last_send (0), _last_recv (0), _statfile (NULL), 
           _para (para)
     {
@@ -363,53 +363,67 @@ namespace Vast
 
         // if overload persists, then we try to insert new arbitrator
         if (_load_counter > TIMEOUT_OVERLOAD_REQUEST)
-        {           
-            // notify neighbors to move closer            
-            vector<id_t> neighbors;
+        {    
+            // reset
+            if (_overload_requests < 0)
+                _overload_requests = 0;
 
-            getEnclosingArbitrators (neighbors);
-            
-            id_t self_id = _VONpeer->getSelf ()->id;
-            id_t target;
-            listsize_t load = (listsize_t)status;
+            _overload_requests++;
 
-            // send to each enclosing Arbitrator a stress signal except my_self (does get_en return my_self ?)
-            for (size_t i=0; i < neighbors.size (); i++)
+                        
+
+            // if the overload situation just occurs, try to move boundary first
+            if (_overload_requests < 5) 
             {
-                target = neighbors[i];
-        
+                // notify neighbors to move closer                            
+                id_t self_id = _VONpeer->getSelf ()->id;
+                listsize_t load = (listsize_t)status;
+                        
                 // send the level of loading to neighbors
                 // NOTE: important to store the VONpeer ID as this is how the responding arbitrator will recongnize
                 Message msg (OVERLOAD_M);        
                 msg.from = self_id;         
                 msg.priority = 1;
-
+            
                 msg.store (load);
-                msg.addTarget (target);
-                sendMessage (msg);
+                if (getEnclosingArbitrators (msg.targets) == true)
+                    sendMessage (msg);
             }
 
+            // if the overload situation persists, 
             // ask gateway to insert arbitrator at given location
-            /*
-            Position pos = findArbitratorInsertion (_VONpeer->getVoronoi (), _VONpeer->getSelf ()->id);
+            else
+            {           
+                Position pos = findArbitratorInsertion (_VONpeer->getVoronoi (), _VONpeer->getSelf ()->id);
+            
+                Message msg (OVERLOAD_I);
+                msg.priority = 1;
+                msg.store ((char *)&status, sizeof (int));
+                msg.store (pos);
+                msg.addTarget (NET_ID_GATEWAY);
+                sendMessage (msg);    
 
-            Message msg (OVERLOAD_I);
-            msg.priority = 1;
-            msg.store ((char *)&status, sizeof (int));
-            msg.store (pos);
-            msg.addTarget (NET_ID_GATEWAY);
-            sendMessage (msg);                     
-            */
+                _overload_requests = 0;
+            }      
 
             _load_counter = 0;
         }
         // underload event
         else if (_load_counter < (-TIMEOUT_OVERLOAD_REQUEST))
-        {
-            _load_counter = 0;
+        {            
+            // reset
+            if (_overload_requests > 0)
+                _overload_requests = 0;
 
-            // register with gateway as a potential arbitrator
-            if (isGateway (_self.id) == false)
+            _overload_requests--;
+
+            if (_overload_requests > (-5))
+            {
+                // TODO: notify neighbors to move further away?
+            }
+
+            // check for arbitrator departure
+            else if (isGateway (_self.id) == false)
             {                
                 // depart as arbitrator if loading is below threshold
                 /*
@@ -422,8 +436,16 @@ namespace Vast
                 msg.addTarget (NET_ID_GATEWAY);
                 sendMessage (msg);
                 */
+
+                _overload_requests = 0;
             }
+                    
+            _load_counter = 0;
         }
+        // normal loading, reset # of OVERLOAD_M requests
+        else if (_load_counter == 0)
+            _overload_requests = 0;
+        
     }
 
     //
@@ -863,12 +885,20 @@ namespace Vast
                     break;
                 }
 
+                // extract loading
+                listsize_t load;
+                in_msg.extract (load);
+                float multiplier = (_para.overload_limit > 0 ? ((float)load / _para.overload_limit) : load);
+
                 // calculate new position after moving closer to the stressed arbitrator
                 Position &arb = _arbitrators[in_msg.from].aoi.center;
                 Position temp_pos = _newpos.aoi.center;
 
                 // move in 1/10 of the distance between my_self and the stressed arbitrator
-                temp_pos += ((arb - temp_pos) * 0.2);
+                //temp_pos += ((arb - temp_pos) * 0.2);
+
+                // move at a speed proportional to the severity of the overload
+                temp_pos += (((arb - temp_pos) * 0.2) * multiplier);
 
                 //temp_pos.x = (coord_t)(_newpos.aoi.center.x + (arb.x - _newpos.aoi.center.x) * 0.10);
                 //temp_pos.y = (coord_t)(_newpos.aoi.center.y + (arb.y - _newpos.aoi.center.y) * 0.10);
@@ -879,33 +909,19 @@ namespace Vast
             }          
             break;
 
+        // record loading from current arbitrators
+        case LOADING:
+            {
+                listsize_t load;
+                in_msg.extract (load);
+
+                // update loading info
+                _arb_loading[in_msg.from] = load;
+            }
+            break;
+                
 
         /*
-        // Underloaded arbitrator's request for region adjustment
-        case UNDERLOAD:
-            {
-                // received not my enclosing neighbor's help signal
-                if (_arbitrators.find (from_id) == _arbitrators.end ())
-                {
-#ifdef DEBUG_DETAIL
-                    sprintf (_str, "[%d] receives UNDERLOAD from non-enclosing node [%d]\r\n", _vastnode->getSelf ()->id, from_id);
-                    _eo.output (_str);
-#endif
-                    break;
-                }
-
-                // calculate new position after moving closer to the stressed arbitrator
-                Position & arb = _arbitrators[from_id].aoi.center;
-                Position temp_new_pos = _newpos.aoi.center;
-              
-                // move in 1/10 of the distance between my_self and the stressed arbitrator
-                temp_new_aoi.center.x = temp_new_aoi.center.x - (arb.x - temp_new_aoi.center.x) * 0.10;
-                temp_new_aoi.center.y = temp_new_aoi.center.y - (arb.y - temp_new_aoi.center.y) * 0.10;
-
-                if (isLegalPosition (temp_new_pos, false))
-                    _newpos.aoi.center = temp_new_pos;
-            }            
-            break;
 
         // Notification of an Arbitrator goes to off-line
         case ARBITRATOR_LEAVE:
@@ -1191,7 +1207,19 @@ namespace Vast
         // check to see if objects have migrated (TODO: should do it earlier?)
         transferOwnership ();
 
-        // collect stat every second
+        // perform per-second tasks
+        if (_tick % _net->getTickPerSecond () == 0)
+        {
+            // report loading to neighbors
+            reportLoading ();
+
+            // move myself towards the center of agents
+            Position center;
+            if (getAgentCenter (center))
+                _newpos.aoi.center += ((center - _newpos.aoi.center) * 0.2);
+        }
+
+        // collect stat periodically
         // TODO: better way than to pass _para?
         if (_tick % (_net->getTickPerSecond () * STAT_REPORT_INTERVAL_IN_SEC) == 0)
             reportStat ();
@@ -1276,16 +1304,8 @@ namespace Vast
 
         Position agent_center;      // center of agents        
         
-        // find the center of all known agents
-        // NOTE/BUG if all coordinates are large, watch for overflow
-        map<id_t, Node>::iterator it = _agents.begin ();
-        for (; it != _agents.end (); it++)
-        {
-            agent_center.x += it->second.aoi.center.x;
-            agent_center.y += it->second.aoi.center.y;
-        }
-        agent_center.x /= _agents.size ();
-        agent_center.y /= _agents.size ();
+        // get center of all known agents
+        
 
         // find center of arbitrators
         Position arb_center;        
@@ -1309,13 +1329,17 @@ namespace Vast
         }
         else
             insert_pos = agent_center;
+        
+        //if (isLegalPosition (insert_pos))
+        //    _legal_pos.push_back (insert_pos);
 
-        if (isLegalPosition (insert_pos))
-            _legal_pos.push_back (insert_pos);
-        else if (isLegalPosition (arb_center))
-            _legal_pos.push_back (arb_center);
-        else if (isLegalPosition (agent_center))
-            _legal_pos.push_back (agent_center);
+        //if (isLegalPosition (arb_center))
+        //    _legal_pos.push_back (arb_center);
+        
+        //else if (isLegalPosition (agent_center))
+        //    _legal_pos.push_back (agent_center);
+
+        
         
         // agent center only
         //_legal_pos.push_back (agent_center);
@@ -1375,7 +1399,7 @@ namespace Vast
         if (_legal_pos.size () == 0)
         {
             // create a deterministic random seed
-            srand (_VONpeer->getSelf ()->id * _self.id);
+            //srand (_VONpeer->getSelf ()->id * _self.id);
 
             Position pos;
             do
@@ -1448,6 +1472,29 @@ namespace Vast
         return true;
     }
 
+    // get the center of all current agents I maintain
+    bool
+    ArbitratorImpl::getAgentCenter (Position &agent_center)
+    {
+        if (_agents.size () == 0)
+            return false;
+
+        agent_center.set (0, 0, 0);
+
+        // NOTE/BUG if all coordinates are large, watch for overflow
+        map<id_t, Node>::iterator it = _agents.begin ();
+        
+        for (; it != _agents.end (); it++)
+        {
+            agent_center.x += it->second.aoi.center.x;
+            agent_center.y += it->second.aoi.center.y;
+        }
+
+        agent_center.x /= _agents.size ();
+        agent_center.y /= _agents.size ();
+
+        return true;
+    }
 
     // insert a new agent and create its avatar object
     bool 
@@ -2274,12 +2321,20 @@ namespace Vast
         if (n > 0)
             _stat_agents.addRecord (n);
 
-        // if # of agents exceed limit, do an arbitrator insert
-        if (n > THRESHOLD_OVERLOAD)
+        // check if no limit is imposed
+        if (_para.overload_limit == 0)
+            return;
+
+        // if # of agents exceed limit, notify for overload
+        else if (n > _para.overload_limit)
             notifyLoading (n);
+        
         // underload
-        else if (n <= THRESHOLD_UNDERLOAD)
+        // TODO: if UNDERLOAD threshold is not 0,
+        // then we need proper mechanism to transfer objects out before arbitrator departs
+        else if (n <= 0)
             notifyLoading (-1);
+        
         // normal loading
         else
             notifyLoading (0);
@@ -2307,6 +2362,19 @@ namespace Vast
         
         msg.addTarget (NET_ID_GATEWAY);
         sendMessage (msg);
+    }
+
+    // send loading to neighbors
+    void ArbitratorImpl::reportLoading ()
+    {
+        Message msg (LOADING);
+        msg.priority = 1;
+
+        listsize_t n = (listsize_t)_agents.size ();
+        msg.store (n);
+        
+        if (getEnclosingArbitrators (msg.targets) == true)
+            sendMessage (msg);
     }
 
     // perform object discovery for agents

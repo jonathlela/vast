@@ -213,6 +213,9 @@ namespace Vast
         // get a list of my enclosing arbitrators
         bool getEnclosingArbitrators (vector<id_t> &list);
 
+        // get the center of all current agents I maintain
+        bool getAgentCenter (Position &center);
+
 
         //
         // maintenance methods
@@ -272,6 +275,9 @@ namespace Vast
 
         // perform statistics collection
         void reportStat ();
+
+        // send loading to neighbors
+        void reportLoading ();
 
         //
         // sending methods
@@ -357,6 +363,8 @@ namespace Vast
         map<id_t, Node>                 _arbitrators;           // list of neighbor arbitrators 
                                                                 // (NOTE: both index and Node info refer VONpeer id not host ID)
         
+        map<id_t, int>                  _arb_loading;           // current loading of neighbor arbitrators
+
         // buffers
         char _buf[VASTATE_BUFSIZ];
 
@@ -371,7 +379,8 @@ namespace Vast
 
         int         _obj_id_count;                          // counter for assigning / creating object id
         int         _load_counter;                          // counter for # of timesteps overloaded (positive) or underloaded (negative)
-        
+        int         _overload_requests;                     // counter for # of times a OVERLOAD_M request is sent
+
         timestamp_t _tick;                                  // # of ticks since the execution of arbitrator
         
         // position states
