@@ -234,7 +234,7 @@ void checkJoin ()
 #endif
 }
 
-void PrintNeighbors (long long curr_msec)
+void PrintNeighbors (long long curr_msec, int selfID)
 {
 	// record neighbor position to log if joined
 	if (g_state == JOINED)
@@ -242,7 +242,7 @@ void PrintNeighbors (long long curr_msec)
 		vector<Node *>& neighbors = g_self->getNeighbors ();
 	
 		printf ("Neighbors: ");
-		fprintf (g_neilog, "%lld,", curr_msec);
+		fprintf (g_neilog, "%lld,%d,", curr_msec, selfID);
 
 		for (size_t i = 0; i < neighbors.size(); i++)
 		{
@@ -582,11 +582,11 @@ int main (int argc, char *argv[])
                 {
 					Node *self = g_agent->getSelf ();
 					long long curr_msec = (long long) (start.sec() * 1000 + start.usec() / 1000);
-					fprintf (g_poslog, "%lld,\"%d,%d\",%lld\n", curr_msec, 
+					fprintf (g_poslog, "%lld,\"%d,%d,%d\",%lld\n", curr_msec, (int)self->id,
 							(int)self->aoi.center.x, (int)self->aoi.center.y, elapsed);
 					fflush(g_poslog);
 
-                    PrintNeighbors (curr_msec);
+                    PrintNeighbors (curr_msec, (int)self->id);
 
                     g_agent->move (g_aoi.center);
                 }
