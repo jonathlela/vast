@@ -58,6 +58,9 @@
 #define OBJECT_KEEP_ALIVE_              // send position updates for each objects once a while
 #define CLEAN_NONALIVE_OBJECT_           // periodically remove non-alive objects 
 
+#define ARBITRATOR_MOVEMENT_FRACTION (0.1f)
+
+
 #define FAULT_TOLERANT_0_              // no fault tolerance
 #define FAULT_TOLERANT_1_              // fault tolerance method 1 (full object backup at neighbors + event publication to all)
 #define FAULT_TOLERANT_2               // fault tolerance method 2 (one backup only at neighbors + targeted event)

@@ -895,10 +895,10 @@ namespace Vast
                 Position temp_pos = _newpos.aoi.center;
 
                 // move in 1/10 of the distance between my_self and the stressed arbitrator
-                //temp_pos += ((arb - temp_pos) * 0.2);
+                //temp_pos += ((arb - temp_pos) * ARBITRATOR_MOVEMENT_FRACTION);
 
                 // move at a speed proportional to the severity of the overload
-                temp_pos += (((arb - temp_pos) * 0.2) * multiplier);
+                temp_pos += (((arb - temp_pos) * ARBITRATOR_MOVEMENT_FRACTION) * multiplier);
 
                 //temp_pos.x = (coord_t)(_newpos.aoi.center.x + (arb.x - _newpos.aoi.center.x) * 0.10);
                 //temp_pos.y = (coord_t)(_newpos.aoi.center.y + (arb.y - _newpos.aoi.center.y) * 0.10);
@@ -1171,6 +1171,18 @@ namespace Vast
         // make sure this arbitrator has properly joined a VON and perform related functions
         checkVONJoin ();
 
+        // perform per-second tasks
+        if (_tick % _net->getTickPerSecond () == 0)
+        {
+            // report loading to neighbors
+            reportLoading ();
+
+            // move myself towards the center of agents
+            Position center;
+            if (getAgentCenter (center))
+                _newpos.aoi.center += ((center - _newpos.aoi.center) * ARBITRATOR_MOVEMENT_FRACTION);
+        }
+
         // move arbitrator to new position
         moveArbitrator ();
 
@@ -1206,18 +1218,6 @@ namespace Vast
 
         // check to see if objects have migrated (TODO: should do it earlier?)
         transferOwnership ();
-
-        // perform per-second tasks
-        if (_tick % _net->getTickPerSecond () == 0)
-        {
-            // report loading to neighbors
-            reportLoading ();
-
-            // move myself towards the center of agents
-            Position center;
-            if (getAgentCenter (center))
-                _newpos.aoi.center += ((center - _newpos.aoi.center) * 0.2);
-        }
 
         // collect stat periodically
         // TODO: better way than to pass _para?
