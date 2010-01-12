@@ -99,8 +99,17 @@ void getInput ()
         //printf ("%d ", c);
         switch (c)
         {
+        // quit
         case 'q':
             g_finished = true;
+            break;
+
+        // leave overlay
+        case 'l':
+            break;
+
+        // join at current position
+        case 'j':
             break;
         
         // movements
@@ -380,6 +389,15 @@ int main (int argc, char *argv[])
     printf ("Setting random seed as: %d\n", (int)now.usec ());
     srand (now.usec ());
     
+    printf ("Data structure sizes:\n");
+    printf ("coord_t: %u Position: %u Area: %u IPaddr: %u Addr: %u Node: %u\n\n", 
+        sizeof (coord_t),
+        sizeof (Position), 
+        sizeof (Area),
+        sizeof (IPaddr),
+        sizeof (Addr),
+        sizeof (Node));
+
     // set default values
     VASTATEPara para;
     para.default_aoi    = DEFAULT_AOI;

@@ -41,9 +41,10 @@ namespace Vast
 
         if (_para.default_aoi == 0 || _para.world_height == 0 || _para.world_width == 0)
         {
+            // default world model after Second Life's region
             _para.default_aoi = 65;
-            _para.world_height = _para.world_height = 1000;
-            printf ("ArbitratorImpl warning: VASTATEpara world_height, world_width, or default_aoi not defined, use default values (1000, 1000) world, AOI: 65\n");
+            _para.world_height = _para.world_height = 256;
+            printf ("ArbitratorImpl warning: VASTATEpara world_height, world_width, or default_aoi not defined, use default values (256, 256) world, AOI: 65\n");
         }
 
         // register with gateway as a potential arbitrator (only if I've got public IP)
@@ -2087,16 +2088,7 @@ namespace Vast
             printf ("\n");
             
             // perform subscription
-            //if (neighbors.size () == 1)
-                _sub_no = _vastnode->subscribe (aoi, VAST_LAYER_EVENT);           
-            /*
-            else
-            {
-                aoi.center.x += 10000;
-                aoi.center.y += 10000;
-                _sub_no = _vastnode->subscribe (aoi, VAST_LAYER_EVENT);
-            }
-            */
+            _sub_no = _vastnode->subscribe (aoi, VAST_LAYER_EVENT);           
             
             _state = JOINING_2;
         }
