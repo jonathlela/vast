@@ -49,26 +49,27 @@
 #define VASTATE_BUFSIZ  (10240)         // size for generic VASTATE buffer
 
 // flags that define VASTATE behaviors
-#define UID_FOR_OBJECT_ID_          // use UID as object ID
-#define DISCOVERY_BY_NOTIFICATION   // allow arbitrators to pro-actively notify agents of objects
-#define DISCOVERY_BY_REQUEST        // allow agents to request full states from arbitrators when learning updates for unknown objects
+#define UID_FOR_OBJECT_ID_              // use UID as object ID
+#define DISCOVERY_BY_NOTIFICATION       // allow arbitrators to pro-actively notify agents of objects
+#define DISCOVERY_BY_REQUEST            // allow agents to request full states from arbitrators when learning updates for unknown objects
 
 #define DECLEAR_OWNERSHIP_ON_TRANSFER_  // notify neighboring arbitrators of a newly owned object
 
 #define OBJECT_KEEP_ALIVE_              // send position updates for each objects once a while
-#define CLEAN_NONALIVE_OBJECT_           // periodically remove non-alive objects 
+#define CLEAN_NONALIVE_OBJECT_          // periodically remove non-alive objects 
 
-#define ARBITRATOR_MOVEMENT_FRACTION (0.1f)
+// load balancing settings
+#define ARBITRATOR_MOVEMENT_FRACTION (0.1f) // fraction of remaining distance to move for arbitrators
 
+// fault tolerance options
+#define FAULT_TOLERANT_0_               // no fault tolerance
+#define FAULT_TOLERANT_1_               // fault tolerance method 1 (full object backup at neighbors + event publication to all)
+#define FAULT_TOLERANT_2                // fault tolerance method 2 (one backup only at neighbors + targeted event)
 
-#define FAULT_TOLERANT_0_              // no fault tolerance
-#define FAULT_TOLERANT_1_              // fault tolerance method 1 (full object backup at neighbors + event publication to all)
-#define FAULT_TOLERANT_2               // fault tolerance method 2 (one backup only at neighbors + targeted event)
-
-#define EVENT_TO_ENCLOSING_ARBITRATORS    // send event also to enclosing arbitrators
+#define EVENT_TO_ENCLOSING_ARBITRATORS  // send event also to enclosing arbitrators
 
 #ifdef FAULT_TOLERANT_0
-  #define SEND_OBJECT_ON_TRANSFER         // send full states of the objects to a neighbor arbitrator when transferring ownership
+  #define SEND_OBJECT_ON_TRANSFER       // send full states of the objects to a neighbor arbitrator when transferring ownership
 #endif
 
 #ifdef FAULT_TOLERANT_1

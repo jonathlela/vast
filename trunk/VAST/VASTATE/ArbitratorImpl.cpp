@@ -1305,42 +1305,30 @@ namespace Vast
         Position agent_center;      // center of agents        
         
         // get center of all known agents
+        getAgentCenter (agent_center);
         
-
         // find center of arbitrators
         Position arb_center;        
-        Position insert_pos;        // final insert position
-        vector<id_t> &en_list = voronoi->get_en (self_id);
+        
+        // final insert position
+        Position insert_pos;        
 
-        if (en_list.size () > 2)
+        if (getArbitratorCenter (arb_center))
         {
-            for (size_t i=0; i < en_list.size (); i++)
-            {
-                Position pos = voronoi->get (en_list[i]);
-                arb_center.x += pos.x;
-                arb_center.y += pos.y;
-            }
-            arb_center.x /= en_list.size ();
-            arb_center.y /= en_list.size ();
-
             // final center        
             insert_pos.x = (coord_t)((arb_center.x + agent_center.x) / 2.0);
             insert_pos.y = (coord_t)((arb_center.y + agent_center.y) / 2.0);
         }
         else
             insert_pos = agent_center;
-        
-        //if (isLegalPosition (insert_pos))
-        //    _legal_pos.push_back (insert_pos);
-
-        //if (isLegalPosition (arb_center))
-        //    _legal_pos.push_back (arb_center);
-        
-        //else if (isLegalPosition (agent_center))
-        //    _legal_pos.push_back (agent_center);
-
-        
-        
+      
+        if (isLegalPosition (insert_pos))
+            _legal_pos.push_back (insert_pos);
+        else if (isLegalPosition (arb_center))
+            _legal_pos.push_back (arb_center);        
+        else if (isLegalPosition (agent_center))
+            _legal_pos.push_back (agent_center);
+                
         // agent center only
         //_legal_pos.push_back (agent_center);
 
@@ -1495,6 +1483,34 @@ namespace Vast
 
         return true;
     }
+
+    // get the center of all neighbor arbitrators
+    bool 
+    ArbitratorImpl::getArbitratorCenter (Position &arb_center)
+    {
+        arb_center.set (0, 0, 0);
+        Voronoi *voronoi = _VONpeer->getVoronoi ();                
+        vector<id_t> en_list = voronoi->get_en (_VONpeer->getSelf ()->id);
+
+        if (en_list.size () > 2)
+        {
+            for (size_t i=0; i < en_list.size (); i++)
+            {
+                Position pos = voronoi->get (en_list[i]);
+                arb_center.x += pos.x;
+                arb_center.y += pos.y;
+            }
+            arb_center.x /= en_list.size ();
+            arb_center.y /= en_list.size ();
+
+            return true;
+        }
+        // no neighbors exist to calculate center
+        else
+            return false;        
+    }
+
+
 
     // insert a new agent and create its avatar object
     bool 
@@ -2981,6 +2997,7 @@ namespace Vast
         */
         
         size_t i;
+
         // find the first arbitrator that has a different IP
         for (i = 0; i < _potentials.size (); i++)
         {

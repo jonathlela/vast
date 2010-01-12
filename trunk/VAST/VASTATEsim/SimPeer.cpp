@@ -389,14 +389,14 @@
 
 
             // case 1: only gateway is added as first arbitrator, but others are potential arbitrators
-            _factory->createNode (_self.aoi, _arb_logic, _agent_logic, password, (_nodeindex == 1 ? &_self.aoi.center : NULL));
+            _factory->createNode (_self.aoi, _arb_logic, _agent_logic, password, (_nodeindex == 1 ? &_self.aoi.center : NULL));            
             
             /*
             // case 2: any node that is relay is added as arbitrator, other nodes are strictly agents
             if (_netpara.is_relay)
                 _factory->createNode (_self.aoi, _arb_logic, _agent_logic, password, &_self.aoi.center);
             else
-                _factory->createNode (_self.aoi, NULL, _agent_logic, password, NULL);            
+                _factory->createNode (_self.aoi, NULL, _agent_logic, password, NULL);                        
             */
 
             state = WAITING;

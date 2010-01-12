@@ -216,6 +216,8 @@ namespace Vast
         // get the center of all current agents I maintain
         bool getAgentCenter (Position &center);
 
+        // get the center of all neighbor arbitrators
+        bool getArbitratorCenter (Position &center);
 
         //
         // maintenance methods
