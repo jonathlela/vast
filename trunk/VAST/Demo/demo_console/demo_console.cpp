@@ -389,7 +389,7 @@ int main (int argc, char *argv[])
     printf ("Setting random seed as: %d\n", (int)now.usec ());
     srand (now.usec ());
     
-    printf ("Data structure sizes:\n");
+    printf ("sizeof sizes:\n");
     printf ("coord_t: %u Position: %u Area: %u IPaddr: %u Addr: %u Node: %u\n\n", 
         sizeof (coord_t),
         sizeof (Position), 
@@ -397,6 +397,16 @@ int main (int argc, char *argv[])
         sizeof (IPaddr),
         sizeof (Addr),
         sizeof (Node));
+
+    Position a; Area b; IPaddr c; Addr d; Node e;
+    printf ("transfer sizes:\n");
+    printf ("coord_t: %u Position: %u Area: %u IPaddr: %u Addr: %u Node: %u\n\n", 
+        sizeof (coord_t),
+        a.sizeOf (), 
+        b.sizeOf (),
+        c.sizeOf (),
+        d.sizeOf (),
+        e.sizeOf ());
 
     // set default values
     VASTATEPara para;

@@ -400,6 +400,7 @@ public:
         // circular area
         if (height == 0)
             return (center.distance (pos) <= radius);
+        // rectangular area
         else
             return (fabs (center.x - pos.x) <= radius/2) && (fabs (center.y - pos.y) <= height/2);
     }

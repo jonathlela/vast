@@ -2058,6 +2058,9 @@ namespace Vast
             Area aoi; 
             
             // right now just use whole area
+            // NOTE / TODO: right now VONpeer's overlap check is only circular,
+            //              so right now we're using over-subscription to receive all events properly
+            //              very inefficient
             aoi.center.x    = (coord_t)_para.world_width / 2;
             aoi.center.y    = (coord_t)_para.world_height / 2;
             aoi.radius      = (length_t)_para.world_width;

@@ -262,12 +262,24 @@ namespace Vast
 
             Message msg (MOVE);
             msg.priority = 3;
+
+#ifdef VAST_RECORD_MOVEMENT_LATENCY
             msg.store (_net->getTimestamp ());  // to calculate MOVE latency
+#endif             
             msg.store (subNo);
 
             // if only position's updated
             if (prev_aoi == aoi)
-                msg.store (aoi.center);
+            {
+                //msg.store (aoi.center);
+                
+                // store optimized version of position
+                VONPosition pos;
+                pos.x = aoi.center.x;
+                pos.y = aoi.center.y;
+
+                msg.store ((char *)&pos, sizeof (VONPosition));
+            }
 
             // send an entire new subscription update
             else
@@ -781,9 +793,11 @@ namespace Vast
                 id_t     sub_no;        // subscription no (i.e., handler_id for the Peer)
                 Area     new_aoi;
                 
-                timestamp_t send_time;  // time of sending initial MOVE
+                timestamp_t send_time = 0;  // time of sending initial MOVE
 
+#ifdef VAST_RECORD_MOVEMENT_LATENCY
                 in_msg.extract (send_time);
+#endif
                 in_msg.extract (sub_no);
 
                 // call up the respective Peer to handle the MOVE request
@@ -793,7 +807,13 @@ namespace Vast
                     if (in_msg.msgtype == MOVE)
                     {
                         new_aoi = _peers[sub_no]->getSelf ()->aoi;
-                        in_msg.extract (new_aoi.center);
+                        //in_msg.extract (new_aoi.center);
+
+                        // extract optimized position
+                        VONPosition pos;
+                        in_msg.extract ((char *)&pos, sizeof (VONPosition));
+                        new_aoi.center.x = pos.x;
+                        new_aoi.center.y = pos.y;
                     }
                     // whole AOI is updated
                     else

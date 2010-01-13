@@ -96,6 +96,13 @@ namespace Vast
         VON_NODE            // discovery of new nodes 
     } VON_Message;
 
+    // for VON_MOVE update only (optimized data structure)
+    typedef struct 
+    {
+        coord_t x, y;
+
+    } VONPosition;
+
     // 
     // This class joins a node as "VONPeer", which allows the user client
     // to execute VON commands: move, getNeighbors

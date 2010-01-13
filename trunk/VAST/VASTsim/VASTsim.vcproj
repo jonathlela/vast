@@ -121,6 +121,7 @@
 				PreprocessorDefinitions="WIN32;_WINDOWS;NDEBUG;_CRT_SECURE_NO_WARNINGS"
 				MinimalRebuild="false"
 				RuntimeLibrary="2"
+				StructMemberAlignment="0"
 				EnableFunctionLevelLinking="true"
 				WarningLevel="4"
 				DebugInformationFormat="3"

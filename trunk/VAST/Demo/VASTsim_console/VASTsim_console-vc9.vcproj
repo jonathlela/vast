@@ -52,6 +52,7 @@
 				StringPooling="true"
 				MinimalRebuild="false"
 				RuntimeLibrary="0"
+				StructMemberAlignment="0"
 				EnableFunctionLevelLinking="true"
 				UsePrecompiledHeader="0"
 				ProgramDataBaseFileName="$(IntDir)/$(ProjectName).pdb"

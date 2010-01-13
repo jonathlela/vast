@@ -256,7 +256,7 @@ overlaps (id_t id, const Position &pt, length_t radius, bool accuracy_mode)
 
     if (accuracy_mode)
     {
-        // version 1: more & more slow, syhu: accuracy mode ! 
+        // version 1: accurate but slower
         recompute();
         point2d center (pt.x, pt.y); 
         return _Voronoi.collides (idx, center, (int)(radius+5));

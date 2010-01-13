@@ -57,6 +57,8 @@
 // whether to record statistics during simulation runs
 #define SIM_RECORD_STAT
 
+#define VAST_RECORD_MOVEMENT_LATENCY_
+
 // enable latency table be used (make sure it's in the working directory)
 #define  ENABLE_LATENCY_
 

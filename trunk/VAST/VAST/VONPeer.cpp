@@ -163,7 +163,14 @@ namespace Vast
         else       
         {
             // both position & time are needed (so that only the most recent update is used by neighbors)
-            msg.store (_self.aoi.center);
+            //msg.store (_self.aoi.center);
+            VONPosition pos;
+            pos.x = _self.aoi.center.x;
+            pos.y = _self.aoi.center.y;
+
+            msg.store ((char *)&pos, sizeof (VONPosition));
+            
+            // NOTE: we use an optimized version of position with only x & y
             msg.store (_self.time);
         }
 
@@ -476,7 +483,12 @@ namespace Vast
                         node = _id2node[in_msg.from];
 
                         // NOTE both position & time are used
-                        in_msg.extract (node.aoi.center);
+                        //in_msg.extract (node.aoi.center);
+                        VONPosition pos;
+                        in_msg.extract ((char *)&pos, sizeof (VONPosition));
+                        node.aoi.center.x = pos.x;
+                        node.aoi.center.y = pos.y;
+
                         in_msg.extract (node.time);
                     }
                     else
@@ -1018,6 +1030,7 @@ namespace Vast
     }
 
     // is a particular neighbor within AOI
+    // NOTE: right now we only consider circular AOI, not rectangular AOI.. 
     inline bool 
     VONPeer::isAOINeighbor (id_t id, Node &neighbor, length_t buffer)
     {

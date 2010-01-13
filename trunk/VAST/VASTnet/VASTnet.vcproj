@@ -112,6 +112,7 @@
 				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;VASTNET_EXPORTS"
 				MinimalRebuild="false"
 				RuntimeLibrary="2"
+				StructMemberAlignment="0"
 				EnableFunctionLevelLinking="true"
 				UsePrecompiledHeader="0"
 				WarningLevel="4"
