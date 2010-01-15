@@ -21,7 +21,7 @@
 //#include "VASTsim.h"
 
 // use VASTATEsim as underlying library
-// must set dependency for projects "VAST" "VASTATE" "VASTATEsim"
+// must set dependency for projects "VASTATEsim"
 #include "VASTATEsim.h"
 
 using namespace Vast;

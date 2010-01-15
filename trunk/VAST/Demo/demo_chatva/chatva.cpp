@@ -39,15 +39,15 @@ using namespace std;
 #define TIMER_INTERVAL		50                  // interval in ms for screen & input refresh
 #define UPDATE_INTERVAL     100                 // interval in ms for sending movement updates
 #define INPUT_SIZE          200                 // size for chat message
-#define DEFAULT_AOI         200                 // the AOI-radius size for all nodes
+#define DEFAULT_AOI         195                 // the AOI-radius size for all nodes
 
 #define VAST_EVENT_LAYER    1                   // layer ID for sending events 
 #define VAST_UPDATE_LAYER   2                   // layer ID for sending updates
 
 #define SIZE_TEXTAREA       4
 
-int     DIM_X =             800;                // size of the world & its default values
-int     DIM_Y =             600;
+int     DIM_X =             768;                // size of the world & its default values
+int     DIM_Y =             768;
 
 int     g_steps = 0;                            // number of time-steps elapsed
 
@@ -223,7 +223,7 @@ VOID Render (HWND hWnd)
     EndPaint(hWnd,&ps);
 }
 
-void GetMovements()
+void GetMovements ()
 {
     // should check if i'm current active window
 
@@ -239,7 +239,7 @@ void GetMovements()
 }
 
 
-void Shake()
+void Shake ()
 {
     // should check if i'm current active window
 
@@ -419,7 +419,7 @@ LRESULT WINAPI MsgProc (HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
             }
                         
 #endif
-            g_world->tick ();
+            g_world->tick (0);
             
             PostQuitMessage (0);
             return 0;
@@ -446,7 +446,7 @@ LRESULT WINAPI MsgProc (HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
             {
                 g_steps++;
                                    
-                g_world->tick ();
+                g_world->tick (0);
 
                 if (g_state == JOINED)            
                     MoveOnce (hWnd);
@@ -636,10 +636,10 @@ INT WINAPI WinMain (HINSTANCE hInst, HINSTANCE, LPSTR lpCmdLine, INT)
     // set default values
     strcpy (g_GWstr, "127.0.0.1");          // default gateway is localhost 
     g_netpara.model = VAST_NET_ACE;
-    g_netpara.port  = 37;
+    g_netpara.port  = 1037;
     g_netpara.peer_limit = 100;
     g_netpara.relay_limit = 10;
-
+    g_netpara.step_persec = 10;
 
     // get gateway IP
     char *p;
@@ -676,9 +676,13 @@ INT WINAPI WinMain (HINSTANCE hInst, HINSTANCE, LPSTR lpCmdLine, INT)
         para_count++;
     }
     
-    g_netpara.is_gateway = ((para_count < 4 &&  g_GWstr[0] == 0) ? true : false);
+    g_netpara.is_gateway = ((para_count == 0) ? true : false);
     g_netpara.gateway.publicIP = IPaddr (g_GWstr, g_netpara.port);    
-    g_netpara.phys_coord = g_aoi.center;
+    
+    // if physical coordinate is assigned, then no inference will be made, 
+    // only do it for gateway (as localhost ping is not accurate can physical coord may not converge)
+    if (g_netpara.is_gateway)
+        g_netpara.phys_coord = g_aoi.center;
     
     // Register the window class
     WNDCLASSEX wc = { sizeof(WNDCLASSEX), CS_CLASSDC, MsgProc, 0L, 0L,
@@ -707,6 +711,7 @@ INT WINAPI WinMain (HINSTANCE hInst, HINSTANCE, LPSTR lpCmdLine, INT)
     para.default_aoi    = DEFAULT_AOI;
     para.world_height   = DIM_Y;
     para.world_width    = DIM_X;
+    para.overload_limit = 0;
 
     g_world = new VASTATE (para, g_netpara, NULL);    
     g_self  = CreateSimAgent ();

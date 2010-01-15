@@ -60,6 +60,7 @@
 
 // load balancing settings
 #define ARBITRATOR_MOVEMENT_FRACTION (0.1f) // fraction of remaining distance to move for arbitrators
+#define REPORT_LOADING_                 // notify enclosing arbitrators of loading periodically
 
 // fault tolerance options
 #define FAULT_TOLERANT_0_               // no fault tolerance

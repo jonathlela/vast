@@ -1,5 +1,15 @@
 
 
+VAST C++ 0.4.2  (1st functional VASTATE, for state management support)
+--------------
+2010/01/15      add first functional version of VASTATE, which provides the
+                creation, destruction, and update for coordinate-based game objects
+                with dynamic load balancing (via Voronoi diagrams), basic fault tolerance, and
+                consistency control.
+
+                this version is used as the basis for the virtual world application Plug ver 0.1
+
+
 VAST C++ 0.4.0  (Spatial Publish Subscribe, SPS support)
 --------------
 2009/08/03      extract VON functions into VONpeer class

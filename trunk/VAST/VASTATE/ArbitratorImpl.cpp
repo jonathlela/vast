@@ -1175,8 +1175,10 @@ namespace Vast
         // perform per-second tasks
         if (_tick % _net->getTickPerSecond () == 0)
         {
+#ifdef REPORT_LOADING
             // report loading to neighbors
             reportLoading ();
+#endif
 
             // move myself towards the center of agents
             Position center;

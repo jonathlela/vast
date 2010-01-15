@@ -55,17 +55,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "VASTATEsim_console", "Demo\
 		{A3D0BA8A-779B-4A9B-9DAF-4AED165C3143} = {A3D0BA8A-779B-4A9B-9DAF-4AED165C3143}
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "VASTsim_console-dev", "Demo\VASTsim_consoleDev\VASTsim_consoleDev.vcproj", "{16D11D5E-C92E-4140-93B5-9FEDA15BDAD7}"
-	ProjectSection(ProjectDependencies) = postProject
-		{1C7E6675-EF8C-47C1-AF45-7D6C7E502704} = {1C7E6675-EF8C-47C1-AF45-7D6C7E502704}
-	EndProjectSection
-EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "VASTsim-dev", "VASTsimDev\VASTsimDev.vcproj", "{1C7E6675-EF8C-47C1-AF45-7D6C7E502704}"
-	ProjectSection(ProjectDependencies) = postProject
-		{9259AB2F-86EB-46B6-9550-9105901C9698} = {9259AB2F-86EB-46B6-9550-9105901C9698}
-		{3AD53CEC-054A-41D6-9CBE-45FCD6831292} = {3AD53CEC-054A-41D6-9CBE-45FCD6831292}
-	EndProjectSection
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -116,14 +105,6 @@ Global
 		{7633F0CD-6B1D-4D2B-A892-286F7CFBC4E8}.Debug|Win32.Build.0 = Debug|Win32
 		{7633F0CD-6B1D-4D2B-A892-286F7CFBC4E8}.Release|Win32.ActiveCfg = Release|Win32
 		{7633F0CD-6B1D-4D2B-A892-286F7CFBC4E8}.Release|Win32.Build.0 = Release|Win32
-		{16D11D5E-C92E-4140-93B5-9FEDA15BDAD7}.Debug|Win32.ActiveCfg = Debug|Win32
-		{16D11D5E-C92E-4140-93B5-9FEDA15BDAD7}.Debug|Win32.Build.0 = Debug|Win32
-		{16D11D5E-C92E-4140-93B5-9FEDA15BDAD7}.Release|Win32.ActiveCfg = Release|Win32
-		{16D11D5E-C92E-4140-93B5-9FEDA15BDAD7}.Release|Win32.Build.0 = Release|Win32
-		{1C7E6675-EF8C-47C1-AF45-7D6C7E502704}.Debug|Win32.ActiveCfg = Debug|Win32
-		{1C7E6675-EF8C-47C1-AF45-7D6C7E502704}.Debug|Win32.Build.0 = Debug|Win32
-		{1C7E6675-EF8C-47C1-AF45-7D6C7E502704}.Release|Win32.ActiveCfg = Release|Win32
-		{1C7E6675-EF8C-47C1-AF45-7D6C7E502704}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

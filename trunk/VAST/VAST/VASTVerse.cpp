@@ -104,6 +104,12 @@ namespace Vast
     VASTnet *
     createNet (unsigned short port, VASTPara_Net &para)
     {
+        if (para.step_persec == 0)
+        {
+            printf ("VASTnet::createNet () VASTPara_Net's step_persec == 0, error\n");
+            return NULL;
+        }
+
         VASTnet *net = NULL;
         if (para.model == VAST_NET_EMULATED)
             net = new net_emu (*g_bridge);
@@ -117,6 +123,7 @@ namespace Vast
             net = new net_ace (port);
         }
 #endif
+        
         net->setTickPerSecond (para.step_persec);
 
         return net;

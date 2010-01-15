@@ -472,7 +472,8 @@ int main (int argc, char *argv[])
         para.world_height       = simpara.WORLD_HEIGHT;
         para.world_width        = simpara.WORLD_WIDTH;        
         para.overload_limit     = simpara.OVERLOAD_LIMIT;
-        g_netpara.step_persec   = simpara.STEPS_PERSEC;            
+        g_netpara.step_persec   = simpara.STEPS_PERSEC;           
+        g_aoi.radius            = simpara.AOI_RADIUS;
     }
     else  
     {   
@@ -661,6 +662,7 @@ int main (int argc, char *argv[])
             count_per_sec = 0;
 		
         } 
+        
         if (sleep_time > 0)
         {
             // NOTE the 2nd parameter is specified in microseconds (us) not milliseconds
