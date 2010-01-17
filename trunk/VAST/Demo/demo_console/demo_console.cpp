@@ -60,6 +60,7 @@ bool        g_finished = false;
 NodeState   g_state = ABSENT;
 char        g_lastcommand = 0;
 size_t      g_count = 0;        // # of ticks so far (# of times the main loop has run)
+size_t      time_offset = 5;     
 
 VASTPara_Net g_netpara;            // network parameters
 
@@ -487,7 +488,7 @@ int main (int argc, char *argv[])
         g_node_no--;
     else if (g_node_no <= 0)
         g_node_no = rand () % simpara.NODE_SIZE;
-
+    
     g_prev_aoi = g_aoi;
 
     // default gateway set to localhost
@@ -515,11 +516,14 @@ int main (int argc, char *argv[])
 
     // create logfile to record neighbors at each step
     if (!g_netpara.is_gateway) {
-		char poslog[] = "position";
-		char neilog[] = "neighbor";
-		g_poslog = LogFileManager::open (poslog);
-		g_neilog = LogFileManager::open (neilog);
-	}
+	    char poslog[] = "position";
+	    char neilog[] = "neighbor";
+	    g_poslog = LogFileManager::open (poslog);
+	    g_neilog = LogFileManager::open (neilog);
+	    // sleep for a random time to avoid concurrent connection
+	    ACE_Time_Value duration (time_offset, 0);
+        ACE_OS::sleep (duration);
+    }
 
     if (simulate_behavior)
     {
