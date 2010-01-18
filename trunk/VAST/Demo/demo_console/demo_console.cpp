@@ -615,8 +615,9 @@ int main (int argc, char *argv[])
                 {
 					Node *self = g_agent->getSelf ();
 					long long curr_msec = (long long) (start.sec() * 1000 + start.usec() / 1000);
-					fprintf (g_poslog, "%lld,\"%d,%d,%d\",%lld\n", curr_msec, (int)self->id,
-							(int)self->aoi.center.x, (int)self->aoi.center.y, elapsed);
+					fprintf (g_poslog, "%lld,\"%d,%d,%d\",%lld [%u,%u]\n", curr_msec, (int)self->id,
+							(int)self->aoi.center.x, (int)self->aoi.center.y, elapsed,
+                            g_world->getSendSize (), g_world->getReceiveSize ());
 					fflush(g_poslog);
 
                     PrintNeighbors (curr_msec, (int)self->id);
