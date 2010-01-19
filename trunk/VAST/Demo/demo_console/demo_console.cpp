@@ -60,7 +60,7 @@ bool        g_finished = false;
 NodeState   g_state = ABSENT;
 char        g_lastcommand = 0;
 size_t      g_count = 0;        // # of ticks so far (# of times the main loop has run)
-size_t      time_offset = 5;     
+size_t      time_offset = 2;     
 
 VASTPara_Net g_netpara;            // network parameters
 
@@ -521,7 +521,9 @@ int main (int argc, char *argv[])
 	    g_poslog = LogFileManager::open (poslog);
 	    g_neilog = LogFileManager::open (neilog);
 	    // sleep for a random time to avoid concurrent connection
-	    ACE_Time_Value duration (time_offset, 0);
+        size_t sleep_time = g_node_no * time_offset;
+	    ACE_Time_Value duration (sleep_time, 0);
+        printf("Node no: %u, Sleep for %u sec...\n", g_node_no, sleep_time);
         ACE_OS::sleep (duration);
     }
 
