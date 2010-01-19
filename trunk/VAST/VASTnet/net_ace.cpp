@@ -39,7 +39,9 @@ namespace Vast {
         _temp_id = (id_t)(NET_ID_UNASSIGNED-1);
         _udphandler = NULL;
 
+        printf ("net_ace::net_ace () called\n"); 
         printf ("net_ace::net_ace(): IP: %s\n", getIPFromHost ());
+        printf ("IP shown\n");
 
         ACE_INET_Addr addr (_port_self, getIPFromHost ());
 
@@ -207,15 +209,23 @@ namespace Vast {
     const char *
     net_ace::getIPFromHost (const char *host)
     {
-        char hostname[80];
+        char hostname[255];
+
+        printf ("getIPFromHost(): host input: %s\n", host);
 
         // if host is NULL then we use our own hostname
         if (host == NULL)
-            ACE_OS::hostname (hostname, 80);
+        {
+            printf ("calling hostname ()\n");
+            ACE_OS::hostname (hostname, 255);
+        }
         else
             strcpy (hostname, host);
-
+ 
+        printf ("hostname=%s, calling gethostbyname()\n", hostname);
         hostent *remoteHost = ACE_OS::gethostbyname (hostname);
+
+        printf ("calling gethostbyname () success!\n");
 
         //printf("\tOfficial name: %s\n", remoteHost->h_name);
 
@@ -234,8 +244,10 @@ namespace Vast {
         }
         */
 
+        printf ("returning some address...\n");
         if (remoteHost->h_addr_list[0] != 0)
         {
+            printf ("getIPFromHost (): returning valid address\n");
             addr.s_addr = *(u_long *) remoteHost->h_addr_list[0];
             return ACE_OS::inet_ntoa (addr);
         }        
