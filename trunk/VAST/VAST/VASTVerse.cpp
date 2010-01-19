@@ -329,11 +329,14 @@ namespace Vast
 
 			}
 
+            printf ("VASTVerse::isLogined () creating MessageQueue...\n");
             handlers->msgqueue = createQueue (handlers->net);
         
             handlers->IDgen    = new IDGenerator (_netpara.gateway, _netpara.is_gateway);       
             handlers->msgqueue->registerHandler (handlers->IDgen);               
             handlers->IDgen->getID ();
+
+            printf ("VASTVerse::isLogined () IDGenerator created\n");
         }
         // after we get unique ID, obtain physical coordinate
         else if (handlers->topology == NULL)

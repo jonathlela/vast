@@ -415,6 +415,7 @@ namespace Vast
     void 
     VASTnet::setTickPerSecond (int ticks)
     {
+        printf ("VASTnet::setTickPerSecond () as %d\n", ticks);
         _tick_persec = ticks;
     }
             
