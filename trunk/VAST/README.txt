@@ -46,11 +46,47 @@ send (msg)                 - send a message 'msg' to a target host (specified wi
 list (area)                - list currently known subscribers within 'area'
 receive ()                 - receive messages from other nodes via 'send ()' or 'publish ()'
 
-As of release 0.4.0, the following features are not yet supported
+As of release 0.4.2, the following features are not yet supported
 
 - area publication (so currently published message can only be at a point)
 - list () currently returns all known subscribers, not just those inside 'area'
 
+
+For state management, the VASTATE library builds upon VAST and provides the following services:
+
+Agent (user) functions:
+
+login (URL, authentication) - login the system with an authentication token
+logout ()                   - logout the system
+send (msg)                  - send a message to the gateway arbitrator (i.e., the 1st server)
+setAOI ()                   - set the area of interest (AOI) for myself
+join (position)             - join at a location to send events / receive updates
+leave ()                    - leave the location
+move (position)             - move to a new location while changing AOI
+createEvent ()              - obtain an event message
+act (event)                 - publish an application-specific event
+
+
+Arbitrator (server) functions:
+
+join (position)             - join at a specific location 
+leave ()                    - leave the system
+admit (agent, status)       - allow an agent to enter the region I manage
+send (msg)                  - publish a message to a specific agent target
+createObject ()             - create shared object
+destroyObject ()            - destroy shared object
+updateObject ()             - modify the states of a shared object
+moveObject ()               - move the object to a new location
+notifyLoading ()            - application notifies VASTATE of loading to perform load balancing
+
+
+see details in the following headers:
+
+"/common/VASTATE.h", 
+"/common/Agent.h", 
+"/common/Arbitrator.h" 
+"/common/AgentLogic.h", 
+"/common/ArbitratorLogic.h" 
 
 
 Dependencies
@@ -74,7 +110,7 @@ Directory structures
 /dataset        latency / bandwidth distribution dataset used by simulations
 /Demo           various demo programs:
                 "demo_chatva"       (Win32)             a movable client using ACE
-                "demo_console"      (Win32)             console (text-only) version
+                "demo_console"      (Win32/Linux)       console (text-only) version
                 "VASTsim_gui"       (Win32)             VASTsim GUI interface
                 "VASTsim_console"   (Win32)             VASTsim console interface
 

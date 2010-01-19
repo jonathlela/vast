@@ -1,6 +1,6 @@
 
 
-VAST C++ 0.4.2  (1st functional VASTATE, for state management support)
+VAST C++ 0.4.2  (1st functional VASTATE, supporting state management)
 --------------
 2010/01/15      add first functional version of VASTATE, which provides the
                 creation, destruction, and update for coordinate-based game objects
