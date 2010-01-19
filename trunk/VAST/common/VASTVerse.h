@@ -105,8 +105,9 @@ namespace Vast
         Voronoi *createVoronoi ();
         bool     destroyVoronoi (Voronoi *v);
 
-        // advance one time-step for all nodes to process messages           
-        void     tick ();
+        // advance one time-step for all nodes to process messages  
+        // NOTE: time_budget right now is ignored
+        void     tick (int time_budget = 0);
 
         // stop operations on this node
         void     pause ();

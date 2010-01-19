@@ -422,7 +422,7 @@ namespace Vast
 
     // advance one time-step 
 	void
-    VASTVerse::tick ()
+    VASTVerse::tick (int time_budget)
     {        
         // perform routine procedures for each logical time-step
         if (((VASTPointer *)_pointers)->msgqueue != NULL)

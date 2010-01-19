@@ -65,7 +65,7 @@ namespace Vast
         // move logical clock forward, 
         // input time budget for this tick in millisecond, specify 0 for unlimited budget
         // returns time left in millisecond, 0 for no more time, (-1) for unlimited budget
-        int tick (int time_budget);
+        int tick (int time_budget = 0);
 
         // stop operations on this factory
         void pause ();

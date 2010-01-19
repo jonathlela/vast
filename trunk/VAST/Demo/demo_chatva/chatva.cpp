@@ -17,7 +17,7 @@
 #include <map>
 #include <time.h>
 
-#define USE_VAST_
+#define USE_VAST
 
 #ifdef USE_VAST
 // use VAST for functions
@@ -486,16 +486,16 @@ LRESULT WINAPI MsgProc (HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
                 /* SEND-based 
                 vector<Node *>&nodes = g_self->list ();
-                for(int j=0; j< (int)nodes.size (); j++)
+                for(size_t j=0; j < nodes.size (); j++)
                 {
                     Position pos = nodes[j]->aoi.center;
                     id_t id      = nodes[j]->id;
 
-                    msg.addTarget (id);
-                }                
+                    send_msg.addTarget (id);
+                }
 
                 // send away message
-                g_self->send (msg);
+                g_self->send (send_msg);
                 */
 
                 // PUBLISH-based                
