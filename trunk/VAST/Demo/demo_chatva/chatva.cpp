@@ -17,7 +17,7 @@
 #include <map>
 #include <time.h>
 
-#define USE_VAST
+#define USE_VAST_
 
 #ifdef USE_VAST
 // use VAST for functions

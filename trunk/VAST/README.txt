@@ -20,7 +20,7 @@ Additional information can be found at the VAST homepage:
 http://vast.sourceforge.net
 
 VAST is based on the research about Voronoi-based Overlay Network (VON)
-and Spatial Publish Subscribe (SPS). Basically, VAST can be seen as an 
+and Spatial Publish Subscribe (SPS). Basically, VAST can be seen as an
 implementation of SPS using VON.
 
 VON: http://vast.sourceforge.net/docs/pub/2006-hu-VON.pdf
@@ -69,7 +69,7 @@ act (event)                 - publish an application-specific event
 
 Arbitrator (server) functions:
 
-join (position)             - join at a specific location 
+join (position)             - join at a specific location
 leave ()                    - leave the system
 admit (agent, status)       - allow an agent to enter the region I manage
 send (msg)                  - publish a message to a specific agent target
@@ -82,11 +82,11 @@ notifyLoading ()            - application notifies VASTATE of loading to perform
 
 see details in the following headers:
 
-"/common/VASTATE.h", 
-"/common/Agent.h", 
-"/common/Arbitrator.h" 
-"/common/AgentLogic.h", 
-"/common/ArbitratorLogic.h" 
+"/common/VASTATE.h",
+"/common/Agent.h",
+"/common/Arbitrator.h"
+"/common/AgentLogic.h",
+"/common/ArbitratorLogic.h"
 
 
 Dependencies

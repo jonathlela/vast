@@ -115,6 +115,9 @@ public:
     {
         if (num_records > 0)
             average = ((double)total / (double)num_records);
+
+		if (minimum == (size_t)(-1))
+			minimum = 0;
     }
 
     void addRecord (size_t value)

@@ -6,7 +6,7 @@
 
 #ifdef WIN32
 
-#include <vld.h>            // visual leak detector (NOTE: must download & install from
+//#include <vld.h>            // visual leak detector (NOTE: must download & install from
                             // http://www.codeproject.com/KB/applications/visualleakdetector.aspx
 
 // disable warning about "identifier exceeds'255' characters"
