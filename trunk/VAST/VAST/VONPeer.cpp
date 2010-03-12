@@ -807,14 +807,17 @@ namespace Vast
         size_t n_deleted = delete_list.size ();
         
         // send BYE message to disconnected node
-        Message msg (VON_BYE, _self.id);
-        msg.priority = 0;
-        msg.targets = delete_list;
-        _net->sendVONMessage (msg, true);
-
-        // perform node removal
-        for (size_t i=0; i < n_deleted; i++)
-            deleteNode (delete_list[i]);
+        if (n_deleted > 0)
+        {
+            Message msg (VON_BYE, _self.id);
+            msg.priority = 0;
+            msg.targets = delete_list;
+            _net->sendVONMessage (msg, true);
+        
+            // perform node removal
+            for (size_t i=0; i < n_deleted; i++)
+                deleteNode (delete_list[i]);
+        }
 
         return n_deleted;
     }

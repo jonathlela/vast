@@ -112,7 +112,7 @@ namespace Vast {
             return nxt;
         }
         
-        id_t        from;
+        id_t    from;
         char        *msg;        
         timestamp_t time;
         size_t      size;

@@ -70,17 +70,11 @@ namespace Vast
         NEIGHBOR_ENCLOSED
     } NeighborStates;
 
-    // status on known nodes in the neighbor list, can be either just inserted / deleted / updated
-    typedef enum  
-    {
-        INSERTED = 1,
-        DELETED,
-        UPDATED
-    } NeighborUpdateStatus;
+
 
     // WARNING: VON messages currently should not exceed VON_MAX_MSG defined in Config.h
     //          otherwise there may be ID collisons with other handlers that use VONpeer
-    //          internally (e.g., Relay in VAST or Arbitrator in VASTATE)
+    //          internally (e.g., VASTClient in VAST or Arbitrator in VASTATE)
     typedef enum
     {
         VON_DISCONNECT = 0, // VON's disconnect
@@ -96,12 +90,7 @@ namespace Vast
         VON_NODE            // discovery of new nodes 
     } VON_Message;
 
-    // for VON_MOVE update only (optimized data structure)
-    typedef struct 
-    {
-        coord_t x, y;
 
-    } VONPosition;
 
     // 
     // This class joins a node as "VONPeer", which allows the user client

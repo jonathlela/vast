@@ -26,15 +26,15 @@
         _self.aoi.center = *pos;
 
         // note there's no need to assign the gateway ID as it'll be found automatically
-        IPaddr ip ("127.0.0.1", 3737); 
-        Addr addr ((Vast::id_t)0, ip);
-        _netpara.gateway    = addr;      
-        _netpara.is_gateway = (_nodeindex == 1);
-        _netpara.model      = (VAST_NetModel)_para.NET_MODEL;
-        _netpara.port       = 3737;
-        _netpara.phys_coord = _self.aoi.center;     // use our virtual coord as physical coordinate
-        _netpara.peer_limit = _para.PEER_LIMIT;
-        _netpara.relay_limit = _para.RELAY_LIMIT;        
+        //IPaddr ip ("127.0.0.1", 3737); 
+        //Addr addr ((Vast::id_t)0, &ip);
+        //_netpara.gateway    = addr;      
+        //_netpara.is_gateway = (_nodeindex == 1);
+        _netpara.model        = (VAST_NetModel)_para.NET_MODEL;
+        _netpara.port         = 3737;
+        _netpara.phys_coord   = _self.aoi.center;     // use our virtual coord as physical coordinate
+        _netpara.client_limit = _para.PEER_LIMIT;
+        _netpara.relay_limit  = _para.RELAY_LIMIT;        
         _netpara.conn_limit   = _para.CONNECT_LIMIT;
         _netpara.recv_quota   = _para.DOWNLOAD_LIMIT;
         _netpara.send_quota   = _para.UPLOAD_LIMIT;
@@ -43,7 +43,14 @@
         _simpara.fail_rate    = _para.FAIL_RATE;
         _simpara.loss_rate    = _para.LOSS_RATE;
 
-        _world = new VASTVerse (&_netpara, &_simpara);
+        // create fake entry points
+        vector<IPaddr> entries;
+        string str ("127.0.0.1:3737");
+        Addr *addr = VASTVerse::translateAddress (str);
+
+        entries.push_back (addr->publicIP);
+        
+        _world = new VASTVerse (entries, &_netpara, &_simpara);
 
         state = IDLE;
 
@@ -162,12 +169,13 @@
         // subscription
         if (state == IDLE)
         {
-            if ((vnode = _world->createClient ()) != NULL)
+            // TODO: we should obtain a physical coordinate point for joining
+            //       right now we just use the logical coord as the physical coordinate
+            Addr gateway = *VASTVerse::translateAddress (string ("127.0.0.1:3737"));
+
+            if ((vnode = _world->createClient (gateway.publicIP)) != NULL)
             {
-                // TODO: we should obtain a physical coordinate point for joining
-                //       right now we just use the logical coord as the physical coordinate
-                vnode->join (*_world->getTopology ()->getPhysicalCoordinate (), _as_relay);           
-                //vnode->join (_self.aoi.center, _as_relay);           
+                //vnode->join (gateway.publicIP);
                 state = WAITING;
             }
         }

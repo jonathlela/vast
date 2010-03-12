@@ -25,9 +25,11 @@
 #include <time.h>           // time
 
 #include "MessageQueue.h"
+//#include "Relay.h"
 #include "IDGenerator.h"
-#include "Topology.h"
-#include "Relay.h"
+#include "VASTRelay.h"
+#include "VASTClient.h"
+#include "VASTMatcher.h"
 #include "VoronoiSF.h"
 #include "net_emu.h"     // TODO: cleaner way?
 #include "net_emu_bl.h"     // TODO: cleaner way?
@@ -48,23 +50,24 @@ namespace Vast
     static net_emubridge *g_bridge     = NULL;
     int            g_bridge_ref = 0;            // reference count for the bridge
     int            g_bridge_tickcount = 0;      // countdown to next tick
-
-    
-#ifdef ENABLE_LATENCY
-	// for physical topology
-    static Vivaldi*	   g_vivaldi = NULL;
-//#define STEP_PER_SEC (5)
-#endif
-
+   
     class VASTPointer
     {
     public:
+        VASTPointer ()
+        {
+            net         = NULL;
+            msgqueue    = NULL;
+            client      = NULL;
+            relay       = NULL;
+            matcher     = NULL;
+        }
 
         VASTnet *       net;            // network interface
         MessageQueue *  msgqueue;       // message queue for managing mesage handlers
-        VAST *          vastnode;       // clients that enter an overlay
-        IDGenerator *   IDgen;          // unique ID generator
-        Topology *      topology;       // physical coordinate locator
+        VAST *          client;         // clients that enter an overlay
+        VASTRelay *     relay;          // physical coordinate locator & joiner
+        VASTMatcher *   matcher;        // a relay node to the network
     };
 
     //
@@ -73,11 +76,11 @@ namespace Vast
 
     // TODO: better interface?
     VAST *
-    createNode (MessageQueue *msgqueue, VASTPointer *node, int peerlimit, int relaylimit)
+    createNode (MessageQueue *msgqueue, VASTPointer *node)
     {
-        Relay *vnode;
+        VASTClient *vnode;
         
-        if ((vnode = new Relay (node->IDgen->getID (), peerlimit, relaylimit)) == NULL)
+        if ((vnode = new VASTClient ((VASTRelay *)node->relay)) == NULL)
             return NULL;
 
         node->msgqueue->registerHandler (vnode);
@@ -95,14 +98,14 @@ namespace Vast
         if (node != NULL)
         {                   
             // unregister from message queue
-            msgqueue->unregisterHandler ((Relay *)node);            
-            delete (Relay *)node;
+            msgqueue->unregisterHandler ((VASTClient *)node);            
+            delete (VASTClient *)node;
         }
         return true;
     }
     
     VASTnet *
-    createNet (unsigned short port, VASTPara_Net &para)
+    createNet (unsigned short port, VASTPara_Net &para, vector<IPaddr> &entries)
     {
         if (para.step_persec == 0)
         {
@@ -114,7 +117,7 @@ namespace Vast
         if (para.model == VAST_NET_EMULATED)
             net = new net_emu (*g_bridge);
 		else if (para.model == VAST_NET_EMULATED_BL)					
-			net = new net_emu_bl(*(net_emubridge_bl *)g_bridge);			
+			net = new net_emu_bl (*(net_emubridge_bl *)g_bridge);			
 		
 #ifndef ACE_DISABLED
         else if (para.model == VAST_NET_ACE)
@@ -122,9 +125,22 @@ namespace Vast
             printf ("VASTnet::createNet, creating net_ace at port: %d\n", port);
             net = new net_ace (port);
         }
-#endif
-        
+#endif        
+
+        net->addEntries (entries);
         net->setTickPerSecond (para.step_persec);
+
+		// set the bandwidth limitation after the net is created
+		if (para.model == VAST_NET_EMULATED_BL)
+		{
+			Bandwidth bw;
+
+			bw.UPLOAD   = para.send_quota;
+			bw.DOWNLOAD = para.recv_quota;				
+
+			net->setBandwidthLimit (BW_UPLOAD,   bw.UPLOAD  / para.step_persec);
+			net->setBandwidthLimit (BW_DOWNLOAD, bw.DOWNLOAD/ para.step_persec);
+		}
 
         return net;
     }
@@ -169,11 +185,12 @@ namespace Vast
     }
 
     VASTVerse::
-    VASTVerse (VASTPara_Net *netpara, VASTPara_Sim *simpara)
+    VASTVerse (vector<IPaddr> &entries, VASTPara_Net *netpara, VASTPara_Sim *simpara)
     {
         _logined = false;
 
         // make the local copy of the parameters
+        _entries = entries;
         _netpara = *netpara;
         if (simpara != NULL)
             _simpara = *simpara;
@@ -185,69 +202,54 @@ namespace Vast
         _pointers = new VASTPointer ();
         memset (_pointers, 0, sizeof (VASTPointer));
 
-        // create a shared net-bridge (used in simulation to locate other simulated nodes)
-        if (_netpara.model == VAST_NET_EMULATED)
+        // initialize rand generator (for node fail simulation)
+        srand ((unsigned int)time (NULL));
+
+        if (g_bridge == NULL)
         {
-            // initialize rand generator (for node fail stimulation)
-            srand ((unsigned int)time (NULL));
-
-            // NOTE: g_bridge may be shared across different VASTVerse instances
-            if (g_bridge == NULL)
-                g_bridge = new net_emubridge (_simpara.loss_rate, _simpara.fail_rate, 1, _netpara.step_persec, 1);
-            g_bridge_ref++;
+            // create a shared net-bridge (used in simulation to locate other simulated nodes)
+            // NOTE: g_bridge may be shared across different VASTVerse instances   
+            if (_netpara.model == VAST_NET_EMULATED)                            
+                g_bridge = new net_emubridge (_simpara.loss_rate, _simpara.fail_rate, 1, _netpara.step_persec, 1);           
+		    else if (_netpara.model == VAST_NET_EMULATED_BL)		
+			    g_bridge = new net_emubridge_bl (_simpara.loss_rate, _simpara.fail_rate, 1, _netpara.step_persec);        
         }
-		else if (_netpara.model == VAST_NET_EMULATED_BL)
-		{
-			// initialize rand generator (for node fail stimulation)
-			srand ((unsigned int)time (NULL));
-
-			// NOTE: g_bridge may be shared across different VASTVerse instances
-			if (g_bridge == NULL)
-				g_bridge = new net_emubridge_bl (_simpara.loss_rate, _simpara.fail_rate, 1, _netpara.step_persec);
-			g_bridge_ref++;
-		}
-
-#ifdef ENABLE_LATENCY
-        // new Vivaldi object
-		if (g_vivaldi == NULL && g_bridge != NULL)
-		{
-			g_vivaldi = new Vivaldi ();			
-            g_bridge->setVivaldi (g_vivaldi); // for latency table
-		}			
-#endif // ENABLE_LATENCY_
+        g_bridge_ref++;
     }
 
     VASTVerse::~VASTVerse ()
     {
+        VASTPointer *handlers = (VASTPointer *)_pointers;
+
         // delete those vast_nodes not yet deleted
-        if (((VASTPointer *)_pointers)->vastnode != NULL)
+        if (handlers->client != NULL)
         {
-            destroyNode (((VASTPointer *)_pointers)->msgqueue, ((VASTPointer *)_pointers)->vastnode);
-            ((VASTPointer *)_pointers)->vastnode = NULL;
+            destroyNode (handlers->msgqueue, handlers->client);
+            handlers->client = NULL;
         }
 
-        if (((VASTPointer *)_pointers)->topology != NULL)
+        if (handlers->matcher != NULL)
         {
-            delete ((VASTPointer *)_pointers)->topology;
-            ((VASTPointer *)_pointers)->topology = NULL;
+            delete handlers->matcher;
+            handlers->matcher = NULL;
         }
 
-        if (((VASTPointer *)_pointers)->IDgen != NULL)
+        if (handlers->relay != NULL)
         {
-            delete ((VASTPointer *)_pointers)->IDgen;
-            ((VASTPointer *)_pointers)->IDgen = NULL;
+            delete handlers->relay;
+            handlers->relay = NULL;
         }
 
-        if (((VASTPointer *)_pointers)->msgqueue != NULL)
+        if (handlers->msgqueue != NULL)
         {
-            destroyQueue (((VASTPointer *)_pointers)->msgqueue);
-            ((VASTPointer *)_pointers)->msgqueue = NULL;
+            destroyQueue (handlers->msgqueue);
+            handlers->msgqueue = NULL;
         }
 
-        if (((VASTPointer *)_pointers)->net != NULL)
+        if (handlers->net != NULL)
         {
-            destroyNet (((VASTPointer *)_pointers)->net, _netpara);
-            ((VASTPointer *)_pointers)->net = NULL;
+            destroyNet (handlers->net, _netpara);
+            handlers->net = NULL;
         }
         
         g_bridge_ref--;
@@ -259,19 +261,12 @@ namespace Vast
             g_bridge = NULL;
         }
 
-#ifdef ENABLE_LATENCY
-		if (g_vivaldi != NULL)
-		{
-			//delete g_vivaldi;
-		}
-#endif
-
         delete (VASTPointer *)_pointers;
 
         _logined = false;
     }
 
-    // whether this VASTVerse has properly authenticated and gotten unique ID
+    // whether this VASTVerse is initialized to create VASTNode instances
     bool 
     VASTVerse::isLogined ()
     {       
@@ -280,128 +275,132 @@ namespace Vast
 
         VASTPointer *handlers = (VASTPointer *)_pointers;
 
-        // we have not yet initialized
-        if (handlers->IDgen == NULL)
-        {
-            printf ("VASTVerse::isLogined () creating IDgenerator...\n");
+        Position *physcoord = NULL;     // physical coordinate obtained
 
-            // create message queue & IDGenerator for getting unique ID
-            handlers->net = createNet (_netpara.port, _netpara);
+        //
+        // initialize various necessary functions of a VAST factory
+        //
+
+        // create the basic network layer & message queue
+        if (handlers->net == NULL)
+        {
+            printf ("VASTVerse::isLogined () creating VASTnet...\n");
+
+            // create network layer
+            handlers->net = createNet (_netpara.port, _netpara, _entries);
             if (handlers->net == NULL)
                 return false;
 
-            // if gateway is localhost (127.0.0.1), replace with my detected IP 
-            if (_netpara.gateway.publicIP.host == 0 || 
-                _netpara.gateway.publicIP.host == 2130706433)
-            {
-                _netpara.gateway.publicIP = handlers->net->getHostAddress ().publicIP;
-            }
-
-			// set the bandwidth limitation after the net is created
-			if (_netpara.model == VAST_NET_EMULATED_BL)
-			{
-				Bandwidth bw;
-#ifdef ENABLE_LATENCY
-				if (_simpara.send_quota == 0 || _simpara.recv_quota == 0)
-				{
-					if (g_vivaldi != NULL)
-					{
-						g_vivaldi->get_bandwidth (bw);										
-						while((_netpara.is_gateway || _netpara.is_gateway)
-							&& bw.UPLOAD < 153600)
-						{
-							g_vivaldi->get_bandwidth (bw);	
-						}
-					}
-				}
-				else
-				{
-					bw.UPLOAD   = _simpara.send_quota;
-					bw.DOWNLOAD = _simpara.recv_quota;				
-				}
-
-#else
-				bw.UPLOAD   = _netpara.send_quota;
-				bw.DOWNLOAD = _netpara.recv_quota;				
-#endif
-				handlers->net->setBandwidthLimit (BW_UPLOAD,   bw.UPLOAD  / _netpara.step_persec);
-				handlers->net->setBandwidthLimit (BW_DOWNLOAD, bw.DOWNLOAD/ _netpara.step_persec);
-
-			}
-
             printf ("VASTVerse::isLogined () creating MessageQueue...\n");
             handlers->msgqueue = createQueue (handlers->net);
-        
-            handlers->IDgen    = new IDGenerator (_netpara.gateway, _netpara.is_gateway);       
-            handlers->msgqueue->registerHandler (handlers->IDgen);               
-            handlers->IDgen->getID ();
-
-            printf ("VASTVerse::isLogined () IDGenerator created\n");
         }
+
+        // make sure the network layer is joined properly
+        else if (handlers->net->isJoined () == false)
+            return false;
+
         // after we get unique ID, obtain physical coordinate
-        else if (handlers->topology == NULL)
+        else if (handlers->relay == NULL)
         {
-            id_t id = handlers->IDgen->getID ();
+            // create the Relay node and store potential overlay entries 
+            printf ("VASTVerse::isLogined () creating VASTRelay...\n");
+
+            id_t id = handlers->net->getHostID ();
 
             // check if unique hostID is obtained
             // NOTE we will try to determine physical coordinate only after unique ID is gotten
             if (id != NET_ID_UNASSIGNED)
             {
-                printf ("VASTVerse::isLogined () unique ID obtained [%ld], creating Topology...\n", id);
+                printf ("VASTVerse::isLogined () unique ID obtained [%llu], creating VASTRelay...\n", id);
                 printf ("if this hangs, check if physical coordinate is obtained correctly\n");
 
-                // gateway's physical coordinate is set at the origin
-                if (_netpara.is_gateway)
-                {
-                    Position origin (0, 0, 0);
-                    handlers->topology = new Topology (id, &origin);
-                }
-                else
-                {
-                    bool hasPhysCoord = !(_netpara.phys_coord.x == 0 && _netpara.phys_coord.y == 0);
-                    handlers->topology = new Topology (id, hasPhysCoord ? &_netpara.phys_coord : NULL);
-                }
+                bool hasPhysCoord = !(_netpara.phys_coord.x == 0 && _netpara.phys_coord.y == 0);
+                handlers->relay = new VASTRelay (_netpara.client_limit, _netpara.relay_limit, hasPhysCoord ? &_netpara.phys_coord : NULL);
 
-                handlers->msgqueue->registerHandler (handlers->topology);
+                handlers->msgqueue->registerHandler (handlers->relay);
             }
         }
         // NOTE: if physical coordinate is not supplied, the login process may pause here indefinitely
-        else if (handlers->topology != NULL && handlers->topology->getPhysicalCoordinate () != NULL)
-        {
-            Position *physcoord = handlers->topology->getPhysicalCoordinate ();
-            printf ("VASTVerse::isLogined () Topology obtained [%ld] (%.3f, %.3f)\n", handlers->IDgen->getID (), physcoord->x, physcoord->y);
+        else if (handlers->relay->isJoined () == false)
+            return false;
+
+        // create matcher instance (though it may not be used)
+        else if (handlers->matcher == NULL)
+        {             
+            // relay has just been properly created, get physical coordinates
+            physcoord = handlers->relay->getPhysicalCoordinate ();
+            printf ("VASTVerse::isLogined () VASTRelay obtained [%llu] (%.3f, %.3f)\n", handlers->net->getHostID (), physcoord->x, physcoord->y);
+
+            // create (idle) 'matcher' instance
+            handlers->matcher = new VASTMatcher ();
+            handlers->msgqueue->registerHandler (handlers->matcher);
+
             _logined = true;
         }
-                
+   
         return _logined;
     }
 
+    /*
     // obtain topology class, 
-    // NOTE that Topology is returnable / usable only after we've properly joined 
+    // NOTE that VASTRelay is returnable / usable only after we've properly joined 
     //           (i.e. gotten unique ID *and* also the physical coordinate)
-    Topology *
-    VASTVerse::getTopology ()
+    VASTRelay *
+    VASTVerse::getVASTRelay ()
     {
         // we need to obtain unique ID first
         if (isLogined () == false)
             return NULL;
         else
-            return ((VASTPointer *)_pointers)->topology;
+            return handlers->relay;
     }
+    */
 
     VAST *
-    VASTVerse::createClient ()
+    VASTVerse::createClient (const IPaddr &gateway)
     {
         if (isLogined () == false)
             return NULL;
-                
-        return createNode (((VASTPointer *)_pointers)->msgqueue, (VASTPointer *)_pointers, _netpara.peer_limit, _netpara.relay_limit);
+
+        VASTPointer *handlers = (VASTPointer *)_pointers;
+
+        // avoid double-creation
+        if (handlers->client != NULL)
+            return handlers->client;
+
+        // TODO: clean-up? don't do every time
+        handlers->matcher->setGateway (gateway);
+
+        // allow matcher to join first for gateway node
+        if (handlers->matcher->isGateway ())
+        {           
+            Position pos (0, 0, 0);
+            handlers->matcher->join (pos);
+            
+            // make sure matcher has joined first
+            if (handlers->matcher->isJoined () == false)
+                return NULL;
+        }
+
+        VAST *vnode = createNode (handlers->msgqueue, (VASTPointer *)_pointers);
+
+        // perform join first
+        if (vnode != NULL)
+        {
+            vnode->join (gateway);
+            handlers->client = vnode;
+        }
+        
+        return vnode;
     }
 
     bool     
     VASTVerse::destroyClient (VAST *node)
     {
-        return destroyNode (((VASTPointer *)_pointers)->msgqueue, node);
+        VASTPointer *handlers = (VASTPointer *)_pointers;
+        bool result = destroyNode (handlers->msgqueue, node);
+        handlers->client = NULL;
+        return result;
     }
 
     Voronoi *
@@ -421,12 +420,18 @@ namespace Vast
     }
 
     // advance one time-step 
-	void
+	int
     VASTVerse::tick (int time_budget)
     {        
+        VASTPointer *handlers = (VASTPointer *)_pointers;
+
+        // if no time is available
+        if (time_budget < 0)
+            time_budget = 0;
+
         // perform routine procedures for each logical time-step
-        if (((VASTPointer *)_pointers)->msgqueue != NULL)
-            ((VASTPointer *)_pointers)->msgqueue->tick ();
+        if (handlers->msgqueue != NULL)
+            handlers->msgqueue->tick ();
            
         // increase tick globally when the last node has processed its messages for this round
         // this will prevent its message be delayed one round in processing by other nodes
@@ -440,16 +445,20 @@ namespace Vast
                 g_bridge->tick ();
             }
         }
+
+        // right now there's always time available
+        return time_budget;
     }
 
     // stop operations on this node
     void     
     VASTVerse::pause ()
     {
-        if (((VASTPointer *)_pointers)->net != NULL)
+        VASTPointer *handlers = (VASTPointer *)_pointers;
+        if (handlers->net != NULL)
         {
-            ((VASTPointer *)_pointers)->net->flush ();
-            ((VASTPointer *)_pointers)->net->stop ();			
+            handlers->net->flush ();
+            handlers->net->stop ();			
         }
     }
 
@@ -457,24 +466,44 @@ namespace Vast
     void     
     VASTVerse::resume ()
     {
-        if (((VASTPointer *)_pointers)->net != NULL)
-            ((VASTPointer *)_pointers)->net->start ();
+        VASTPointer *handlers = (VASTPointer *)_pointers;
+        if (handlers->net != NULL)
+            handlers->net->start ();
+    }
+
+    // obtain access to Voronoi class (usually for drawing purpose)
+    // returns NULL if matcher does not exist on this node
+    Voronoi *
+    VASTVerse::getVoronoi ()
+    {
+        if (isLogined () == false)
+            return NULL;
+
+        VASTPointer *handlers = (VASTPointer *)_pointers;
+
+        // if there's a joined matcher on this node, then we should have a Voronoi map
+        if (handlers->matcher->isJoined ())
+            return handlers->matcher->getVoronoi ();
+
+        return NULL;
     }
 
     // obtain the tranmission size by message type, default is to return all types
     size_t 
     VASTVerse::getSendSize (const msgtype_t msgtype)
     {
-        if (((VASTPointer *)_pointers)->net != NULL)
-            return ((VASTPointer *)_pointers)->net->getSendSize (msgtype);
+        VASTPointer *handlers = (VASTPointer *)_pointers;
+        if (handlers->net != NULL)
+            return handlers->net->getSendSize (msgtype);
         return 0;
     }
 
     size_t 
     VASTVerse::getReceiveSize (const msgtype_t msgtype)
     {
-        if (((VASTPointer *)_pointers)->net != NULL)
-            return ((VASTPointer *)_pointers)->net->getReceiveSize (msgtype);
+        VASTPointer *handlers = (VASTPointer *)_pointers;
+        if (handlers->net != NULL)
+            return handlers->net->getReceiveSize (msgtype);
         return 0;
     }
 
@@ -482,8 +511,55 @@ namespace Vast
     void 
     VASTVerse::recordLocalTarget (id_t target)
     {
-        if (((VASTPointer *)_pointers)->net != NULL)
-            return ((VASTPointer *)_pointers)->net->recordLocalTarget (target);
+        VASTPointer *handlers = (VASTPointer *)_pointers;
+        if (handlers->net != NULL)
+            return handlers->net->recordLocalTarget (target);
+    }
+
+    // translate a string-based address into Addr object
+    Addr *
+    VASTVerse::translateAddress (const string &str)
+    {
+        static Addr addr;        
+
+        // convert any hostname to IP        
+        string address = str;
+
+        /*
+        // convert a hostname to numeric IP string
+        if (isalpha (str[0]))
+        {            
+            size_t port_pos = address.find (":");
+            if (port_pos == (unsigned)(-1))
+            {
+                printf ("VASTVerse::translateAddress () address format incorrect, should be [numeric IP or hostname:port]\n");
+                return NULL;
+            }
+
+            const char *IP = _net->getIPFromHost (address.substr (0, port_pos).c_str ());
+            const char *port = address.substr (port_pos+1).c_str ();
+                        
+            // printout for debug purpose
+            char converted[255];
+            sprintf (converted, "%s:%s\0", IP, port);            
+            printf ("VASTVerse::translateAddress () convert hostname into: %s\n", converted);
+
+            // store numeric
+            address = string (converted);            
+        }
+        */
+
+        // determine IP from string
+        if (IPaddr::parseIP (addr.publicIP, address) != 0)
+        {
+            printf ("VASTVerse::translateAddress () cannot resolve address: %s\n", str.c_str ());
+            return NULL;
+        }
+
+        // determine hostID based on IP
+        addr.host_id = VASTnet::resolveHostID (&addr.publicIP);
+
+        return &addr;
     }
 
 } // end namespace Vast

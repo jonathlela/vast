@@ -2093,13 +2093,13 @@ namespace Vast
             printf ("\n");
             
             // perform subscription
-            _sub_no = _vastnode->subscribe (aoi, VAST_LAYER_EVENT);           
+            _vastnode->subscribe (aoi, VAST_LAYER_EVENT);           
             
             _state = JOINING_2;
         }
         else if (_state == JOINING_2)
         {
-            if (_vastnode->isSubscribing (_sub_no))
+            if ((_sub_no = _vastnode->isSubscribing ()) != 0)
                 _state = JOINED;
         }
         else if (_state == JOINED)

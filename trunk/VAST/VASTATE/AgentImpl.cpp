@@ -146,8 +146,8 @@ namespace Vast
               
         // TODO: if it's re-joining, use the same subscription?
         // subscribe my AOI from VAST
-        if (_sub_no == 0 || _vastnode->isSubscribing (_sub_no) == false)
-            _sub_no = _vastnode->subscribe (aoi, VAST_LAYER_UPDATE);
+        if (_sub_no == 0 || _vastnode->isSubscribing () == 0)
+            _vastnode->subscribe (aoi, VAST_LAYER_UPDATE);
         else
             printf ("valid sub_no already exists: %ld\n", _sub_no);
                
@@ -557,10 +557,10 @@ namespace Vast
         // 1st stage of join, checking if we've successfully subscribed the AOI
         if (_state == JOINING)
         {
-            if (_vastnode->isSubscribing (_sub_no))
+            if ((_sub_no = _vastnode->isSubscribing ()) != 0)
             {
                 printf ("[%ld] AgentImpl::postHandling () AOI area (%ld) subscribed, prepare to send JOIN request\n", _self.id, _sub_no);
-                _state = JOINING_2;    
+                _state = JOINING_2;
                 _join_timeout = 0;
                 _join_attempts = 0;
             }

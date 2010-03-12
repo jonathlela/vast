@@ -484,11 +484,14 @@ public:
 		for (i=0; i<_simnodes.size (); i++)
         {
             SimNode *node = _simnodes[i];
-            StatType *peersize = _simnodes[i]->vnode->getPeerStat ();
+            
             fprintf (_fp, "[%4ld] %10u %10u\t%s\t", node->get_id (), node->accumulated_send (), node->accumulated_recv (), node->vnode->getStat ());
 
+            /*
+            StatType *peersize = _simnodes[i]->vnode->getPeerStat ();
             if (peersize != NULL)
                 fprintf (_fp, "(%u, %u, %f)", peersize->minimum, peersize->maximum, peersize->average);
+            */
 
             fprintf (_fp, "\n");
         }

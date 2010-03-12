@@ -23,6 +23,12 @@ namespace Vast
     int 
     MessageHandler::sendMessage (Message &msg, vector<id_t> *failed_targets)
     {
+        if (msg.targets.size () == 0)
+        {
+            printf ("MessageHandler::sendMessage () no targets specified to send\n");
+            return 0;
+        }
+
         // assign default message group of the current handler
         // NOTE: inter-message group communication is possible by specifying / overriding the 0 value
         if (msg.msggroup == 0)
@@ -45,12 +51,14 @@ namespace Vast
         return ((MessageQueue *)_msgqueue)->getAddress (id);
     }
 
+    /*
     // obtain a unique ID generated on this host, based on an optional user-specified group ID
     id_t 
     MessageHandler::getUniqueID (int group_id, bool is_gateway)
     {
         return ((MessageQueue *)_msgqueue)->getUniqueID (group_id, is_gateway);
     }
+    */
 
     // store network layer so that the logic in processmsg may send message to network    
     id_t
@@ -61,12 +69,21 @@ namespace Vast
         return _msggroup;
     }
 
+    /*
     // test if an ID is from gateway
     bool 
-    MessageHandler::isGateway (id_t id)
-    {
-        return (EXTRACT_HOST_ID(id) == NET_ID_GATEWAY);
+    MessageHandler::isGatewayID (id_t id)
+    {        
+        return ((MessageQueue *)_msgqueue)->isGatewayID (id); 
     }
+    
+    // obtain address to Gateway
+    Addr &
+    MessageHandler::getGateway ()
+    {
+        return ((MessageQueue *)_msgqueue)->getGateway ();
+    }
+    */
 
 } // end namespace Vast
 

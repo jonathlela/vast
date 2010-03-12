@@ -46,12 +46,15 @@ namespace Vast
     MessageQueue::notifyMapping (id_t nodeID, Addr *addr)
     {        
         // store gateway address (if exists)
-        if (nodeID == NET_ID_GATEWAY)
-            _gateway = *addr;
+        // TODO: should do this elsewhere
+        //if (nodeID == NET_ID_GATEWAY)
+        //    _gateway = *addr;
 
+        /*
         // we do not notify self mapping
         if (nodeID == _host_id)
             return false;
+        */
 
         // store local copy of the mapping
         _id2host[nodeID] = addr->host_id;
@@ -72,6 +75,8 @@ namespace Vast
               
         // categorize messages according to actual physical end-host
         id_t target;
+        id_t host_id;
+
         vector<id_t> &targets = msg.targets;               
         map<id_t, vector<id_t> *> host2targets;     // mapping of the logical nodes stored at each host
         
@@ -79,24 +84,26 @@ namespace Vast
         for (size_t i = 0; i < targets.size (); i++)
         {
             target = targets[i];
-            id_t host_id;
-                 
+                             
             // determine target's host_id
             if (_id2host.find (target) != _id2host.end ())
                 host_id = _id2host[target];
             else                
             {
-                // for newly joined nodes (without unique ID), hostID = nodeID
-                if (_newhosts.find (target) != _newhosts.end ())
+                /*
+                // for newly joined nodes (without unique ID)
+                if (_id2newhost.find (target) != _id2newhost.end ())
                 {
-                    host_id = target;
-                    _newhosts.erase (target);
+                    host_id = _id2newhost[target];
+                    _id2newhost.erase (target);
                                       
                     targets[i] = target = NET_ID_UNASSIGNED;                   
                 }
-                else 
-                    // route to self default if mapping is not found
-                    host_id = _default_host;
+                else
+                */
+                    
+                // route to self default if mapping is not found
+                host_id = _default_host;
             }            
 
             // verify the link is there
@@ -131,6 +138,7 @@ namespace Vast
         return num_msg;
     }
 
+    /*
     // replace current msggroup with new one and change hostID
     // if id == 0, it means we just want to reset default_host
     void 
@@ -142,13 +150,15 @@ namespace Vast
             _host_id = id;
             
             // notify network layer as well
-            _net->registerID (_host_id);
+            _net->registerHostID (_host_id);
         }
 
         // also specify the default host to send msg if targets cannot be resolved
         _default_host = (default_host == 0 ? _host_id : default_host); 
     }
+    */
 
+    /*
     // obtain a unique ID generated on this host, based on an optional user-specified group ID
     id_t 
     MessageQueue::getUniqueID (int group_id, bool is_gateway)
@@ -172,6 +182,7 @@ namespace Vast
           
         return UNIQUE_ID(host_id, local_id);
     }
+    */
 
 
     // get a specific address by nodeID
@@ -180,11 +191,16 @@ namespace Vast
     {
         static Addr null_address;
 
-        if (id == _host_id)
+        // by default we return self address
+        //if (id == _host_id || id == NET_ID_UNASSIGNED)
+        if (id == _net->getHostID () || id == NET_ID_UNASSIGNED)
             return _net->getHostAddress ();
+
+        /*
         // return default gateway address
         else if (id == 0 || (id == NET_ID_GATEWAY))
             return _gateway;
+        */
 
         // perform msggroup to hostID translation        
         else if (_id2host.find (id) == _id2host.end ())
@@ -215,6 +231,48 @@ namespace Vast
         processMessages ();        
     }
 
+    // store default route for unaddressable targets
+    void 
+    MessageQueue::setDefaultHost (id_t default_host)
+    {
+        _default_host = default_host;
+    }
+
+    /*
+    // set gateway server
+    void 
+    MessageQueue::setGateway (const Addr &gateway)
+    {
+        _gateway = gateway;
+    }
+
+    // get the address of gateway node
+    Addr &
+    MessageQueue::getGateway ()
+    {
+        return _gateway;
+    }
+    
+
+    // test if an ID is from gateway
+    bool 
+    MessageQueue::isGatewayID (id_t id)
+    {
+        return (id == _gateway.host_id);
+    }
+    */
+
+    /*
+    // retrieve the gateway ID for a particular ID group
+    // TODO: combine into VASTnet? as we shouldn't assign/determine ID at two different places?
+    id_t 
+    MessageQueue::getGatewayID (int id_group)
+    {
+        // if we're a relay with public IP
+        return _gateway.host_id | ((id_t)id_group << 14);
+    } 
+    */
+
     // process all currently received messages (invoking previously registered handlers)
     // return the number of messsages processed
     int 
@@ -222,16 +280,14 @@ namespace Vast
     {
         int num_msg = 0;
 
-        // TODO: senttime is not used
-        Message     *recvmsg;           // pointer to message received
-        id_t        fromhost;           // nodeID of the sending host (i.e., a hostID)        
-        timestamp_t senttime;           // logical time the message was sent 
+        Message     *recvmsg;               // pointer to message received
+        id_t        fromhost;               // nodeID of the sending host (i.e., a hostID) 
         
         map<id_t, MessageHandler *>::iterator it;       // iterator for message handlers
 
         // go through each of the message received at the network layer, 
         // invoke the respective handlers 
-        while ((recvmsg = _net->receiveMessage (fromhost, senttime)) != NULL)
+        while ((recvmsg = _net->receiveMessage (fromhost)) != NULL)
         {                  
             // check for DISCONNECT message 
             if (recvmsg->msgtype == DISCONNECT)
@@ -250,32 +306,27 @@ namespace Vast
                 if (from_list.size () == 0)
                     from_list.push_back (fromhost);
 
-                for (unsigned int i=0; i < from_list.size (); i++)
+                for (size_t i=0; i < from_list.size (); i++)
                 {
                     recvmsg->from = from_list[i];
 
                     // send DISCONNECT to all handlers
                     for (it = _handlers.begin (); it != _handlers.end (); it++)                    
                         it->second->handleMessage (*recvmsg);
+
+                    // remove id to host mapping
+                    _id2host.erase (from_list[i]);
                 }
             }
 
             // check if we should process or forward the message 
-            else 
+            else if (recvmsg->from != NET_ID_UNASSIGNED) 
             {                
-                // update nodeID -> hostID mapping, where 'fromhost' indicates a physical hostID
-                if (recvmsg->from == NET_ID_UNASSIGNED)
-                {
-                    // for initial join (when nodeID is unassigned), we simply treat 'fromhost' as nodeID
-                    // TODO: cleaner way?
-                    recvmsg->from = fromhost;
-                    _newhosts[fromhost] = CONNECTED;
-                }
                 // record a copy of the fromID to hostID mapping (to send reply messages)
                 // NOTE that 'from' cannot be self, otherwise all messages to self could be
                 //      routed to a foreign host
-                else if (recvmsg->from != _host_id && 
-                         _id2host.find (recvmsg->from) == _id2host.end ())
+                if (fromhost != _net->getHostID () && 
+                    _id2host.find (recvmsg->from) == _id2host.end ())
                 {
 
                     // NOTE: 'from' and 'fromhost' can differ if the following condition exists:
@@ -298,9 +349,9 @@ namespace Vast
                     id_t target = recvmsg->targets[i];
 
                     // determine if we should forward it
-                    if (target == _host_id ||
+                    if (target == _net->getHostID () ||
                         (it = _id2host.find (target)) == _id2host.end () ||
-                        it->second == _host_id)
+                        it->second == _net->getHostID ())
                         local_targets.push_back (target);                        
                     else
                         forward_targets.push_back (target);

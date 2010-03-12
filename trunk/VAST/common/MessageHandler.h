@@ -36,16 +36,11 @@ using namespace std;
 
 // TODO: a better place to define this?
 // default IDs
-#define MSG_GROUP_ID_GENERATOR          1
-#define MSG_GROUP_TOPOLOGY              2
-#define MSG_GROUP_VAST_RELAY            3
-#define MSG_GROUP_VAST_PEER             4
-#define MSG_GROUP_VASTATE_AGENT         5
-#define MSG_GROUP_VASTATE_ARBITRATOR    6
-
-// grouping for locally-generated ID
-#define ID_GROUP_VON_VAST       1
-#define ID_GROUP_VON_VASTATE    2
+#define MSG_GROUP_VAST_RELAY            1
+#define MSG_GROUP_VAST_MATCHER          2
+#define MSG_GROUP_VAST_CLIENT           3
+#define MSG_GROUP_VASTATE_AGENT         4
+#define MSG_GROUP_VASTATE_ARBITRATOR    5
 
 namespace Vast 
 {        
@@ -91,14 +86,20 @@ namespace Vast
         Addr &getAddress (id_t id);
 
         // obtain a unique ID generated on this host, based on an optional user-specified group ID
-        id_t getUniqueID (int group_id = 0, bool is_gateway = false);
+        //id_t getUniqueID (int group_id = 0, bool is_gateway = false);
 
         // used by MessageQueue only to store pointer to the MessageQueue
         // returns the unique ID for this handler
         id_t setQueue (void *msgqueue, VASTnet *net);
 
+        /*
         // test if an ID is from gateway
-        bool isGateway (id_t id);
+        bool isGatewayID (id_t id);
+
+        // obtain address to Gateway
+        Addr &getGateway ();
+        */
+
 
         byte_t       _msggroup;         // unique ID to identify which message group the handler belongs
         void *       _msgqueue;         // pointer to message queue (in case to register new handlers from within)    

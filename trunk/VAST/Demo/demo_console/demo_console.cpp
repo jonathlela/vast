@@ -23,11 +23,12 @@
 
 #include "Movement.h"
 
-#define USE_VAST_
+#define VAST_ONLY
 
-#ifdef USE_VAST
+#ifdef VAST_ONLY
 // use VAST for functions
 #include "VASTVerse.h"
+#include "VASTsim.h"
 #else
 // use VASTATE for main functions
 #include "VASTATE.h"
@@ -46,33 +47,32 @@ using namespace std;
 #error "ACE needs to be enabled to build demo_console, please modify /common/Config.h"
 #endif
 
-#define DEFAULT_AOI         200
-#define DIM_X               800
-#define DIM_Y               600
 
 // target game cycles per second
 const int FRAMES_PER_SECOND      = 40;
 
 // global
-Area        g_aoi;               // my AOI (with center as current position)
-Area        g_prev_aoi;          // my AOI (with center as current position)
-bool        g_finished = false;
-NodeState   g_state = ABSENT;
-char        g_lastcommand = 0;
+Area        g_aoi;              // my AOI (with center as current position)
+Area        g_prev_aoi;         // my AOI (with center as current position)
+Addr        g_gateway;          // address for gateway
+bool        g_finished = false; // whether we're done for this program execution
+NodeState   g_state = ABSENT;   // the join state of this node
+char        g_lastcommand = 0;  // last keyboard character typed 
 size_t      g_count = 0;        // # of ticks so far (# of times the main loop has run)
 size_t      time_offset = 2;     
+int         g_node_no = (-1);   // which node to simulate (-1 indicates none, manual control)
 
-VASTPara_Net g_netpara;            // network parameters
+VASTPara_Net g_netpara;         // network parameters
 
 MovementGenerator g_movement;
-FILE       *g_poslog = NULL;       // logfile for node positions
-FILE	   *g_neilog = NULL;	   // logfile for node neighbors
-
-int g_node_no = (-1);               // which node to simulate (-1 indicates none, manual control)
+FILE       *g_position_log = NULL;       // logfile for node positions
+FILE	   *g_neighbor_log = NULL;	   // logfile for node neighbors
 
 
 
-#ifdef USE_VAST
+
+
+#ifdef VAST_ONLY
 
     // VAST-specific variables
     VASTVerse *     g_world = NULL;
@@ -146,23 +146,30 @@ void getInput ()
 
 void checkJoin ()
 {
-#ifdef USE_VAST
-        // create the VAST node
+#ifdef VAST_ONLY
+    
+    // create the VAST node
     switch (g_state)
     {
     case ABSENT:
-        if ((g_self = g_world->createClient ()) != NULL)
+        if ((g_self = g_world->createClient (g_gateway.publicIP)) != NULL)
         {                
-            g_self->join (g_aoi.center, true);
+            //g_self->join ();
             g_state = JOINING;
-
         }
         break;
 
     case JOINING:
         if (g_self->isJoined ())
         {
-            g_sub_no = g_self->subscribe (g_self->getSelf ()->aoi, VAST_EVENT_LAYER);
+            g_self->subscribe (g_aoi, VAST_EVENT_LAYER);
+            g_state = JOINING_2;
+        }
+        break;
+    case JOINING_2:
+        if (g_self->isSubscribing () != NET_ID_UNASSIGNED)
+        {
+            g_sub_no = g_self->isSubscribing ();
             g_state = JOINED;
         }
         break;
@@ -202,75 +209,86 @@ void checkJoin ()
 			tm *timeinfo = gmtime (&rawtime);
          
 			ACE_Time_Value startTime = ACE_OS::gettimeofday();
-			fprintf (g_poslog, "# Node joined, Position Log starts\n\n");
-			fprintf (g_neilog, "# Node joined, Neighbor Log starts\n\n");
+			fprintf (g_position_log, "# Node joined, Position Log starts\n\n");
+			fprintf (g_neighbor_log, "# Node joined, Neighbor Log starts\n\n");
 
 			// node ID
 			Node *self = g_agent->getSelf ();
-			fprintf (g_poslog, "# node ID\n");
-			fprintf (g_poslog, "%d\n", (int)(self->id));
-			fprintf (g_neilog, "# node ID\n");
-			fprintf (g_neilog, "%d\n", (int)(self->id));
+			fprintf (g_position_log, "# node ID\n");
+			fprintf (g_position_log, "%d\n", (int)(self->id));
+			fprintf (g_neighbor_log, "# node ID\n");
+			fprintf (g_neighbor_log, "%d\n", (int)(self->id));
 		
-			fprintf (g_poslog, "# Start date/time\n"); 
-			fprintf (g_poslog, "# %s", asctime (timeinfo)); 
-			fprintf (g_poslog, "# GMT (hour:min:sec)\n%2d,%02d,%02d\n", 
+			fprintf (g_position_log, "# Start date/time\n"); 
+			fprintf (g_position_log, "# %s", asctime (timeinfo)); 
+			fprintf (g_position_log, "# GMT (hour:min:sec)\n%2d,%02d,%02d\n", 
 					timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
-			fprintf (g_poslog, "# second:millisec\n%d,%d\n", (int)startTime.sec (), (int)(startTime.usec () / 1000));      
-			fprintf (g_neilog, "# Start date/time\n"); 
-			fprintf (g_neilog, "#%s", asctime (timeinfo)); 
-			fprintf (g_neilog, "# GMT (hour:min:sec)\n%2d,%02d,%02d\n", 
+			fprintf (g_position_log, "# second:millisec\n%d,%d\n", (int)startTime.sec (), (int)(startTime.usec () / 1000));      
+			fprintf (g_neighbor_log, "# Start date/time\n"); 
+			fprintf (g_neighbor_log, "#%s", asctime (timeinfo)); 
+			fprintf (g_neighbor_log, "# GMT (hour:min:sec)\n%2d,%02d,%02d\n", 
 					timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
-			fprintf (g_neilog, "# second:millisec\n%d,%d\n", (int)startTime.sec (), (int)(startTime.usec () / 1000));        
+			fprintf (g_neighbor_log, "# second:millisec\n%d,%d\n", (int)startTime.sec (), (int)(startTime.usec () / 1000));        
        
 			// simulating which node
-			fprintf (g_poslog, "# node path number simulated (-1 indicates manual control)\n");
-			fprintf (g_poslog, "%d\n", g_node_no);
+			fprintf (g_position_log, "# node path number simulated (-1 indicates manual control)\n");
+			fprintf (g_position_log, "%d\n", g_node_no);
 
 
 			// format
-			fprintf (g_poslog, "\n");
-			// fprintf (g_poslog, "# count,curr_sec (per second)\n"); 
-			fprintf (g_poslog, "# millisec,\"posX,posY\",elapsed (per step)\n\n");
-			fprintf (g_neilog, "\n");
-			// fprintf (g_neilog, "# count,curr_sec (per second)\n"); 
-			fprintf (g_neilog, "# millisec,\"nodeID,posX,posY\", ... (per step)\n\n");
+			fprintf (g_position_log, "\n");
+			// fprintf (g_position_log, "# count,curr_sec (per second)\n"); 
+			fprintf (g_position_log, "# millisec,\"posX,posY\",elapsed (per step)\n\n");
+			fprintf (g_neighbor_log, "\n");
+			// fprintf (g_neighbor_log, "# count,curr_sec (per second)\n"); 
+			fprintf (g_neighbor_log, "# millisec,\"nodeID,posX,posY\", ... (per step)\n\n");
 
-			fflush (g_poslog); 
-			fflush (g_neilog);
+			fflush (g_position_log); 
+			fflush (g_neighbor_log);
 		
 		}
 	}    
 #endif
 }
 
-void PrintNeighbors (long long curr_msec, int selfID)
+void PrintNeighbors (long long curr_msec, id_t selfID)
 {
-	// record neighbor position to log if joined
-	if (g_state == JOINED)
-	{
-		vector<Node *>& neighbors = g_self->getNeighbors ();
+    // record neighbor position to log if joined
+    if (g_state == JOINED)
+    {
+		//vector<Node *>& neighbors = g_self->getLogicalNeighbors ();
+        vector<Node *>& neighbors = g_self->list ();
 	
 		printf ("Neighbors: ");
-		fprintf (g_neilog, "%lld,%d,", curr_msec, selfID);
 
-		for (size_t i = 0; i < neighbors.size(); i++)
+        if (g_neighbor_log != NULL)
+		    fprintf (g_neighbor_log, "%lld,%lld,", curr_msec, selfID);
+
+		for (size_t i = 0; i < neighbors.size (); i++)
 		{
-			fprintf (g_neilog, "\"%ld,%d,%d\"", (neighbors[i]->id), 
+			printf ("[%llu] (%d, %d) ", (neighbors[i]->id), 
 					(int)neighbors[i]->aoi.center.x, (int)neighbors[i]->aoi.center.y);
-			printf ("[%ld] (%d, %d) ", (neighbors[i]->id), 
-					(int)neighbors[i]->aoi.center.x, (int)neighbors[i]->aoi.center.y);
-			if (i != neighbors.size() - 1)
-				fprintf(g_neilog, ",");
-		}
-			
-		fprintf (g_neilog, "\n");
-		printf ("\n");
 
-		fflush (g_neilog);
+            if (g_neighbor_log != NULL)
+            {
+			    fprintf (g_neighbor_log, "\"%llu,%d,%d\"", (neighbors[i]->id), 
+				    	(int)neighbors[i]->aoi.center.x, (int)neighbors[i]->aoi.center.y);			
+                if (i != neighbors.size() - 1)
+	    		    fprintf(g_neighbor_log, ",");
+            }
+		}
+		
+        printf ("\n");
+
+        if (g_neighbor_log != NULL) 
+        {
+            fprintf (g_neighbor_log, "\n");
+		    fflush (g_neighbor_log);
+        }
 	}
 }
 
+/*
 void TestSerialization ()
 {
     // test data       
@@ -373,6 +391,7 @@ void TestSerialization ()
     
     printf ("\n\n");
 }
+*/
 
 int main (int argc, char *argv[])
 {        
@@ -410,102 +429,48 @@ int main (int argc, char *argv[])
         e.sizeOf ());
 
     // set default values
+#ifndef VAST_ONLY
     VASTATEPara para;
     para.default_aoi    = DEFAULT_AOI;
     para.world_height   = DIM_Y;
     para.world_width    = DIM_X;
     para.overload_limit = 0;
-        
-    g_aoi.center.x = (coord_t)(rand () % DIM_X);
-    g_aoi.center.y = (coord_t)(rand () % DIM_Y);
-    g_aoi.radius   = (length_t)DEFAULT_AOI;
+#endif
 
-    g_netpara.port  = GATEWAY_DEFAULT_PORT;
-    g_netpara.step_persec = 10;
-
-    bool simulate_behavior = false;
-
-    // get gateway IP (if exists)
-    char gateway[80];    
-    gateway[0] = 0;
-
-    // first optional para is port
-    if (argc >= 2)
-        g_netpara.port = (unsigned short)atoi (argv[1]);
-
-	
-   	// second & 3rd parameter is join coordinate
-    /*
-	if (argc >= 4)
-    {
-        g_aoi.center.x = (coord_t)atoi (argv[2]);
-        g_aoi.center.y = (coord_t)atoi (argv[3]);               
-    }
-	*/
-	
-
-    // 4th parameter is gateway IP
-    //if (argc >= 5)
-	//	strcpy (gateway, argv[4]);
-	if (argc >= 3)
-        strcpy (gateway, argv[2]);
-
-    // 5th parameter is which node to simulate
-	/*
-	if (argc >= 6)
-	{
-		simulate_behavior = true;
-		g_node_no = atoi (argv[5]);
-	}
-	*/
-    if (argc >= 4)
-    {
-        simulate_behavior = true;
-        g_node_no = atoi (argv[3]);
-    }
-	
-    // see if simulation behavior file exists for simulated behavior    
-    SimPara simpara;
-    if (ReadPara (simpara) == true)
-    {
-        // override defaults
-        para.default_aoi        = simpara.AOI_RADIUS;
-        para.world_height       = simpara.WORLD_HEIGHT;
-        para.world_width        = simpara.WORLD_WIDTH;        
-        para.overload_limit     = simpara.OVERLOAD_LIMIT;
-        g_netpara.step_persec   = simpara.STEPS_PERSEC;           
-        g_aoi.radius            = simpara.AOI_RADIUS;
-    }
-    else  
-    {   
-        printf ("warning: INI file is not found at working directory, it's required for simulation\n");
-        if (simulate_behavior)
-            exit (0);
-    }
-
-    // valid node number begin from zero, use assigned node # or a random one
-    if (g_node_no > 0)
-        g_node_no--;
-    else if (g_node_no <= 0)
-        g_node_no = rand () % simpara.NODE_SIZE;
+    // initialize parameters
+    char cmd[255];
+    cmd[0] = 0;
     
+    for (int i=1; i < argc; i++)
+    {        
+        strcat (cmd, argv[i]);
+        strcat (cmd, " ");
+    }
+
+    // initialize parameters
+    SimPara simpara;
+    vector<IPaddr> entries;
+
+    bool is_gateway;
+
+    if ((g_node_no = InitPara (cmd, is_gateway, g_aoi, g_netpara, simpara, g_gateway, entries)) == (-1))
+        exit (0);
+
+    bool simulate_behavior = (g_node_no > 0);
+
+    /*
+    // valid node number begin from 0, use assigned node # or a random one
+    if (node_no == 0)
+        node_no = rand () % simpara.NODE_SIZE;
+    */
+    
+    // make backup of AOI
     g_prev_aoi = g_aoi;
 
-    // default gateway set to localhost
-    g_netpara.is_gateway = (gateway[0] == '\0' ? true : false);
-    if (gateway[0] == 0)
-        strcpy (gateway, "127.0.0.1");
+#ifdef VAST_ONLY
 
-    g_netpara.gateway.publicIP = IPaddr (gateway, g_netpara.port);
-    g_netpara.model = VAST_NET_ACE;
-    
-    // if physical coordinate is not supplied, VAST will need to obtain it itself
-    //g_netpara.phys_coord = g_aoi.center;    
-
-    // create VAST node factory (with default physical coordinate)          
-#ifdef USE_VAST
-    // create VAST node factory
-    g_world = new VASTVerse (&g_netpara, NULL);
+    // create VAST node factory    
+    g_world = new VASTVerse (entries, &g_netpara, NULL);
 #else
 
     g_world = new VASTATE (para, g_netpara, NULL);    
@@ -514,19 +479,7 @@ int main (int argc, char *argv[])
 
 #endif
 
-    // create logfile to record neighbors at each step
-    if (!g_netpara.is_gateway) {
-	    char poslog[] = "position";
-	    char neilog[] = "neighbor";
-	    g_poslog = LogFileManager::open (poslog);
-	    g_neilog = LogFileManager::open (neilog);
-	    // sleep for a random time to avoid concurrent connection
-        size_t sleep_time = g_node_no * time_offset;
-	    ACE_Time_Value duration (sleep_time, 0);
-        printf("Node no: %u, Sleep for %u sec...\n", g_node_no, sleep_time);
-        ACE_OS::sleep (duration);
-    }
-
+    // for simulated behavior, we will use position log to move the nodes
     if (simulate_behavior)
     {
         // create movement model
@@ -555,6 +508,21 @@ int main (int argc, char *argv[])
 
         // load initial position
         g_aoi.center = *g_movement.getPos (g_node_no, 0);
+
+        // create logfile to record neighbors at each step
+        if (is_gateway == false) 
+        {
+		    char poslog[] = "position";
+		    char neilog[] = "neighbor";
+		    g_position_log = LogFileManager::open (poslog);
+		    g_neighbor_log = LogFileManager::open (neilog);
+    
+		    // sleep for a random time to avoid concurrent connection
+            size_t sleep_time = g_node_no * time_offset;
+		    ACE_Time_Value duration (sleep_time, 0);
+            printf ("Node no: %u, Sleep for %u sec...\n", g_node_no, sleep_time);
+            ACE_OS::sleep (duration);
+        }
     }
 
     size_t count_per_sec = 0;
@@ -572,10 +540,28 @@ int main (int argc, char *argv[])
     while (!g_finished)
     {   
         // record starting time of this cycle
-        ACE_Time_Value start = ACE_OS::gettimeofday();
+        ACE_Time_Value start = ACE_OS::gettimeofday ();
 
         g_count++;
         count_per_sec++;
+
+        // obtain pointer to self
+        Node *self = NULL;
+        id_t id = 0;
+
+#ifdef VAST_ONLY
+        if (g_self != NULL)
+        {
+            self = g_self->getSelf ();
+            id = g_sub_no;
+        }
+#else
+        if (g_agent != NULL)
+        {            
+		    self = g_agent->getSelf ();
+            id = self->id;
+        }
+#endif
 
         if (g_state != JOINED)
             checkJoin ();
@@ -593,43 +579,38 @@ int main (int argc, char *argv[])
             {    
                 //printf ("elapsed time since last move %ld\n", elapsed);
                 last_move = start;
+               
+                g_aoi.center = *g_movement.getPos (g_node_no, num_moves);
 
                 // in simulated mode, we only move TIME_STEPS times
                 if (num_moves >= simpara.TIME_STEPS)
                     g_finished = true;
-               
-                g_aoi.center = *g_movement.getPos (g_node_no, num_moves);
+
                 num_moves++;      
-
             }
-
+           
             // move only if position changes
             if (!(g_prev_aoi == g_aoi))
             {
-                printf ("move to (%d, %d)\n", (int)g_aoi.center.x, (int)g_aoi.center.y); 
-                g_prev_aoi = g_aoi;
-
-#ifdef USE_VAST
+                g_prev_aoi = g_aoi;               
+#ifdef VAST_ONLY
                 g_self->move (g_sub_no, g_aoi);
 #else
 				// only non-gateway nodes move
                 if (g_agent != NULL)
                 {
-					Node *self = g_agent->getSelf ();
-					long long curr_msec = (long long) (start.sec() * 1000 + start.usec() / 1000);
-					fprintf (g_poslog, "%lld,\"%d,%d,%d\",%lld [%u,%u]\n", curr_msec, (int)self->id,
+					fprintf (g_position_log, "%lld,\"%d,%d,%d\",%lld [%u,%u]\n", curr_msec, (int)self->id,
 							(int)self->aoi.center.x, (int)self->aoi.center.y, elapsed,
                             g_world->getSendSize (), g_world->getReceiveSize ());
-					fflush(g_poslog);
-
-                    PrintNeighbors (curr_msec, (int)self->id);
+					fflush(g_position_log);
 
                     g_agent->move (g_aoi.center);
                 }
 #endif
+                printf ("[%llu] moves to (%d, %d)\n", id, (int)g_aoi.center.x, (int)g_aoi.center.y); 
             }
 
-#ifndef USE_VAST
+#ifndef VAST_ONLY
             // send out other commands
             if (g_lastcommand != 0)
             {
@@ -664,10 +645,15 @@ int main (int argc, char *argv[])
         if (start.sec () > curr_sec)
         {
             curr_sec = (long)start.sec ();
-            printf ("%ld s, tick %u, tick_persec %u, sleep: %ld us\n", 
+            printf ("%ld s, tick %u, tick_persec %u, sleep: %lu us\n", 
                      curr_sec, g_count, count_per_sec, (long) sleep_time);
-            count_per_sec = 0;
-		
+            count_per_sec = 0;		
+
+            // per second neighbor list
+            long long curr_msec = (long long) (start.sec () * 1000 + start.usec () / 1000);
+            
+            if (self != NULL)
+                PrintNeighbors (curr_msec, self->id);
         } 
         
         if (sleep_time > 0)
@@ -679,7 +665,7 @@ int main (int argc, char *argv[])
     }
 
     // depart
-#ifdef USE_VAST
+#ifdef VAST_ONLY
     g_self->leave ();
     g_world->destroyClient (g_self);
 #else
@@ -706,9 +692,10 @@ int main (int argc, char *argv[])
             
     delete g_world;        
 
-    if (!g_netpara.is_gateway) {
-		LogFileManager::close (g_poslog);
-		LogFileManager::close (g_neilog);
+    if (simulate_behavior && !is_gateway) 
+    {
+		LogFileManager::close (g_position_log);
+		LogFileManager::close (g_neighbor_log);
 	}
 
     /*

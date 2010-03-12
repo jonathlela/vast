@@ -24,29 +24,28 @@
 
 namespace Vast {
 
-
     // constructor
     net_ace::net_ace (unsigned short port)
-        :_port_self (port), _up_cond (NULL), _down_cond (NULL), _acceptor (NULL)
+        :_port_self (port), 
+         _up_cond (NULL), 
+         _down_cond (NULL), 
+         _acceptor (NULL)
     {
         // necessary to avoid crash when using ACE with WinMain
         ACE::init ();
-
-        // init clock
-        //clock ();
    
-        // set the largest possible value for temp id counter
-        _temp_id = (id_t)(NET_ID_UNASSIGNED-1);
         _udphandler = NULL;
-
-        printf ("net_ace::net_ace () called\n"); 
-        printf ("net_ace::net_ace(): IP: %s\n", getIPFromHost ());
-        printf ("IP shown\n");
+        
+        printf ("net_ace::net_ace(): Host IP: %s\n", getIPFromHost ());
 
         ACE_INET_Addr addr (_port_self, getIPFromHost ());
 
+        // TODO: necessary here? actual port might be different and correct one
+        //       is set in svc ()
+        //       reason is that when VASTVerse is created, it needs to find out / resolve
+        //       actual address for gateway whose IP is "127.0.0.1"
         _addr.setPublic ((unsigned long)addr.get_ip_address (), 
-                      (unsigned short)addr.get_port_number ());
+                         (unsigned short)addr.get_port_number ());
     }
 
     //
@@ -64,7 +63,6 @@ namespace Vast {
         ACE_Thread_Mutex mutex;
         _up_cond = new ACE_Condition<ACE_Thread_Mutex>(mutex);
         
-
         printf ("ace_net::open (), before activate thread count: %d\n", this->thr_count ()); 
         
         // activate the ACE network layer as a thread
@@ -125,7 +123,7 @@ namespace Vast {
        
         printf ("net_ace::svc () default port: %d\n", _port_self);
 
-        // obtain a valid server listen port        
+        // obtain a valid server TCP listen port        
         while (true) 
         {
             ACE_DEBUG ((LM_DEBUG, "(%5t) attempting to start server at %s:%d\n", addr.get_host_addr (), addr.get_port_number ()));
@@ -156,6 +154,8 @@ namespace Vast {
         ACE_Time_Value tv (0, 200000);
         ACE_OS::sleep (tv);        
 
+        _binded = true;
+
         // continue execution of original thread in open()
         _up_cond->signal ();
         
@@ -166,8 +166,9 @@ namespace Vast {
         }        
  
         ACE_DEBUG ((LM_DEBUG, "(%5t) net_ace::svc () leaving event handling loop\n"));
-
+        
         _reactor->remove_handler (_acceptor, ACE_Event_Handler::DONT_CALL);
+        _binded = false;
 
         // NOTE: _acceptor will be deleted when reactor is deleted as one of its
         //       event handlers
@@ -201,8 +202,7 @@ namespace Vast {
 
         timestamp_t now = (timestamp_t)((time.sec ()  - _start_time.sec ()) * 1000 + 
                                         (time.usec () - _start_time.usec ()) / 1000);        
-        return now;        
-        //return (timestamp_t) clock ();
+        return now;
     }
 
     // get IP address from host name
@@ -240,6 +240,7 @@ namespace Vast {
         }
         */
         
+        // return the first IP found
         if (remoteHost->h_addr_list[0] != 0)
         {
             addr.s_addr = *(u_long *) remoteHost->h_addr_list[0];
@@ -249,32 +250,19 @@ namespace Vast {
             return NULL;
     }
 
-    /*
-    const char *
-    net_ace::
-    getIP () 
-    {        
-        char hostname[80];
-        ACE_OS::hostname (hostname, 80);
-       
-        struct hostent *p = ACE_OS::gethostbyname (hostname);
+    // check the validity of an IP address, modify it if necessary
+    // (for example, translate "127.0.0.1" to actual IP)
+    bool 
+    net_ace::validateIPAddress (IPaddr &addr)
+    {
+        // if address is localhost (127.0.0.1), replace with my detected IP 
+        if (addr.host == 0 || addr.host == 2130706433)
+            addr.host = getHostAddress ().publicIP.host;
 
-        // BUG NOTE: IPv6 will not work...
-        static struct in_addr addr;
-        static char local_IP[16];
+        // TODO: perform other actual checks
 
-        // get the IP address
-        memcpy (&addr, p->h_addr_list[0], sizeof (struct in_addr));
-       
-        ACE_OS::strcpy (local_IP, ACE_OS::inet_ntoa (addr));
-
-#ifdef DEBUG_DETAIL                
-        printf ("net_ace::getIP () local hostname: %s IP local: %s\n", hostname, local_IP);  
-#endif        
-
-        return local_IP;
-    } 
-    */
+        return true;
+    }
 
     int 
     net_ace::
@@ -314,7 +302,7 @@ namespace Vast {
         // initialize a connection, note that the handler object
         // is treated as a SOCK_Stream
         // NOTE 2nd parameter is in microsecond (not milli)        
-        int attempt_count = 1;
+        int attempt_count = 3;
         ACE_Time_Value tv (0, 100000);
         ACE_DEBUG ((LM_DEBUG, "connecting to %s:%d\n", target_addr.get_host_addr (), target_addr.get_port_number ()));
         ACE_Time_Value timeout (2, 0);
@@ -340,7 +328,7 @@ namespace Vast {
             return (-1);
         }
         
-        ACE_DEBUG ((LM_DEBUG, "(%5t) connect(): connected to [%d] (%s:%d)\n", target, target_addr.get_host_addr (), target_addr.get_port_number ()));
+        ACE_DEBUG ((LM_DEBUG, "(%5t) connect(): connected to (%s:%d)\n", target_addr.get_host_addr (), target_addr.get_port_number ()));
 
         return 0;
     }
@@ -437,17 +425,24 @@ namespace Vast {
     //
 
     // methods to keep track of active connections
-    // returns the id being assigned (temp id may be assigned if unassigned id is received)
+    // returns the id being assigned 
     id_t
     net_ace::
     register_conn (id_t id, void *stream)
     {
-        if (isConnected (id) == true)
-            return NET_ID_UNASSIGNED;
-
+        // if remote connection is without HostID, assign a new one
         if (id == NET_ID_UNASSIGNED)
-            id = _temp_id--;
+        {
+            printf ("net_ace::register_conn () empty id given\n");
+            return NET_ID_UNASSIGNED;
+        }
+        else if (isConnected (id) == true)
+        {
+            printf ("net_ace::register_conn () TCP stream already registered\n");
+            return NET_ID_UNASSIGNED;
+        }
 
+        // store the connection stream
         _conn_mutex.acquire ();
         _id2conn[id] = stream;
         _conn_mutex.release ();
@@ -457,12 +452,14 @@ namespace Vast {
         ACE_INET_Addr remote_addr;
         s.get_remote_addr (remote_addr);
         IPaddr ip (remote_addr.get_ip_address (), remote_addr.get_port_number ()); 
-        Addr addr (id, ip); 
+        Addr addr (id, &ip);
+
         storeMapping (addr);
 
 #ifdef DEBUG_DETAIL        
         printf ("register_conn [%d]\n", (int)id);
 #endif
+        
         return id;
     }
 
@@ -488,12 +485,14 @@ namespace Vast {
         // send a DISCONNECT notification
         // NOTE that storing 0 msg and 0 size won't conflict with normal messages with no parameters sent
         //      as those messages will at least have some content sent to storeMessage
-        timestamp_t t = getTimestamp ();
-        storeRawMessage (id, 0, 0, t, t);
+        //timestamp_t t = getTimestamp ();
+        Message *msg = new Message (DISCONNECT);
+        storeRawMessage (id, msg);
         
         return id;
     }
 
+    /*
     id_t 
     net_ace::
     update_conn (id_t prev_id, id_t curr_id)
@@ -517,7 +516,6 @@ namespace Vast {
         
         return curr_id;
     }
+    */
 
 } // end namespace Vast
-
-

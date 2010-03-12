@@ -27,6 +27,19 @@ namespace Vast
 
     using namespace std;
 
+    VASTnet::VASTnet ()
+        : _id (NET_ID_UNASSIGNED), 
+          _active (false), 
+          _binded (false),
+          _is_public (true), 
+          _cleanup_counter (0),
+          _request_counter (0),
+          _recvmsg (NULL), 
+          _tick_persec (0)
+    {        
+        resetTransmissionSize ();
+    }        
+
     VASTnet::~VASTnet ()
     {
         // make sure everything's stopped & released
@@ -79,16 +92,6 @@ namespace Vast
         
         
         // clear up current messages received
-        /*
-        while (_curr_msg != NULL || receive (&_curr_msg) != false)
-        {
-            // de-allocate memory
-            netmsg *temp;
-            _curr_msg = _curr_msg->getnext (&temp);
-            delete temp;
-        }
-        */
-
         for (std::multimap<byte_t, QMSG *>::iterator it = _msgqueue.begin (); it != _msgqueue.end (); it++)
         {
             delete it->second->msg;
@@ -106,20 +109,106 @@ namespace Vast
 
     void 
     VASTnet::
-    registerID (id_t my_id)
+    registerHostID (id_t my_id, bool is_public)    
     {
+        // we avoid double assignment (for now)
+        if (_id != NET_ID_UNASSIGNED)
+            return;
+                
+        // record my obtained ID
         _id = my_id;  
         _addr.host_id = _id;
         _id2addr[_id] = _addr;
 
+        _is_public    = is_public;
+        
+        // below is probably not necessary as the connection stores only the remote node's HostID
+
+        /*
         // disconnect all existing connections (as they may have previous mapping)
         // TODO: a more efficient method?
+        
         vector<id_t> list;
         for (std::map<id_t, void *>::iterator it = _id2conn.begin (); it != _id2conn.end (); it++)
             list.push_back (it->first);
 
-        for (unsigned int i=0; i < list.size (); i++)
+        for (size_t i=0; i < list.size (); i++)
             disconnect (list[i]);
+        */
+    }
+
+    // whether we have joined the overlay successfully and obtained a HostID
+    bool
+    VASTnet::isJoined ()
+    {
+        if (_binded == false)
+            return false;
+
+        // if HostID is not yet obtained, and our network is up
+        if (_id == NET_ID_UNASSIGNED)
+        {
+            // check if we're considered as an entry point, if so we can determine HostID by self
+            if (_entries.size () == 0)
+            {
+                id_t id = resolveHostID (&_addr.publicIP);   
+
+                // note we need to use registerHostID to modify _id instead of directly
+                registerHostID (id, true);
+            }
+
+            // otherwise, start to contact entry points to obtain ID
+            else if (_request_counter == 0)
+            {
+                // randomly pick an entry point
+                int i = (rand () % _entries.size ());
+
+                id_t target = resolveHostID (&_entries[i]);
+                Addr addr (target, &_entries[i]);
+
+                storeMapping (addr);
+
+                //
+                // send out ID request message & also detect whether we've public IP
+                //
+                // TODO: cleaner way?
+
+                // determine our self ID
+                id_t id = resolveHostID (&_addr.publicIP);                
+
+                // create & send ID request message, consists of
+                //   1) determined hostID and 2) detected IP of the host
+                Message msg (0);
+                msg.priority = 0;
+                msg.store (id);
+                msg.store (getHostAddress ().publicIP);
+          
+                sendMessage (target, msg, true, ID_REQUEST);
+                printf ("VASTnet::isJoined () sending ID_REQUEST to gateway [%llu]\n", target);
+
+                /*
+                // create & send ID request message, consists of
+                //   1) NET_ID_UNASSIGNED  2) determined hostID and 3) detected IP
+                const size_t total_size = sizeof (id_t) + sizeof (id_t) + sizeof (unsigned long);
+                char msg[sizeof (size_t) + total_size];
+
+                char *p = msg;
+
+                memcpy (p, (char *)&total_size, sizeof (size_t));       p += sizeof (size_t);
+                memcpy (p, (char *)&_id, sizeof (id_t));                p += sizeof (id_t);
+                memcpy (p, (char *)&id, sizeof (id_t));                 p += sizeof (id_t);
+                memcpy (p, (char *)&host, sizeof (unsigned long));
+
+                validateConnection (target);
+                send (target, msg, sizeof (size_t) + total_size);
+                */
+
+                _request_counter = COUNTER_ID_REQUEST * this->getTickPerSecond ();
+            }
+            else
+                _request_counter--;
+        }
+
+        return (_id != NET_ID_UNASSIGNED);
     }
 
     // get the IP address of current host machine
@@ -133,17 +222,16 @@ namespace Vast
     // will queue in _sendbuf_TCP or _sendbuf_UDP depending on reliability until flush () is called
     // returns number of bytes sent
     size_t
-    VASTnet::sendMessage (id_t target, Message &msg, bool reliable)
+    VASTnet::sendMessage (id_t target, Message &msg, bool reliable, VASTHeaderType type)
     {
         if (_active == false)
             return 0;
 
         // collect download transmission stat
-        //size_t total_size = sizeof (size_t) + sizeof (id_t) + sizeof (timestamp_t) + qmsg->msg->size;
+        //size_t total_size = sizeof (size_t) + sizeof (id_t) + msg.size;
+        //updateTransmissionStat (target, msg.msgtype, total_size, 1);
         updateTransmissionStat (target, msg.msgtype, msg.size, 1);
-
-        timestamp_t sent_time = getTimestamp ();
-
+        
 #ifdef DEBUG_DETAIL
         printf ("[%d] VASTnet::sendMessage to: %d msgtype: %d (%s) size: %d\n", _id, target, msg.msgtype, (msg.msgtype < 30 ? (msg.msgtype >= 10 ? VAST_MESSAGE[msg.msgtype-10] : VON_MESSAGE[msg.msgtype]) : "MESSAGE"), msg.size);
 #endif
@@ -155,24 +243,9 @@ namespace Vast
         // if it's a local message, store to receive queue directly
         if (target == _id)
         {
-            /*
-            _sendbuf_local.clear ();
-            _sendbuf_local.add (&msg);
-
-            netmsg *localmsg = new netmsg (_id, _sendbuf_local.data, _sendbuf_local.size, sent_time, NULL, NULL);
-
-            if (_curr_msg == NULL)
-                _curr_msg = localmsg;
-            else
-                _curr_msg->append (localmsg, sent_time);
-
-            return _sendbuf_local.size;
-            */
-
             QMSG *newmsg = new QMSG;
 
             newmsg->fromhost = _id;
-            newmsg->senttime = sent_time;
             newmsg->msg      = new Message (msg);
             
             // reset the message so that it can be properly decoded
@@ -195,27 +268,27 @@ namespace Vast
     
         VASTBuffer *buf = send_buf[target];
 
-        // NOTE: the total_size is used by the receiving host to read message from network stream
-        size_t total_size = sizeof (id_t) + sizeof (timestamp_t) + msg.serialize (NULL);
+        // NOTE: 'header' is used by the receiving host to read message from network stream
+        VASTHeader header;
+        header.type = type;
+        header.msg_size = msg.serialize (NULL);
         
         // prepare bytestring with id, timestamp & serialized message  
         // NOTE the first three items (total_size, id, sent_time) will be extracted by the receiver's network layer
-        // TODO: the packing & unpacking are not symmetric (i.e., not handled by the opposite respective functions)
         // TODO: id is sent now because for net_ace, a receiving host may not know the remote node's host_id
-        //       but sending id everytime is wasteful, handshake ID just once? (what about UDP packets?)
+        //       but sending id constantly is wasteful, handshake ID just once? (what about UDP packets?)
         //       or perhaps id handshake should be done at a lower level (in front of msg packets)
-        buf->add (&total_size, sizeof (size_t));
-        buf->add (&_id, sizeof (id_t));
-        buf->add (&sent_time, sizeof (timestamp_t));
+        buf->add ((char *)&header, sizeof (VASTHeader));
+        //buf->add (&_id, sizeof (id_t));
         buf->add (&msg);
 
-        return total_size;
+        return header.msg_size;
     }
 
     // obtain next message in queue
     // return pointer to Message, or NULL for no more message        
     Message* 
-    VASTnet::receiveMessage (id_t &fromhost, timestamp_t &senttime)
+    VASTnet::receiveMessage (id_t &fromhost)
     {                   
         if (_active == false)
             return NULL;
@@ -235,7 +308,6 @@ namespace Vast
        
         _recvmsg = nextmsg->msg;
         fromhost = nextmsg->fromhost;
-        senttime = nextmsg->senttime;
 
         delete nextmsg;
 
@@ -244,10 +316,97 @@ namespace Vast
         return _recvmsg;
     }
 
+    
+    // process an incoming raw message (decode its header)
+    // whatever bytestring received is processed here in its entirety
+    // returns NET_ID_UNASSIGNED for serious error (connection will be terminated)
+    id_t
+    VASTnet::processRawMessage (VASTHeader &header, const char *p, id_t remote_id, IPaddr *actual_IP, void *handler)
+    {
+        // convert byte string to Message object here
+        Message *msg = new Message (0);
+        
+        if (msg->deserialize (p, header.msg_size) == 0)
+        {
+            printf ("VASTnet::processRawMessage () deserialize message fail, from [%ld], size: %u\n", remote_id, header.msg_size);
+            delete msg;
+            return NET_ID_UNASSIGNED;
+        }
+
+        switch (header.type)
+        {
+        case ID_REQUEST:
+            {
+                if (remote_id != NET_ID_UNASSIGNED)
+                {
+                    printf ("VASTnet::processRawMessage () remote host already has an ID [%llu] ignore new requests\n", remote_id);
+                }
+                else
+                {
+                    // assign
+                    remote_id = processIDRequest (*msg, *actual_IP);       
+                
+                    // if new ID is accepted or assigned successfully
+                    if (remote_id != NET_ID_UNASSIGNED)
+                    {
+                        // register connection
+                        register_conn (remote_id, handler);
+                
+                        // send back reply to ID request
+                        sendMessage (remote_id, *msg, true, ID_ASSIGN);
+                    } 
+                }
+            }            
+            break;
+
+        case ID_ASSIGN:
+            {
+                processIDAssignment (*msg);
+            }
+            break;
+
+        case HANDSHAKE:            
+            if (remote_id == NET_ID_UNASSIGNED)
+            {        
+                // process handshake message                
+                remote_id = processHandshake (*msg);
+                
+                // register this connection with its ID if available, or terminate otherwise
+                if (remote_id == NET_ID_UNASSIGNED)
+                    printf ("VASTnet::processRawMessage () cannot determine remote host's ID from handshake\n");
+                else
+                    register_conn (remote_id, handler);
+            }            
+            break;
+
+        case REGULAR:
+            // regular message must come after successful handshake
+            if (remote_id != NET_ID_UNASSIGNED) 
+            {
+                // return first so Message object would not be de-allocated
+                // NOTE: that if 0 is returned, the connection may be disconnected from here.. 
+                storeRawMessage (remote_id, msg);                           
+
+                return remote_id;
+            }
+            break;
+
+        default:
+            printf ("VASTnet::processRawMessage () unreconginzed message\n");
+            break;
+        }
+
+        // delete temporary message
+        delete msg;
+
+        return remote_id;
+    }
+
+
     // store an incoming message for processing by message handlers
     // return the number of bytes stored
     size_t
-    VASTnet::storeRawMessage (id_t fromhost, char const *msg, size_t len, timestamp_t senttime, timestamp_t recvtime)
+    VASTnet::storeRawMessage (id_t fromhost, Message *msg)
     {                 
         if (_active == false)
             return 0;
@@ -255,17 +414,9 @@ namespace Vast
         // transform into a Message and store to QMSG structure
         QMSG *storemsg = new QMSG;
 
-        storemsg->msg = new Message (0);
-        if (storemsg->msg->deserialize (msg) == ((size_t)(-1)))
-        {
-            printf ("VASTnet::storeRawMessage () deserialize message fail, from [%ld], size: %u\n", fromhost, len);
-            delete storemsg->msg;
-            delete storemsg;
-            return 0;
-        }
-
+        storemsg->msg = msg;
         storemsg->fromhost = fromhost;
-        storemsg->senttime = senttime;
+        storemsg->recvtime = getTimestamp ();
         size_t stored_size = storemsg->msg->size;
 
         store (storemsg);
@@ -314,7 +465,7 @@ namespace Vast
         std::map<id_t, VASTBuffer *>::iterator it;
         for (it = _sendbuf_TCP.begin (); it != _sendbuf_TCP.end (); it++)
         {
-            id_t target     = it->first;        
+            id_t target = it->first;        
             VASTBuffer *buf = it->second;
 
             // check if there's something to send
@@ -377,13 +528,29 @@ namespace Vast
 
     // store hostID -> Address mapping        
     void
-    VASTnet::storeMapping (Addr &address)
+    VASTnet::storeMapping (const Addr &addr)
     {
+        if (addr.host_id == NET_ID_UNASSIGNED)
+        {
+            printf ("VASTnet::storeMapping (): address stored has no valid hostID\n");
+            return;
+        }
+
+        // check for information consistency (for debug)
+        map<id_t, Addr>::iterator it = _id2addr.find (addr.host_id);
+        if (it != _id2addr.end () && it->second != addr)
+        {
+            // NOTE: this may be normal as the port of an address can differ betweeen 
+            //       what others see (if they receive a connection previously) vs. 
+            //       what we actually use to connect to outside
+            printf ("VASTnet::storeMapping (): existing address and new address mismatch.\n");
+        }
+
         // store local copy of the mapping
-        _id2addr[address.host_id] = address;
+        _id2addr[addr.host_id] = addr;
     }
 
-    // if is connected with the node        
+    // if is connected with the node
     bool 
     VASTnet::isConnected (id_t id)
     { 
@@ -395,13 +562,6 @@ namespace Vast
     VASTnet::isPublic ()
     {
         return _is_public;
-    }
-
-    // set whether this host has public IP or not
-    void 
-    VASTnet::setPublic (bool is_public)
-    {
-        _is_public = is_public;
     }
 
     // get how many ticks exist in a second (for stat reporting)
@@ -423,7 +583,16 @@ namespace Vast
     bool 
     VASTnet::validateConnection (id_t host_id)
     {
-        return (isConnected (host_id) == true || connect (host_id) != (-1));
+        // if it's message to self or already connected
+        if (_id == host_id || isConnected (host_id) == true)
+            return true;
+
+        // otherwise try to initiate connection & send handshake message
+        if (connect (host_id) == (-1))
+            return false;
+        
+        sendHandshake (host_id);
+        return true;        
     }
 
     // get a list of currently active connections' remote id and IP addresses
@@ -446,6 +615,38 @@ namespace Vast
         }
 
         return conn_list;
+    }
+
+    // add entry points to respository
+    void 
+    VASTnet::addEntries (std::vector<IPaddr> &entries)
+    {
+        // process and check the validity of each entry point
+        // NOTE: the proper entry format is "hostname:port" or "IP:port" 
+        for (size_t i=0; i < entries.size (); i++)
+        {
+            if (validateIPAddress (entries[i]) == true)            
+                _entries.push_back (entries[i]);
+
+            /*
+            IPaddr addr;
+
+            // TODO: convert any hostname to numeric IP
+
+            // if the entry translates to a valid IP with port number
+            if (IPaddr::parseIP (addr, entries[i]) == 0)            
+                _entries.push_back (addr);      
+            else
+                printf ("VASTnet::VASTnet () invalid entry point: %s\n", entries[i].c_str ());
+            */
+        }
+    }
+        
+    // get a list of entry points on the overlay network
+    std::vector<IPaddr> &
+    VASTnet::getEntries ()
+    {
+        return _entries;
     }
 
     /* simple version without error check
@@ -471,7 +672,166 @@ namespace Vast
 #endif
         return null_addr;        
     }
+
+    // obtain a HostID based on public IP + port for entry point hosts
+    //                    or on public IP + port + number for non-entry hosts;    
+    id_t 
+    VASTnet::resolveHostID (const IPaddr *addr)
+    {
+        // check self
+        if (addr == NULL)
+            //return _id;
+            return NET_ID_UNASSIGNED;
+       
+        // if we're a relay with public IP
+        return ((id_t)addr->host << 32) | ((id_t)addr->port << 16) | NET_ID_RELAY;
+    }
+
+    // obtain the assigned number from a HostID;
+    id_t 
+    VASTnet::resolveAssignedID (id_t host_id)
+    {
+        // last 16 bits are assigned ID + ID group (2 bits)
+        return (host_id & (0xFF >> 2));
+    }
+
+    // obtain a NodeID
+    id_t 
+    VASTnet::getUniqueID (int id_group)
+    {
+        // check if we're relay and allow to give ID
+        if (isEntryPoint (_id) == false)
+            return NET_ID_UNASSIGNED;
+
+        // id_group cannot be out of range (currently only 4)
+        if (id_group < 0 || id_group >= 4)
+            return NET_ID_UNASSIGNED;
         
+        if (_IDcounter.find (id_group) == _IDcounter.end ())
+            _IDcounter[id_group] = NET_ID_RELAY+1;
+
+        // if all available numbers are assigned
+        if (_IDcounter[id_group] <= 0 || _IDcounter[id_group] >= 16384)
+            return NET_ID_UNASSIGNED;
+
+        else
+            // if we're a relay with public IP
+            return ((id_t)_addr.publicIP.host << 32) | ((id_t)_addr.publicIP.port << 16) | ((id_t)id_group << 14) | _IDcounter[id_group]++;
+    }
+
+    // get hostID for myself
+    id_t 
+    VASTnet::getHostID ()
+    {
+        return _id;
+    }
+
+
+    // if an id is an entry point on the overlay
+    bool 
+    VASTnet::isEntryPoint (id_t id)
+    {
+        return ((0x0FFFF & id) == NET_ID_RELAY);
+    }
+
+    // extract the ID group from an ID
+    int 
+    VASTnet::extractIDGroup (id_t id)
+    {
+        return (int)(0x03 & (id >> 14));
+    }
+
+    // extract the host IP from an ID
+    int 
+    VASTnet::extractHost (id_t id)
+    {
+        return ((id >> 32) & 0xFFFFFFFF);
+    }
+
+    id_t
+    VASTnet::processIDRequest (Message &msg, IPaddr &actualIP)
+    {
+        // extract the ID request message, consists of
+        //   1) determined hostID and 2) detected IP
+        id_t    id;
+        IPaddr  detectedIP;
+        
+        // extract..
+        msg.extract (id);
+        msg.extract (detectedIP);
+
+        // debug msg
+        //printf ("[%lld] ID request from: %lld (%s:%d) actual address (%s:%d)\n", _host. addr.host_id, IP_sent, addr.publicIP.port, IP_actual, actual_addr.publicIP.port);
+
+        bool is_public = (actualIP.host == detectedIP.host);
+
+        // if the remote host does not have have public IP, assign one
+        if (!is_public)      
+            id = getUniqueID ();
+
+        if (id == NET_ID_UNASSIGNED)                    
+            printf ("VASTnet::processIDRequest () we cannot assign new ID to remote host any more\n");        
+        else
+        {
+            // prepare reply message, store the new ID & is_public flag
+            msg.clear (0);
+            msg.priority = 0;
+            msg.store (id);
+            msg.store ((char *)&is_public, sizeof (bool));                     
+        }
+
+        // return the ID accepted or assigned
+        return id;
+    }
+
+    // store an incoming assignment of my ID
+    id_t
+    VASTnet::processIDAssignment (Message &msg)
+    {
+        if (msg.size != (sizeof (id_t) + sizeof (bool)))
+            return NET_ID_UNASSIGNED;
+
+        id_t id;
+        bool is_public;
+
+        msg.extract (id);
+        msg.extract ((char *)&is_public, sizeof (bool));
+
+        // store my obtained ID
+        registerHostID (id, is_public);
+
+        return id;
+    }
+
+    // send a handshake message to a newly established connection
+    void 
+    VASTnet::sendHandshake (id_t target)
+    {
+        // if we do not yet have our ID, should request ID first
+        if (_id == NET_ID_UNASSIGNED)
+            return;
+
+        // prepare & send the handshake message, currently just my ID
+        Message msg (0);
+        msg.priority = 0;
+        msg.store (_id);
+
+        // TODO: add authentication message
+        sendMessage (target, msg, true, HANDSHAKE); 
+    }
+
+    // decode the remote host's ID or assign one if not available
+    // TODO: perform authentication of remote host
+    id_t
+    VASTnet::processHandshake (Message &msg)
+    {
+        // TODO: perform authentication first?
+        id_t remote_id;
+        msg.extract (remote_id);
+        return remote_id;               
+    }
+
+
     // obtain the tranmission size by message type, default is to return all types
     size_t 
     VASTnet::getSendSize (msgtype_t msgtype)

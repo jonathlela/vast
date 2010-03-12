@@ -3,7 +3,7 @@
  * Copyright (C) 2005 Shun-Yun Hu (syhu@yahoo.com)
  *                    Shao-Chen Chang (cscxcs at gmail.com)
  *
- * This library is free software; you can redistribute it and/or
+ * This library is free software; you scan redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2.1 of the License, or (at your option) any later version.
@@ -40,12 +40,13 @@ namespace Vast
         return new_id;
     }
 
+    /*
     // replace the temp id with a new id
     void 
     net_emubridge_bl::
-    registerID (id_t temp_id, id_t id)
+    registerHostID (id_t temp_id, id_t id)
     {
-        net_emubridge::registerID (temp_id, id);
+        net_emubridge::registerHostID (temp_id, id);
 
         _upload_quota [id] = _upload_quota [temp_id];
         _download_quota[id] = _download_quota [temp_id];
@@ -64,12 +65,13 @@ namespace Vast
             node_downcap.erase (temp_id);
         }
     }
+    */
 
     void 
     net_emubridge_bl::
-    release_id (id_t id)
+    releaseHostID (id_t id)
     {
-        net_emubridge::release_id (id);
+        net_emubridge::releaseHostID (id);
 
         // clear up bandwidth limitation related variables
         _upload_quota.erase (id);

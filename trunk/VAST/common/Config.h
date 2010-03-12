@@ -58,14 +58,13 @@
 #define SIM_RECORD_STAT
 
 // whether VAST should send timestamps to calculate & record transmission latencies
-#define VAST_RECORD_MOVEMENT_LATENCY_
+#define VAST_RECORD_LATENCY_
 
 //
 // for topology-aware simulations
 //
 
 // enable latency table be used (make sure it's in the working directory)
-#define  ENABLE_LATENCY_
 #define  ENABLE_TOPOLOGY_AWARE_
 
 #ifdef SIMULATION_ONLY

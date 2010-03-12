@@ -49,12 +49,17 @@ namespace Vast
             delete[] data;
         }
 
-        // increase the current buffer capacity by 'len'
+        // increase the current buffer capacity by 'len' (but at multiples of VAST_BUFSIZ)
         bool expand (size_t len)
         {
             // estimate size for new buffer
-            _bufsize = (((size + len) / VAST_BUFSIZ) + 1) * VAST_BUFSIZ;
-            char *temp = new char[_bufsize];
+            size_t newsize = (((size + len) / VAST_BUFSIZ) + 1) * VAST_BUFSIZ;
+
+            // our needed expansion is smaller than current size
+            if (newsize <= _bufsize)
+                return false;
+           
+            char *temp = new char[newsize];
 
             if (temp == NULL)
             {
@@ -68,6 +73,7 @@ namespace Vast
             // remove old buffer
             delete[] data;
             data = temp;
+            _bufsize = newsize;
 
             return true;
         }
@@ -75,7 +81,8 @@ namespace Vast
         void reserve (size_t len)
         {
             size = 0;
-            expand (len);
+            if (len > _bufsize)            
+                expand (len);
         }
 
         void clear ()

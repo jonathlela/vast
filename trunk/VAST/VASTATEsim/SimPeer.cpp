@@ -387,7 +387,6 @@
         {
             string password ("abc\0");
 
-
             // case 1: only gateway is added as first arbitrator, but others are potential arbitrators
             _factory->createNode (_self.aoi, _arb_logic, _agent_logic, password, (_nodeindex == 1 ? &_self.aoi.center : NULL));            
             

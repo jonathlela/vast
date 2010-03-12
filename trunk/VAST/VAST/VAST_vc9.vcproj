@@ -213,15 +213,15 @@
 			Filter="cpp;c;cxx;rc;def;r;odl;idl;hpj;bat"
 			>
 			<File
-				RelativePath=".\IDGenerator.cpp"
+				RelativePath=".\VASTClient.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\Relay.cpp"
+				RelativePath=".\VASTMatcher.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\Topology.cpp"
+				RelativePath=".\VASTRelay.cpp"
 				>
 			</File>
 			<File
@@ -238,19 +238,19 @@
 			Filter="h;hpp;hxx;hm;inl"
 			>
 			<File
-				RelativePath=".\IDGenerator.h"
-				>
-			</File>
-			<File
-				RelativePath=".\Relay.h"
-				>
-			</File>
-			<File
-				RelativePath="..\common\Topology.h"
-				>
-			</File>
-			<File
 				RelativePath="..\common\VAST.h"
+				>
+			</File>
+			<File
+				RelativePath=".\VASTClient.h"
+				>
+			</File>
+			<File
+				RelativePath=".\VASTMatcher.h"
+				>
+			</File>
+			<File
+				RelativePath="..\common\VASTRelay.h"
 				>
 			</File>
 			<File

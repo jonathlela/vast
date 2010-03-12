@@ -42,6 +42,13 @@ namespace Vast {
         if (remote_id != NET_ID_UNASSIGNED)
             _remote_id = ((net_ace *)_msghandler)->register_conn (remote_id, this);
         
+
+        // obtain remote host's detected IP for public IP check                                            
+        ACE_INET_Addr remote_addr;
+        this->_stream.get_remote_addr (remote_addr);
+        _remote_IP.host = remote_addr.get_ip_address ();
+        _remote_IP.port = remote_addr.get_port_number ();
+
         return 0;
     }
 
@@ -77,15 +84,14 @@ namespace Vast {
         //   0: connection closed
         //  >0: bytes read
         size_t n;
-        size_t msg_size;
+        VASTHeader header;      // message header
         
         // for TCP connection
         if (_udp == NULL) 
         {
-            // get size of message
-            //ACE_Time_Value tv (1, 0);       // set a 
+            // get size of message            
             size_t bytes_transferred = 0;
-            switch (n = this->_stream.recv_n (&msg_size, sizeof(size_t), 0, &bytes_transferred))
+            switch (n = this->_stream.recv_n (&header, sizeof (VASTHeader), 0, &bytes_transferred))
             {
             case -1:
                 ACE_ERROR_RETURN ((LM_ERROR, "(%5t) [tcp-size] bad read due to (%p) received_bytes: %d\n", "net_ace_handler", bytes_transferred), -1);
@@ -96,10 +102,10 @@ namespace Vast {
             //ACE_DEBUG( (LM_DEBUG, "(%5t) handle_input: msgsize: %d\n", msg_size ) );
             
             // check buffer size
-            _buf.reserve (msg_size);
+            _buf.reserve (header.msg_size);
 
             // get message body
-            switch (n = this->_stream.recv_n (_buf.data, msg_size, 0, &bytes_transferred)) 
+            switch (n = this->_stream.recv_n (_buf.data, header.msg_size, 0, &bytes_transferred)) 
             {
             case -1:
                 //ACE_ERROR_RETURN ((LM_ERROR, "(%5t) [tcp-body] bad read due to (%p) \n", "net_ace_handler"), -1);
@@ -107,15 +113,30 @@ namespace Vast {
             case 0:            
                 ACE_ERROR_RETURN ((LM_DEBUG, "(%5t) [tcp-body] remote close (fd = %d)\n", fd), -1);
             default:
-                if (n != msg_size)
-                    ACE_ERROR_RETURN ((LM_ERROR, "(%5t) [tcp-body] size mismatch (expected:%u actual:%u)\n", msg_size, n), -1);
+                if (n != header.msg_size)
+                    ACE_ERROR_RETURN ((LM_ERROR, "(%5t) [tcp-body] size mismatch (expected:%u actual:%u)\n", header.msg_size, n), -1);
             }
+                   
+            //if (processmsg (header, _buf.data) == (-1))
+            
+            // handle raw message
+            id_t id = ((VASTnet *)_msghandler)->processRawMessage (header, _buf.data, _remote_id, &_remote_IP, this);
 
-            processmsg (_buf.data, n);
+            if (id == NET_ID_UNASSIGNED)
+                return (-1);
+            else
+                _remote_id = id;                            
         }
         // for UDP packets
         else 
         {
+            // TODO: check if this will occur
+            if (_remote_id == NET_ID_UNASSIGNED)
+            {
+                printf ("net_ace_handler (): UDP message received, but handler's remote_id not yet known\n");
+                return 0;
+            }
+
             switch (n = _udp->recv (_buf.data, VAST_BUFSIZ, _local_addr)) 
             {
             case -1:
@@ -133,24 +154,26 @@ namespace Vast {
             // NOTE that there may be several valid UDP messages received at once            
             while (n > sizeof (size_t))
             {            
-                // extract message size
-                memcpy (&msg_size, p, sizeof (size_t));
-                n -= sizeof (size_t);
-                p += sizeof (size_t);
+                // extract message header
+                memcpy (&header, p, sizeof (VASTHeader));
+                n -= sizeof (VASTHeader);
+                p += sizeof (VASTHeader);
 
                 // NOTE UDP size mismatch is not critical, just drop this packet
                 //      if actual payload is not long enough as expected               
-                if (n < msg_size)
+                if (n < header.msg_size)
                 {                    
-                    ACE_DEBUG ((LM_DEBUG, "(%5t) [udp-body] (%p) size error (expected:%u actual:%u)\n", "net_ace_handler", msg_size, n));
+                    ACE_DEBUG ((LM_DEBUG, "(%5t) [udp-body] (%p) size error (expected:%u actual:%u)\n", "net_ace_handler", header.msg_size, n));
                     return 0;
                 }
             
-                processmsg (p, msg_size);
+                // NOTE: no error checking is performed
+                //processmsg (header, p);
+                ((VASTnet *)_msghandler)->processRawMessage (header, p, _remote_id);
 
                 // next message
-                p += msg_size;
-                n -= msg_size;
+                p += header.msg_size;
+                n -= header.msg_size;
             }
         }
         
@@ -181,23 +204,21 @@ namespace Vast {
         return 0;
     }
 
-    // whatever bytestring received is processed here in its entirety
-    void
-    net_ace_handler::
-    processmsg (const char *msg, size_t size)
-    {            
+    /*
+    int processmsg (VASTHeader &header, const char *msg)
+    {    
         // if the remote node doesn't have an id yet, we should
-        //  1. assign an internal temp id if I'm the gateway (and relay the request for ID)
-        //  2. reject connection if I'm not gateway or the message isn't a request for ID
+        //  1. assign a new id if I'm the relay
+        //  2. reject connection if I'm not relay or the message isn't a request for ID
 
         // store the incoming message
         size_t n = size - (sizeof (id_t) + sizeof (timestamp_t));
-        timestamp_t      senttime;
-        id_t             id;
+        id_t             fromhost;
+        timestamp_t      senttime;        
         char *p = (char *)msg;
 
         // extract id
-        memcpy (&id, p, sizeof (id_t));
+        memcpy (&fromhost, p, sizeof (id_t));
         p += sizeof (id_t);
         
         // extract time stamp
@@ -205,29 +226,52 @@ namespace Vast {
         p += sizeof (timestamp_t);
         
         // if the message comes from a reliable (TCP) connection
-        // then check the if the sender's has sent an ID to replace a currently
-        // unfamiliar remote node's ID
         if (_udp == NULL) 
         {
-            // check if id is valid
-            if (_remote_id == NET_ID_UNASSIGNED)
+            // check if we're getting a new ID
+            if (fromhost == NET_ID_NEWASSIGNED)
             {
-                if (id != NET_ID_UNASSIGNED)
-                    _remote_id = id;                  
-                
-                _remote_id = ((net_ace *)_msghandler)->register_conn (_remote_id, this);
+                ((VASTnet *)_msghandler)->processHandshake (p, n);
+                return;
+            }
+
+            // check if it's a new incoming connection
+            else if (_remote_id == NET_ID_UNASSIGNED)
+            {
+                // simply a new connection with valid ID
+                if (fromhost != NET_ID_UNASSIGNED)
+                {
+                    _remote_id = fromhost;
+                    ((net_ace *)_msghandler)->register_conn (_remote_id, this); 
+                }
+                // the remote host just joins the network and needs an ID
+                else
+                {
+                    ((VASTnet *)_msghandler)->extractIDRequest (p, n);
+                    // we do not process any message further
+                    return;
+                }
             }        
             // remote node has obtained a new id (or corrupted?)
-            else if (_remote_id != id)
-                _remote_id = ((net_ace *)_msghandler)->update_conn (_remote_id, id);                        
+            else if (_remote_id != fromhost)
+            {
+                printf ("net_ace_handler::processmsg () remote HostID has changed from [%lld] to [%lld]\n", _remote_id, fromhost);                
+                //_remote_id = ((net_ace *)_msghandler)->update_conn (_remote_id, fromhost);
+
+                return;
+            }
         }
         else
-            _remote_id = id;
+            // NOTE we assume that any UDP connection has an accompanying TCP connection
+            //      already made
+            _remote_id = fromhost;
 
         // store to message queue
         if (_remote_id != NET_ID_UNASSIGNED)        
             ((net_ace *)_msghandler)->storeRawMessage (_remote_id, p, n, senttime, ((net_ace *)_msghandler)->getTimestamp ());
     }
+    */
+        
 
 } // end namespace Vast
 

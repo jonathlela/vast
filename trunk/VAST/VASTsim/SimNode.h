@@ -106,7 +106,7 @@ private:
     MovementGenerator   *_move_model;   // movement model (to provide a series of position updates)
     VASTVerse           *_world;        // factory class for VAST    
 
-    SimPara         _para;
+    SimPara             _para;
     VASTPara_Net        _netpara;       // network parameters sent to VASTVerse
     VASTPara_Sim        _simpara;       // simulation parameters sent to VASTVerse
 

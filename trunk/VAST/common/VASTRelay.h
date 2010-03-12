@@ -19,18 +19,20 @@
  */
 
 /*
- *  Topology.h  
+ *  VASTRelay.h  
  *
  *  locate my physical coordinate on a network topology through relay nodes
+ *  also join the relay mesh by connecting with the closest physical relay
  *
  *  history 2009/04/17      starts 1st implementation
+ *          2010/02/09      change name from Topology to VASTRelay
  *
  */
 
 
 
-#ifndef _VAST_Topology_H
-#define _VAST_Topology_H
+#ifndef _VAST_VASTRelay_H
+#define _VAST_VASTRelay_H
 
 #include "Config.h"
 #include "VASTTypes.h"
@@ -44,10 +46,10 @@ const int TIMEOUT_RELAY_JOIN  = 10;
 
 #define MAX_CONCURRENT_PING          (5)
 
-#define TOPOLOGY_CONSTANT_ERROR      (0.1f)     
-#define TOPOLOGY_CONSTANT_FRACTION   (0.1f)      
-#define TOPOLOGY_TOLERANCE           (0.5f)     // how much local error is considered okay
-#define TOPOLOGY_DEFAULT_ERROR       (1.0f)     // default value for local error
+#define RELAY_CONSTANT_ERROR      (0.2f)     
+#define RELAY_CONSTANT_FRACTION   (0.1f)      
+#define RELAY_TOLERANCE           (0.5f)     // how much local error is considered okay
+#define RELAY_DEFAULT_ERROR       (1.0f)     // default value for local error
 
 
 using namespace std;
@@ -67,18 +69,19 @@ namespace Vast
         RELAY_JOIN,             // attach to the physically closest relay
         RELAY_JOIN_R,           // response to JOIN request
 
-    } TOPOLOGY_Message;
+    } RELAY_Message;
 
-    class EXPORT Topology : public MessageHandler
+    // this is an export class so physical coordinates can be obtained externally
+    class EXPORT VASTRelay : public MessageHandler
     {
 
     public:
 
         // constructor for physical topology class, 
         // may supply an artifical physical coordinate
-        Topology (size_t client_limit = 0, size_t relay_limit = 0, Position *phys_coord = NULL);
+        VASTRelay (size_t client_limit = 0, size_t relay_limit = 0, Position *phys_coord = NULL);
 
-        ~Topology ();
+        ~VASTRelay ();
         
         // obtain my physical coordinate, returns NULL if not yet obtained
         Position* getPhysicalCoordinate ();
@@ -111,6 +114,9 @@ namespace Vast
         // find the relay closest to a position, which can be myself
         // returns the relay's Node info
         Node *closestRelay (Position &pos);
+
+        // find next available relay
+        Node *nextRelay ();
                
         // add a newly learned node as a Relay
         void addRelay (Node &relay);
@@ -123,6 +129,9 @@ namespace Vast
 
         // send to target a list of known relays, return # of relays sent
         int sendRelays (id_t target, int limit = 0);
+
+        // specify we've joined
+        bool setJoined (id_t relay_id = NET_ID_UNASSIGNED);
 
         //
         //  physical coordinate discovery
@@ -150,7 +159,7 @@ namespace Vast
         //  private variables
         //
         Node        _self;              // info about myself
-        Node       *_curr_relay;        // pointer to closest relay
+        Node       *_curr_relay;        // pointer to closest relay (could be myself)
         Position    _temp_coord;        // still in-progress coordinate
         float       _error;             // error estimate for the local node
 

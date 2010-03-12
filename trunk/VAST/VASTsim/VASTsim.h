@@ -33,17 +33,24 @@
 #pragma warning(disable: 4786)
 #endif
 
-#define ACE_DISABLED                        // we disable using ACE in emulation mode
+#define ACE_DISABLED_                        // we disable using ACE in emulation mode
 #define RECORD_INCONSISTENT_NODES_           // enable this will greatly reduce run speed
 
 #include "VASTTypes.h"
 #include "Voronoi.h"
+#include "VASTVerse.h"
 
 #include <stdlib.h>         // atoi, srand
 #include <vector>
 
 using namespace Vast;
 using namespace std;
+    
+#define DEFAULT_AOI         195     // the AOI-radius size for all nodes
+#define DIM_X               768     // size of the world & its default values
+#define DIM_Y               768
+#define STEPS_PER_SECOND    10      // default steps per second
+
 
 typedef struct {
     int     VAST_MODEL;
@@ -78,6 +85,8 @@ typedef enum
 
 } SimNodeState;
 
+// initialize parameters, returns which node index to simulate, -1 for error, 0 for manual control
+EXPORT int                  InitPara (const char *cmdline, bool &is_gateway, Area &aoi, VASTPara_Net &netpara, SimPara &para, Addr &gateway, vector<IPaddr> &entries);
 EXPORT bool                 ReadPara (SimPara &para);
 EXPORT int                  InitSim (SimPara &para);
 EXPORT int                  CreateNode (bool wait_till_ready = true);

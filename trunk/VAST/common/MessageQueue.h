@@ -43,20 +43,17 @@ using namespace std;
 namespace Vast 
 {
 
-    // connection status for new hosts (hosts without unique ID)
-    typedef enum 
-    {
-        CONNECTED = 1,      // the remote host has just connected
-        SENT                // we've sent one message to the remote host (can be disconnected afterwards)
-    } NewHostStatus;
-
     class EXPORT MessageQueue
     {
     public:
         MessageQueue (VASTnet *net)
-            :_net (net), _host_id (NET_ID_UNASSIGNED), _default_host (NET_ID_UNASSIGNED)
-        {            
+            :_net (net), 
+             //_host_id (NET_ID_UNASSIGNED), 
+             _default_host (NET_ID_UNASSIGNED)
+        {       
+            // automatically start off the network
             _net->start ();
+            //_tempID = (id_t)(-1);
         }
 
         ~MessageQueue ()
@@ -84,10 +81,10 @@ namespace Vast
         int sendMessage (Message &msg, vector<id_t> *failed_targets = NULL);
 
         // replace current host_id with new one
-        void registerHostID (id_t my_id, id_t default_host = 0);
+        //void registerHostID (id_t my_id, id_t default_host = 0);
 
         // obtain a unique ID generated on this host, based on an optional user-specified group ID
-        id_t getUniqueID (int group_id = 0, bool is_gateway = false);
+        //id_t getUniqueID (int group_id = 0, bool is_gateway = false);
 
         // get a specific address by nodeID
         Addr &getAddress (id_t id);
@@ -96,33 +93,41 @@ namespace Vast
         // input is time interval in ms available for each tick
         void tick ();
 
+        // store default route for unaddressable targets
+        void setDefaultHost (id_t default_host);
+
+        // TODO: remove these from MessageQueue?
+        // set gateway server
+        //void setGateway (const Addr &gateway);
+
+        // get the address of gateway node
+        //Addr &getGateway ();
+
+        // test if an ID is from gateway
+        //bool isGatewayID (id_t id);
+
+        // retrieve the gateway ID for a particular ID group
+        // TODO: combine into VASTnet? as we shouldn't assign/determine ID at two different places?
+        //id_t getGatewayID (int id_group = 0);
+
     private:
 
         // process all currently received messages (invoking previously registered handlers)
         // return the number of messsages processed
         int processMessages ();
 
-        VASTnet *                       _net;           // network interface to send/recv messages
-        map<id_t, MessageHandler *>     _handlers;      // map from msggroup to handler        
+        VASTnet *                   _net;           // network interface to send/recv messages
+        map<id_t, MessageHandler *> _handlers;      // map from msggroup to handler        
            
         // map from nodeID to physical host's hostID (representing a network end-point)
         // TODO: make this function-queryable
-        map<id_t, id_t>                 _id2host;          
-
-        // map for hosts whose messages contain 'from == 0' (requesting new IDs)
-        map<id_t, NewHostStatus>        _newhosts;
+        map<id_t, id_t>         _id2host;          
 
         // counter for local ID assignments
-        map<int, id_t>                  _IDcounters;
-
-        // address of gateway server
-        Addr                            _gateway;
-
-        // unique ID for this host (=nodeID)
-        id_t                            _host_id;
+        map<int, id_t>          _IDcounters;
 
         // default route if target cannot be resolved
-        id_t                            _default_host;
+        id_t                    _default_host;
     };
 
 } // end namespace Vast

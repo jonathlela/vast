@@ -65,8 +65,10 @@ namespace Vast {
 
         // better way than using void pointer?
         virtual id_t obtain_id (void *netptr);
-        virtual void registerID (id_t temp_id, id_t id);
-        virtual void release_id (id_t id);
+        
+        //virtual void registerHostID (id_t temp_id, id_t id);
+        
+        virtual void releaseHostID (id_t id);
        
         void *getNetworkInterface (id_t target);
 

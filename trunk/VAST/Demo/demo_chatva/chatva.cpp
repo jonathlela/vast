@@ -2,8 +2,9 @@
 /*
  *  Chatva (a simple multiuser chat application to showcase VAST in Win32)
  *  
- *  version history:	2006/02/05
+ *  version history:	2006/02/05  begin
  *					    2009/07/01  converted to use VASTATE
+ *                      2010/03/12  adopts VAST 0.4.3 relay-matcher-client design
  *
  */
 
@@ -17,11 +18,12 @@
 #include <map>
 #include <time.h>
 
-#define USE_VAST_
+#define USE_VAST
 
 #ifdef USE_VAST
 // use VAST for functions
 #include "VASTVerse.h"
+#include "VASTsim.h"            // for InitPara
 #else
 // use VASTATE for main functions
 #include "VASTATE.h"
@@ -39,15 +41,11 @@ using namespace std;
 #define TIMER_INTERVAL		50                  // interval in ms for screen & input refresh
 #define UPDATE_INTERVAL     100                 // interval in ms for sending movement updates
 #define INPUT_SIZE          200                 // size for chat message
-#define DEFAULT_AOI         195                 // the AOI-radius size for all nodes
 
 #define VAST_EVENT_LAYER    1                   // layer ID for sending events 
 #define VAST_UPDATE_LAYER   2                   // layer ID for sending updates
 
 #define SIZE_TEXTAREA       4
-
-int     DIM_X =             768;                // size of the world & its default values
-int     DIM_Y =             768;
 
 int     g_steps = 0;                            // number of time-steps elapsed
 
@@ -67,6 +65,7 @@ Arbitrator *    g_arbitrator = NULL;
 #endif
 
 // common variables
+int             g_node_no = (-1);   // which node to simulate (-1 indicates none, manual control)
 Area            g_aoi;              // my AOI (with center as current position)
 Vast::NodeState g_state = ABSENT;
 Voronoi      *  g_Voronoi = NULL;   // access to Voronoi class
@@ -86,7 +85,8 @@ POINT       g_origin;               // viewport origin position
 
 vector<string> g_chatmsg;
 
-char    g_GWstr[80];
+//char    g_gatewaystr[80];
+Addr    g_gateway;                       // address to gateway
 HWND    g_activewin = 0;
 
 #define IDT_TIMER1  77
@@ -115,7 +115,7 @@ VOID Render (HWND hWnd)
 
 #ifdef USE_VAST
     vector<Node *>&nodes = g_self->list ();
-    g_Voronoi = g_self->getVoronoi (g_sub_no);
+    g_Voronoi = g_world->getVoronoi ();
 #else
     vector<Node *>&nodes = g_self->getNeighbors ();    
 #endif
@@ -160,7 +160,7 @@ VOID Render (HWND hWnd)
         Ellipse (hdc, x-(NODE_RADIUS/2), y-(NODE_RADIUS/2), x+(NODE_RADIUS/2), y+(NODE_RADIUS/2));
 
         // draw node id
-        sprintf (str, "%d", EXTRACT_HOST_ID(id));
+        sprintf (str, "%d", (int)VASTnet::resolveAssignedID (id));
         TextOut (hdc, x-5, y-25, str, strlen(str));
     }
 
@@ -190,15 +190,18 @@ VOID Render (HWND hWnd)
     else
         strcpy (join_state, "[JOINING]");
 
+    string GWstr;
+    g_gateway.toString (GWstr);
+
     sprintf (str, "step: %d (%d, %d) node: %d [%d, %d] %s aoi: %d CN: %d %s char: %d gw: %s", 
              g_steps/(UPDATE_INTERVAL/TIMER_INTERVAL), 
              g_cursor.x-g_origin.x, g_cursor.y-g_origin.y, 
-             self->id, (int)g_aoi.center.x, (int)g_aoi.center.y, 
+             (int)VASTnet::resolveAssignedID (self->id), (int)g_aoi.center.x, (int)g_aoi.center.y, 
              join_state,
              g_aoi.radius, 
              n, (follow_mode ? "[follow]" : ""), 
-             last_char, 
-             g_GWstr);
+             last_char,
+             GWstr.c_str ());
 
     TextOut (hdc, 10-g_origin.x, 10-g_origin.y, str, strlen(str) );    
 
@@ -334,10 +337,12 @@ VOID MoveOnce (HWND hWnd)
 VOID CheckJoin ()
 {
 #ifdef USE_VAST
+
+    /*
     // create the VAST node
     if (g_state == ABSENT)
     {
-        if ((g_self = g_world->createClient ()) != NULL)
+        if ((g_self = g_world->createClient (g_gateway.publicIP)) != NULL)
         {                                    
             // non-gateway join as Client only 
             if (g_self->getSelf ()->id == NET_ID_GATEWAY)
@@ -345,9 +350,6 @@ VOID CheckJoin ()
             else
                 g_self->join (g_aoi.center, false);
             
-            // everyone joins as relay
-            //g_self->join (g_aoi.center, true);
-
             g_state = JOINING;
         }
     }       
@@ -359,7 +361,37 @@ VOID CheckJoin ()
             g_sub_no = g_self->subscribe (g_self->getSelf ()->aoi, VAST_EVENT_LAYER);
             g_state = JOINED;
         }
-    }    
+    }
+    */
+    
+    // create the VAST node
+    switch (g_state)
+    {
+    case ABSENT:
+        if ((g_self = g_world->createClient (g_gateway.publicIP)) != NULL)
+        {                            
+            g_state = JOINING;
+        }
+        break;
+
+    case JOINING:
+        if (g_self->isJoined ())
+        {
+            g_self->subscribe (g_aoi, VAST_EVENT_LAYER);
+            g_state = JOINING_2;
+        }
+        break;
+    case JOINING_2:
+        if (g_self->isSubscribing () != NET_ID_UNASSIGNED)
+        {
+            g_sub_no = g_self->isSubscribing ();
+            g_state = JOINED;
+        }
+        break;
+
+    default:
+        break;
+    }
 #else
 
     // created the agent & arbitrator
@@ -623,66 +655,28 @@ LRESULT WINAPI MsgProc (HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 //-----------------------------------------------------------------------------
 INT WINAPI WinMain (HINSTANCE hInst, HINSTANCE, LPSTR lpCmdLine, INT)
 {    
-    // create node
     srand ((unsigned int)time (NULL));
     
-    g_aoi.center.x = (coord_t)(rand () % DIM_X);
-    g_aoi.center.y = (coord_t)(rand () % DIM_Y);
-    g_aoi.radius   = DEFAULT_AOI;
-
     // set origin
     g_origin.x = g_origin.y = 0;
-    
-    // set default values
-    strcpy (g_GWstr, "127.0.0.1");          // default gateway is localhost 
-    g_netpara.model = VAST_NET_ACE;
-    g_netpara.port  = 1037;
-    g_netpara.peer_limit = 100;
-    g_netpara.relay_limit = 10;
-    g_netpara.step_persec = 10;
 
-    // get gateway IP
-    char *p;
-    int para_count = 0;
-    
-    p = strtok(lpCmdLine, " ");
+    // initialize parameters
+    SimPara simpara;
+    vector<IPaddr> entries;
 
-    while (p != NULL)
-    {
-        switch (para_count)
-        {
-        // port
-        case 0:
-            g_netpara.port = (unsigned short)atoi (p);
-            break;
+    bool is_gateway;
 
-        // X-coord
-        case 1:
-            g_aoi.center.x = (coord_t)atoi (p);
-            break;
+    if ((g_node_no = InitPara (lpCmdLine, is_gateway, g_aoi, g_netpara, simpara, g_gateway, entries)) == (-1))
+        exit (0);
 
-        // Y-coord
-        case 2:
-            g_aoi.center.y = (coord_t)atoi (p);
-            break;
+    //bool simulate_behavior = (g_node_no > 0);
 
-        // Gateway IP
-        case 3:
-            strcpy (g_GWstr, p);
-            break;
-        }
-
-        p = strtok(NULL, " ");
-        para_count++;
-    }
-    
-    g_netpara.is_gateway = ((para_count == 0) ? true : false);
-    g_netpara.gateway.publicIP = IPaddr (g_GWstr, g_netpara.port);    
-    
+    /*
     // if physical coordinate is assigned, then no inference will be made, 
     // only do it for gateway (as localhost ping is not accurate can physical coord may not converge)
     if (g_netpara.is_gateway)
         g_netpara.phys_coord = g_aoi.center;
+    */
     
     // Register the window class
     WNDCLASSEX wc = { sizeof(WNDCLASSEX), CS_CLASSDC, MsgProc, 0L, 0L,
@@ -704,8 +698,10 @@ INT WINAPI WinMain (HINSTANCE hInst, HINSTANCE, LPSTR lpCmdLine, INT)
     UpdateWindow (hWnd);
 
 #ifdef USE_VAST
-    // create VAST node factory
-    g_world = new VASTVerse (&g_netpara, NULL);
+
+    // create VAST node factory    
+    g_world = new VASTVerse (entries, &g_netpara, NULL);
+
 #else
     VASTATEPara para;
     para.default_aoi    = DEFAULT_AOI;

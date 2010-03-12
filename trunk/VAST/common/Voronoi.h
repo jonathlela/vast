@@ -31,9 +31,6 @@
 #include <vector>
 #include <set>
 
-// this constant is to determine how far will two different points be considered the same
-// protential BUG: is it small enough?
-const double EQUAL_DISTANCE = 0.000001;
 
 namespace Vast {
 

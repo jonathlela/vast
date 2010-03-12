@@ -26,6 +26,7 @@
 #include "VASTsim.h"
 #include "VASTVerse.h"
 #include "SimNode.h"
+#include <stdlib.h>         // strtok
 
 #define RECORD_LATENCY      // to record transmission latency for MOVEMENT messages
 #include "Statistics.h"
@@ -40,13 +41,140 @@ vector<bool>        g_as_relay;
 MovementGenerator   g_move_model;
 SectionedFile      *g_pos_record = NULL;
 
-map<int, VAST *>    g_peermap;          // map from node index to the peer's relay id
-map<int, Vast::id_t> g_peerid;           // map from node index to peer id
+//map<int, VAST *>    g_peermap;          // map from node index to the peer's relay id
+//map<int, Vast::id_t> g_peerid;           // map from node index to peer id
 
 int                 g_last_seed;       // storing random seed
 
 int                 g_steps     = 0;
 bool                g_joining   = true;
+
+
+// Initilize parameters, including setting default values or read from INI file
+int InitPara (const char *cmdline, bool &is_gateway, Area &aoi, VASTPara_Net &netpara, SimPara &simpara, Addr &gateway, vector<IPaddr> &entries)
+{
+    // default default values
+    aoi.center.x = (coord_t)(rand () % DIM_X);
+    aoi.center.y = (coord_t)(rand () % DIM_Y);
+    aoi.radius   = (length_t)DEFAULT_AOI;
+
+    netpara.port  = GATEWAY_DEFAULT_PORT;
+    netpara.step_persec = STEPS_PER_SECOND;
+
+/*
+    netpara.peer_limit = 100;
+    netpara.relay_limit = 10;
+    netpara.client_limit = 10;
+*/
+
+    simpara.NODE_SIZE = 10;
+
+    // which node to simulate, (0) means manual
+    int node_no = 0; 
+   
+    char GWstr[80];
+    GWstr[0] = 0;
+
+    // process command line parameters, if available
+    char *p;
+    int para_count = 0;
+    
+    char command[255];
+    strcpy (command, cmdline);
+
+    p = strtok (command, " ");
+
+    while (p != NULL)
+    {
+        switch (para_count)
+        {
+        // port
+        case 0:
+            netpara.port = (unsigned short)atoi (p);
+            break;
+
+        // Gateway IP
+        case 1:
+            sprintf (GWstr, "%s:%d", p, netpara.port);
+            break;
+
+        case 2:
+            // 3rd parameter: node to simulate                
+            node_no = atoi (p);
+            break;
+
+        // X-coord
+        case 3:
+            aoi.center.x = (coord_t)atoi (p);
+            break;
+
+        // Y-coord
+        case 4:
+            aoi.center.y = (coord_t)atoi (p);
+            break;
+        }
+
+        p = strtok (NULL, " ");
+        para_count++;
+    }
+	
+	    
+    // see if simulation behavior file exists for simulated behavior            
+    if (ReadPara (simpara) == true)
+    {
+        // override defaults
+/*
+#ifndef VAST_ONLY
+        para.default_aoi        = simpara.AOI_RADIUS;
+        para.world_height       = simpara.WORLD_HEIGHT;
+        para.world_width        = simpara.WORLD_WIDTH;        
+        para.overload_limit     = simpara.OVERLOAD_LIMIT;
+#endif
+*/
+        netpara.step_persec   = simpara.STEPS_PERSEC;           
+        aoi.radius            = simpara.AOI_RADIUS;
+    }
+    else  
+    {
+        // INI file not found, cannot perform simulation
+        if (node_no != (-1))
+        {
+            printf ("warning: INI file is not found at working directory, it's required for simulation\n");
+            return (-1);
+        }
+    }
+
+    //bool is_gateway = false;
+    is_gateway = false;
+
+    // default gateway set to localhost
+    if (GWstr[0] == 0)
+    {
+        is_gateway = true;
+        netpara.is_entry = true;
+        sprintf (GWstr, "127.0.0.1:%d", netpara.port);
+    }        
+    
+    netpara.model = VAST_NET_ACE;
+    
+    // if physical coordinate is not supplied, VAST will need to obtain it itself
+    //g_netpara.phys_coord = g_aoi.center;    
+
+    // translate gateway string to Addr object
+    string str (GWstr);
+    gateway = *VASTVerse::translateAddress (str);
+
+    // create VAST node factory (with default physical coordinate)          
+
+    // TODO: we may use more entries during join
+    // NOTE: the very first node does not know other existing relays
+    if (is_gateway == false)
+    {
+        entries.push_back (gateway.publicIP);
+    }
+
+    return node_no;
+}
 
 // read parameters from input file
 bool ReadPara (SimPara &para)
@@ -97,6 +225,7 @@ bool ReadPara (SimPara &para)
 
     return false;
 }
+
 
 int InitSim (SimPara &para)
 {
@@ -203,6 +332,7 @@ int NextStep ()
 
     int n = g_nodes.size ();
 
+    /*
     // TODO: may not need to do this every time
     // build up node # -> peer mapping (or rather, the VAST interface of its relay)
     for (i=0; i < n; ++i)
@@ -219,6 +349,7 @@ int NextStep ()
                 break;
             }
     }
+    */
     
     // each node makes a move or checks for joining
     for (i=0; i < n; ++i)
@@ -305,49 +436,66 @@ int NextStep ()
 
 Node *GetNode (int index)
 {
+    /*
     // NOTE: this has the effect of not displaying any node that's not actively joined
     if (g_peermap.find (index) == g_peermap.end () || g_peermap[index]->isJoined () == false)
         return NULL;
 
     return g_peermap[index]->getPeer (g_peerid[index]);
+    */
+    if ((unsigned)index >= g_nodes.size ())
+        return NULL;
+
+    return g_nodes[index]->vnode->getSelf ();
 }
 
 std::vector<Node *>* GetNeighbors (int index)
 {   
-    if (g_peermap.find (index) == g_peermap.end ())
-        return NULL;
+    //if (g_peermap.find (index) == g_peermap.end ())
+    //    return NULL;
 
     // neighbors as stored on the relay's VONPeers
     //return g_peermap[index]->getPeerNeighbors (g_peerid[index]);
 
     // neighbors as known at each Clients
+    if ((unsigned)index >= g_nodes.size ())
+        return NULL;
+
     return &g_nodes[index]->vnode->list ();
 }
 
 std::vector<Vast::id_t> *GetEnclosingNeighbors (int index, int level)
 {
+    return NULL;
+
+    /*
     if (g_peermap.find (index) == g_peermap.end ())
         return NULL;
 
-    Voronoi *v = g_peermap[index]->getVoronoi (g_peerid[index]);
+    Voronoi *v = g_peermap[index]->getVoronoi (g_peerid[index]);   
 
     if (v == NULL)
         return NULL;
 
     return &v->get_en (g_nodes[index]->get_id (), level);
+    */
 }
 
 std::vector<line2d> *GetEdges(int index)
 {
-    if (g_peermap.find (index) == g_peermap.end ())
-        return NULL;
+    return NULL;
 
+    //if (g_peermap.find (index) == g_peermap.end ())
+    //    return NULL;
+
+    /*
     Voronoi *v = g_peermap[index]->getVoronoi (g_peerid[index]);
 
     if (v == NULL)
         return NULL;
 
     return &v->getedges ();
+    */
 }
 
 bool GetBoundingBox (int index, point2d& min, point2d& max)
@@ -360,8 +508,8 @@ int ShutSim ()
 
     g_stat.print_stat ();
 
-    g_peermap.clear ();
-    g_peerid.clear ();
+   // g_peermap.clear ();
+   // g_peerid.clear ();
     g_as_relay.clear ();
 
     int n = g_nodes.size ();

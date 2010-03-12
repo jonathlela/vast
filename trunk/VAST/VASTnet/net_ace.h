@@ -114,6 +114,10 @@ namespace Vast {
 
         // get IP address from host name
         const char *getIPFromHost (const char *hostname = NULL);
+
+        // check the validity of an IP address, modify it if necessary
+        // (for example, translate "127.0.0.1" to actual IP)
+        bool validateIPAddress (IPaddr &addr);
         
     private:
 
@@ -137,9 +141,7 @@ namespace Vast {
         // returns NET_ID_UNASSIGNED if failed
         id_t register_conn (id_t id, void *stream);
         id_t unregister_conn (id_t id);
-        id_t update_conn (id_t prev_id, id_t curr_id);
-
-        id_t                        _temp_id;
+        //id_t update_conn (id_t prev_id, id_t curr_id);
 
         unsigned short              _port_self;
 
@@ -170,8 +172,6 @@ namespace Vast {
         // for obtaining current time (millisecond accuracy)
         ACE_Time_Value              _start_time;
 
-        // get local IP
-        //const char *getIP ();
        
     };
 

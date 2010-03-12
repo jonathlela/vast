@@ -8,7 +8,7 @@
 // disable warning about "identifier exceeds'255' characters"
 #pragma warning(disable: 4786)
 
-#include <vld.h>            // visual leak detector (NOTE: must download & install from
+//#include <vld.h>            // visual leak detector (NOTE: must download & install from
                             // http://www.codeproject.com/KB/applications/visualleakdetector.aspx
 //#include <conio.h>
 #endif

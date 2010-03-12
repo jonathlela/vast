@@ -41,22 +41,12 @@ namespace Vast {
     class net_emu : public Vast::VASTnet
     {
     public:
-        net_emu (net_emubridge &b)
-            :_bridge (b)
-        {
-            // obtain a temporary id first
-            _id = _bridge.obtain_id (this);
-
-            // TODO: obtain IP address
-
-            _addr.host_id = _id;
-            _id2addr[_id] = _addr;
-        }
+        net_emu (net_emubridge &b);
 
         ~net_emu ()
         {
             // remove from bridge so that others can't find me
-            _bridge.release_id (_id);
+            _bridge.releaseHostID (_id);
         }
 
         // assignment to shut VC compiler warning
@@ -72,21 +62,11 @@ namespace Vast {
         // inherent methods from class 'VASTnet'
         //
        
-        virtual void start ()
-        {
-            _active = true;
-            VASTnet::start ();
-            
-        }
+        virtual void start ();
 
-        virtual void stop ()
-        {
-            VASTnet::stop ();
-			_bridge.release_id (_addr.host_id);
-            _active = false;
-        }
+        virtual void stop ();
 
-        void registerID (id_t my_id);
+        //void registerHostID (id_t my_id);
 
         // get current physical timestamp
         timestamp_t getTimestamp ()
@@ -98,6 +78,13 @@ namespace Vast {
         const char *getIPFromHost (const char *hostname)
         {
             return NULL;
+        }
+
+        // check the validity of an IP address, modify it if necessary
+        // (for example, translate "127.0.0.1" to actual IP)
+        bool validateIPAddress (IPaddr &addr)
+        {
+            return true;
         }
 
         //
@@ -125,6 +112,11 @@ namespace Vast {
         // store a message into priority queue
         // returns success or not
         virtual bool store (QMSG *qmsg);
+
+        // methods to keep track of active connections (associate ID with connection stream)
+        // returns NET_ID_UNASSIGNED if failed
+        virtual id_t register_conn (id_t id, void *stream);
+        virtual id_t unregister_conn (id_t id);
 
         // a shared object among net_emu to discover other end-points
         net_emubridge &                         _bridge;

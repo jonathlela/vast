@@ -95,10 +95,11 @@ private:
     }
 
     // message processing method
-    void processmsg (const char *msg, size_t size);
+    //int processmsg (VASTHeader &header, const char *msg);
 
-    // unique id for this node
+    // unique id for the remote connection node
     id_t            _remote_id;
+    IPaddr          _remote_IP;
 
     ACE_SOCK_Stream _stream;
     ACE_SOCK_Dgram  *_udp;
@@ -109,6 +110,7 @@ private:
     
     //MessageHandler  *_msghandler;
     void            *_msghandler;
+    
 
     VASTBuffer          _buf;
 };

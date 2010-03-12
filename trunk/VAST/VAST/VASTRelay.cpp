@@ -1,7 +1,7 @@
 
 
 
-#include "Topology.h"
+#include "VASTRelay.h"
 #include "MessageQueue.h"
 
 
@@ -11,8 +11,8 @@ namespace Vast
 {   
 
     // constructor for physical topology class, may supply an artifical physical coordinate
-    Topology::Topology (size_t client_limit, size_t relay_limit, Position *phys_coord)
-            :MessageHandler (MSG_GROUP_TOPOLOGY), 
+    VASTRelay::VASTRelay (size_t client_limit, size_t relay_limit, Position *phys_coord)
+            :MessageHandler (MSG_GROUP_VAST_RELAY), 
              _curr_relay (NULL),
              _state (ABSENT),
              _timeout_query (0),
@@ -24,26 +24,26 @@ namespace Vast
         _relay_limit  = relay_limit;      // if 0 means unlimited
 
         // create randomized temp coord for coordinate estimation
-        _temp_coord.x = (coord_t)((rand () % 10) + 1);
-        _temp_coord.y = (coord_t)((rand () % 10) + 1);
+        _temp_coord.x = (coord_t)((rand () % 1000) + 1);
+        _temp_coord.y = (coord_t)((rand () % 1000) + 1);
 
         // store default physical coordinate, if exist
         if (phys_coord != NULL)
             _temp_coord = _self.aoi.center = *phys_coord;
         
         // default error value is 1.0f
-        _error = TOPOLOGY_DEFAULT_ERROR;
+        _error = RELAY_DEFAULT_ERROR;
 
         _request_times = 0;
     }
 
-    Topology::~Topology ()
+    VASTRelay::~VASTRelay ()
 	{
 	}
 
     // obtain my physical coordinate
     Position *
-    Topology::getPhysicalCoordinate ()
+    VASTRelay::getPhysicalCoordinate ()
     {   
         // if self coordinate equals determined coord
         if (_self.aoi.center == _temp_coord)
@@ -54,7 +54,7 @@ namespace Vast
 
     // send a message to a remote host in order to obtain round-trip time
     bool 
-    Topology::ping ()
+    VASTRelay::ping ()
     {
         // prepare PING message
         Message msg (PING);
@@ -64,7 +64,7 @@ namespace Vast
         msg.store (current_time);
 
         // set how many we send PING each time
-        int ping_num = MAX_CONCURRENT_PING;
+        int ping_num = (_relays.size () > MAX_CONCURRENT_PING ? MAX_CONCURRENT_PING : _relays.size ());
 
         // obtain list of targets (checking if redundent PING has been sent)
         vector<bool> random_set;
@@ -89,17 +89,21 @@ namespace Vast
                 _pending[target] = true;                
             }
         }
-            
+
         // send out messages
         vector<id_t> failed;
-        sendMessage (msg, &failed);
-            
-        // remove failed relays
-        for (size_t i=0; i < failed.size (); i++)
+
+        if (msg.targets.size () > 0)
         {
-            _relays.erase (failed[i]);
-            printf ("removing failed relay (%lld) ", failed[i]);
-            _pending.erase (failed[i]);
+            sendMessage (msg, &failed);
+                
+            // remove failed relays
+            for (size_t i=0; i < failed.size (); i++)
+            {
+                printf ("removing failed relay (%lld) ", failed[i]);
+                removeRelay (failed[i]);
+                //_relays.erase (failed[i]);                       
+            }
         }
                         
         // if no PING is sent
@@ -107,7 +111,7 @@ namespace Vast
         {
             // error if cannot contact any relays
             if (_net->getEntries ().size () != 0)                        
-                printf ("Topology::ping () no known relays to contact\n cannot determine physical coordinate, check if relays are valid\n");
+                printf ("VASTRelay::ping () no known relays to contact\n cannot determine physical coordinate, check if relays are valid\n");
             return false;
         }
         else
@@ -120,7 +124,7 @@ namespace Vast
 
     // send a message to a remote host in order to obtain round-trip time
     bool 
-    Topology::pong (id_t target, timestamp_t querytime, bool first)
+    VASTRelay::pong (id_t target, timestamp_t querytime, bool first)
     {
         // send back the time & my own coordinate, error
         Message msg (PONG);
@@ -155,7 +159,7 @@ namespace Vast
     //      1. obtain physical coordinate
     //      2. greedy-find the closest relay and connect to it
     bool 
-    Topology::isJoined ()
+    VASTRelay::isJoined ()
     {
         if (getPhysicalCoordinate () == NULL || _curr_relay == NULL)
             return false;
@@ -165,7 +169,7 @@ namespace Vast
 
     // obtain the ID of my relay node
     id_t 
-    Topology::getRelayID ()
+    VASTRelay::getRelayID ()
     {
         if (_curr_relay == NULL)
             return NET_ID_UNASSIGNED;
@@ -176,15 +180,18 @@ namespace Vast
     // perform initialization tasks for this handler (optional)
     // NOTE that all internal variables (such as handler_no) have been set at this point
     void 
-    Topology::initHandler ()
+    VASTRelay::initHandler ()
     {
-        _self.id    = _self.addr.host_id;
-        _self.addr  = _net->getHostAddress ();        
+        _self.id    = _net->getHostID ();
+        _self.addr  = _net->getHostAddress ();
+                
+        // register self mapping
+        notifyMapping (_self.id, &_self.addr);
     }
 
     // returns whether the message was successfully handled
     bool 
-    Topology::handleMessage (Message &in_msg)
+    VASTRelay::handleMessage (Message &in_msg)
     {
         switch (in_msg.msgtype)
         {
@@ -211,7 +218,7 @@ namespace Vast
         case PONG_2:
             {                
                 // tolerance for error to determine stabilization
-                static float tolerance = TOPOLOGY_TOLERANCE;
+                static float tolerance = RELAY_TOLERANCE;
                                                    
                 timestamp_t querytime;
                 Position    xj;             // remote node's physical coord
@@ -226,7 +233,8 @@ namespace Vast
                 if (rtt == 0)
                 {
                     printf ("[%ld] processing PONG: RTT = 0 error, removing neighbor [%ld] currtime: %lu querytime: %lu\n", _self.id, in_msg.from, current, querytime);
-                    _relays.erase (in_msg.from);
+                    removeRelay (in_msg.from);
+                    //_relays.erase (in_msg.from);
                     break;
                 }
                 
@@ -234,7 +242,7 @@ namespace Vast
                 vivaldi (rtt, _temp_coord, xj, _error, ej);
 
 //#ifdef DEBUG_DETAIL
-                printf ("[%ld] physcoord (%.3f, %.3f) rtt to [%ld]: %.3f error: %.3f requests: %d\n", 
+                printf ("[%llu] physcoord (%.3f, %.3f) rtt to [%llu]: %.3f error: %.3f requests: %d\n", 
                          _self.id, _temp_coord.x, _temp_coord.y, in_msg.from, rtt, _error, _request_times);
 //#endif
 
@@ -249,15 +257,16 @@ namespace Vast
                     // print a small message to show it
                     if (_request_times > 0)
                     {
-                        printf ("[%ld] physcoord (%.3f, %.3f) rtt to [%ld]: %.3f error: %.3f requests: %d\n", 
+                        printf ("[%llu] physcoord (%.3f, %.3f) rtt to [%llu]: %.3f error: %.3f requests: %d\n", 
                                 _self.id, _temp_coord.x, _temp_coord.y, in_msg.from, rtt, _error, _request_times);
 
                         // reset
                         _request_times = 0;
                     }
 
-                    // if we're obtaining our coordinate for the first time and also public
-                    if (_self.aoi.center != _temp_coord && _net->isPublic ())
+                    // if we've modified our coordinate and is a working relay
+                    // should let neighbors to know
+                    if (_self.aoi.center != _temp_coord && _net->isPublic () && _relays.size () > 0)
                     {                        
                         // notify existing known relays of myself as a new relay
                         Message msg (RELAY);
@@ -278,6 +287,13 @@ namespace Vast
                     // update into actual physical coordinate
                     _self.aoi.center = _temp_coord;
                 }
+                
+                // if we've not yet determined a small error, should keep sending ping requests
+                else
+                {
+                    _timeout_ping = 0;
+                }
+                
 
                 // send back PONG_2 if I'm an initial requester
                 if (in_msg.msgtype == PONG)
@@ -304,8 +320,7 @@ namespace Vast
                     // check if it's not from differnet nodes from the same host 
                     if (VASTnet::extractHost (relay.id) != VASTnet::extractHost (_self.id))
                     {
-                        // store ID to address mapping
-                        notifyMapping (relay.id, &relay.addr);
+                        // add a new relay (while storing ID->address mapping)
                         addRelay (relay);
                     }
                 }
@@ -347,7 +362,10 @@ namespace Vast
 
                         // remove the invalid relay, this occurs if the neighbor relay has failed
                         if (!success)
-                            _relays.erase (closest->id);
+                        {
+                            removeRelay (closest->id);
+                            //_relays.erase (closest->id);
+                        }
                     }          
                 }
             }
@@ -374,7 +392,7 @@ namespace Vast
                     else
                         _curr_relay = &_self;
 
-                    joinRelay (&relay);
+                    joinRelay (_curr_relay);
                 }
                 // if I was the forwarder, forward the response to the requester
                 else
@@ -425,6 +443,10 @@ namespace Vast
         // response from previous JOIN request
         case RELAY_JOIN_R:
             {
+                // only update if we're currently seeking to join
+                if (_state == JOINED)
+                    break;
+
                 bool as_relay = _net->isPublic ();
                 bool join_success;
 
@@ -435,21 +457,16 @@ namespace Vast
                 {
                     joinRelay ();
                 }
-
                 // otherwise, we've successfully joined the relay mesh 
-                else
-                {
-                    _state = JOINED;
-
-                    // notify network of default host to route messages
-                    // TODO: not a good idea to touch such lower-level stuff here, better way?                        
-                    ((MessageQueue *)_msgqueue)->setDefaultHost (_curr_relay->id);
-
+                else 
+                {                   
                     // if I'm a relay, let each newly learned relay also know
                     if (as_relay)
                     {
                         Message msg (RELAY);
                         msg.priority = 1;
+                        listsize_t n = 1;
+                        msg.store (n);
                         msg.store (_self);
                         
                         map<id_t, Node>::iterator it = _relays.begin ();
@@ -460,18 +477,24 @@ namespace Vast
                             msg.addTarget (it->first);
 
                         sendMessage (msg);
-                    }
 
-                    /* TODO: Move to VASTNode
+                        // set myself as relay
+                        setJoined ();
+                    }
+                    // set the sender as my relay
+                    else
+                        setJoined (in_msg.from);
+
+                    /* TODO: Move to VASTClient
                     // re-subscribe current subscriptions
-                    else if (_sub_list.size () > 0)
+                    else if (_subscriptions.size () > 0)
                     {
                         // send out subscription request
                         Message msg (SUBSCRIBE);
                         msg.priority = 1;
 
-                        map<id_t, Subscription>::iterator it = _sub_list.begin ();
-                        for (; it != _sub_list.end (); it++)
+                        map<id_t, Subscription>::iterator it = _subscriptions.begin ();
+                        for (; it != _subscriptions.end (); it++)
                         {
                             Subscription &sub = it->second;
 
@@ -494,13 +517,15 @@ namespace Vast
                 // if a known relay leaves, remove it
                 if (_relays.find (in_msg.from) != _relays.end ())
                 {
-                    printf ("[%lld] Topology::handleMessage () removes disconnected relay [%ld]\n", _self.id, in_msg.from);
+                    printf ("[%llu] VASTRelay::handleMessage () removes disconnected relay [%llu]\n", _self.id, in_msg.from);
                     
                     // remove the disconnecting relay from relay list
                     removeRelay (in_msg.from);
                    
                     // if disconnected from current relay, re-find closest relay
-                    if (in_msg.from == _curr_relay->id && in_msg.from != _self.id)
+                    if (_curr_relay != NULL && 
+                        in_msg.from == _curr_relay->id && 
+                        in_msg.from != _self.id)
                     {
                         // invalidate relay ID, re-initiate query for closest relay
                         _curr_relay = NULL;                        
@@ -521,7 +546,7 @@ namespace Vast
     // performs some tasks the need to be done after all messages are handled
     // such as neighbor discovery checks
     void 
-    Topology::postHandling ()
+    VASTRelay::postHandling ()
     {
 		// send periodic query to locate & update physical coordinate here
         // also to ensure aliveness of relays
@@ -534,7 +559,7 @@ namespace Vast
             // obtain some relays from network layer if no known relays
             if (_relays.size () == 0)
             {
-                printf ("Topology::postHandling () no relays known, try to get some from network layer\n");
+                printf ("VASTRelay::postHandling () no relays known, try to get some from network layer\n");
 
                 // using network entry points as initial relays 
                 vector<IPaddr> &entries = _net->getEntries ();
@@ -542,27 +567,42 @@ namespace Vast
 
                 for (size_t i=0; i < entries.size (); i++)
                 {            
-                    relay.id = relay.addr.host_id  = _net->getHostID (&entries[i]);
+                    relay.id = relay.addr.host_id  = _net->resolveHostID (&entries[i]);
                     relay.addr.publicIP = entries[i];
         
                     addRelay (relay);                    
                 }
             }
 
-            // re-send PING to known relays
-            printf ("Topology::postHandling () pinging relays to determine physical coord\n");
-            ping ();
-
-            // if not yet joined, try requesting for more relays
-            if (_state != JOINED)
+            // if no relays are known and no physical coordinate specified, 
+            // we *assume* that we're the very first node on the network
+            if (_relays.size () == 0)
             {
-                Message msg (REQUEST);
+                if (_state == ABSENT)
+                {
+                    _self.aoi.center = _temp_coord = Position (0, 0, 0);
+                    setJoined ();
+                }
+            }
 
-                map<id_t, Node>::iterator it = _relays.begin ();
-                for (; it != _relays.end (); it++)
-                    msg.addTarget (it->first);
-
-                sendMessage (msg);
+            // send ping if some relays are known
+            else 
+            {
+                // re-send PING to known relays
+                printf ("VASTRelay::postHandling () pinging relays to determine physical coord\n");
+                ping ();
+            
+                // if not yet joined, try to request more relays
+                if (_state != JOINED)
+                {
+                    Message msg (REQUEST);
+            
+                    map<id_t, Node>::iterator it = _relays.begin ();
+                    for (; it != _relays.end (); it++)
+                        msg.addTarget (it->first);
+            
+                    sendMessage (msg);
+                }
             }
         }
 
@@ -585,17 +625,9 @@ namespace Vast
                 // set a timeout of re-querying
                 _timeout_query = TIMEOUT_RELAY_QUERY * _net->getTickPerSecond ();
         
-                printf ("Topology::postHandling () sending query to find closest relay\n");
+                printf ("VASTRelay::postHandling () sending query to find closest relay\n");
 
-                // randomly pick a relay, hopefully to avoid faulty ones
-                // TODO: discover & address faulty relay routing path?
-                int i = rand () % _relays.size ();
-                map<id_t, Node>::iterator it = _relays.begin ();
-                while (i > 0)
-                {
-                    it++;
-                    i--;
-                }
+                Node *relay = nextRelay ();
 
                 // send query to one existing relay to find physically closest relay to join
                 Message msg (RELAY_QUERY);
@@ -604,11 +636,12 @@ namespace Vast
                 // parameter 1: requester physical coord & address
                 msg.store (_self);
         
+                Addr addr = relay->addr;
                 // parameter 2: forwarder's address 
-                msg.store (it->second.addr);
+                msg.store (addr);
         
                 // send to the selected relay
-                msg.addTarget (it->first);
+                msg.addTarget (relay->id);
         
                 sendMessage (msg);
             }
@@ -626,13 +659,15 @@ namespace Vast
         }
 
         // remove non-essential relays
-        cleanupRelays ();
+        // TODO: implement & check this very carefully, as it could disrupt normal operations
+        //       if not done correctly
+        //cleanupRelays ();
     }
 
     // find the relay closest to a position, which can be myself
     // returns the relay's Node info
     Node * 
-    Topology::closestRelay (Position &pos)
+    VASTRelay::closestRelay (Position &pos)
     {
         // set self as default
         Node *closest   = &_self;
@@ -659,18 +694,64 @@ namespace Vast
         // reply the closest
         return closest;
     }
+
+    // find next available relay
+    Node *
+    VASTRelay::nextRelay ()
+    {
+        // if no existing relay exists, pick first known
+                                                                                                                      if (_curr_relay == NULL)
+        {
+            if (_relays.size () == 0)
+            {
+                printf ("VASTRelay::nextRelay () relay list is empty, no next relay available\n");
+                return NULL;
+            }
+            _curr_relay = &(_relays.begin ()->second);
+        }
+
+        // begin looping to find the next available relay in terms of distance to self
+        multimap<double, Node *>::iterator it = _dist2relay.begin ();
+        
+        // find the next closest
+        for (; it != _dist2relay.end (); it++)
+        {
+            if (it->second->id == _curr_relay->id)
+                break;
+        }
+
+        // find next available
+        if (it != _dist2relay.end ())
+            it++;
+
+        // loop from beginning
+        if (it == _dist2relay.end ())
+        {
+            printf ("VASTRelay::nextRelay () - last known relay reached, re-try first\n");
+            it = _dist2relay.begin ();
+        }
+
+        return it->second;
+    }
     
     // add a newly learned relay
     void
-    Topology::addRelay (Node &relay)
+    VASTRelay::addRelay (Node &relay)
     {
-        double dist = relay.aoi.center.distance (_self.aoi.center);
+        if (relay.id == NET_ID_UNASSIGNED)
+        {
+            printf ("VASTRelay::addRelay () relay's ID is unassigned\n");
+            return;
+        }
+
+        // we first determine a temp distance between our current estimated coord & the relay's coord
+        double dist = relay.aoi.center.distance (_temp_coord);
 
         // avoid inserting the same relay, but note that we accept two relays have the same distance
         if (_relays.find (relay.id) != _relays.end ())
             return;
 
-        printf ("[%lld] Topology::addRelay () adding relay [%lld]..\n", _self.id, relay.id);
+        printf ("[%llu] VASTRelay::addRelay () adding relay [%llu]..\n", _self.id, relay.id);
 
         _relays[relay.id] = relay;
         _dist2relay.insert (multimap<double, Node *>::value_type (dist, &(_relays[relay.id])));
@@ -679,7 +760,7 @@ namespace Vast
     }
     
     void
-    Topology::removeRelay (id_t id)
+    VASTRelay::removeRelay (id_t id)
     {
         map<id_t, Node>::iterator it_relay;
         if ((it_relay = _relays.find (id)) == _relays.end ())
@@ -692,23 +773,26 @@ namespace Vast
         {
             if (it->second->id == id)
             {
-                printf ("[%lld] Topology::removeRelay () removing relay [%lld]..\n", _self.id, id);
+                printf ("[%lld] VASTRelay::removeRelay () removing relay [%lld]..\n", _self.id, id);
                 
                 _dist2relay.erase (it);                
                 _relays.erase (id);
                 break;
             }
         }
+
+        // also erase the pending tracker
+        _pending.erase (id);
     }
 
     // join the relay mesh by connecting to the closest known relay
     bool
-    Topology::joinRelay (Node *relay)
+    VASTRelay::joinRelay (Node *relay)
     {
         // check if relay info exists
-        if (_relays.size () == 0)
+        if (relay == NULL && _relays.size () == 0)
         {
-            printf ("Topology::joinRelay (): no known relay to contact\n");
+            printf ("VASTRelay::joinRelay (): no known relay to contact\n");
             return false;
         }
 
@@ -717,28 +801,10 @@ namespace Vast
 
         // if no preferred relay is provided, find next available (distance sorted)
         if (relay == NULL)
-        {
-            // check if we will loop from beginning
-            if (_curr_relay->id == _dist2relay.end ()->second->id)
-            {
-                printf ("Topology::joinRelay () - last known relay tried, re-try first\n");
-                relay = _dist2relay.begin ()->second;
-            }
-            else
-            {
-                // or find the next closest
-                multimap<double, Node *>::iterator it = _dist2relay.begin ();
-                for (; it != _dist2relay.end (); it++)
-                {
-                    if (it->second->id == _curr_relay->id)
-                        break;
-                }
-                relay = it->second;
-            }
+            relay = nextRelay ();
 
-            // set current relay as the next closest relay
-            _curr_relay = relay;
-        }
+        // set current relay as the next closest relay
+        _curr_relay = relay;
 
         // send JOIN request to the closest relay
         Message msg (RELAY_JOIN);
@@ -751,10 +817,10 @@ namespace Vast
         //_state = JOINING;
         //_timeout_join = TIMEOUT_JOIN;
 
-        /* TODO: move to VASTNode
+        /* TODO: move to VASTClient
         // invalidate all current subscriptions (necessary during relay re-join after relay failure)
-        map<id_t, Subscription>::iterator it = _sub_list.begin ();
-        for (; it != _sub_list.end (); it++)
+        map<id_t, Subscription>::iterator it = _subscriptions.begin ();
+        for (; it != _subscriptions.end (); it++)
             it->second.active = false;
         */
 
@@ -766,7 +832,7 @@ namespace Vast
 
     // remove non-useful relays
     void 
-    Topology::cleanupRelays ()
+    VASTRelay::cleanupRelays ()
     {
         // no limit
         if (_relay_limit == 0)
@@ -794,7 +860,7 @@ namespace Vast
     }
 
     int 
-    Topology::sendRelays (id_t target, int limit)
+    VASTRelay::sendRelays (id_t target, int limit)
     {                
          listsize_t n = (listsize_t)_relays.size ();
 
@@ -824,7 +890,7 @@ namespace Vast
              }
          }
 
-         printf ("\n[%lld] responds with %d relays\n", _self.id, n);
+         printf ("\n[%llu] responds with %d relays\n", _self.id, n);
          
          msg.addTarget (target);                
          sendMessage (msg);
@@ -832,17 +898,45 @@ namespace Vast
          return n;
     }
 
+    // specify we've joined at a given relay.
+    bool 
+    VASTRelay::setJoined (id_t relay_id)
+    {
+        // if no ID is specified, I myself is relay
+        if (relay_id == NET_ID_UNASSIGNED)
+        {
+            _curr_relay = &_self;
+        }
+        else
+        {
+            // if the specify ID is not found
+            map<id_t, Node>::iterator it = _relays.find (relay_id);
+            if (it == _relays.end ())
+                return false;
+
+            _curr_relay = &it->second;
+        }
+
+        _state = JOINED;
+
+        // notify network of default host to route messages
+        // TODO: not a good idea to touch such lower-level stuff here, better way?                        
+        ((MessageQueue *)_msgqueue)->setDefaultHost (_curr_relay->id);
+
+        return true;
+    }
+
 
     // recalculate my physical coordinate estimation (using Vivaldi)
     // given a neighbor j's position xj & error estimate ej
     void 
-    Topology::vivaldi (float rtt, Position &xi, Position &xj, float &ei, float &ej)   
+    VASTRelay::vivaldi (float rtt, Position &xi, Position &xj, float &ei, float &ej)   
     {
         // constant error
-        static float C_e = TOPOLOGY_CONSTANT_ERROR;
+        static float C_e = RELAY_CONSTANT_ERROR;
 
         // constant fraction
-        static float C_c = TOPOLOGY_CONSTANT_FRACTION;
+        static float C_c = RELAY_CONSTANT_FRACTION;
 
 		// weight = err_i / (err_i + err_j)
 		float weight;
@@ -870,7 +964,7 @@ namespace Vast
 
     // randomly select some items from a set
     bool
-    Topology::randomSet (int size, int total, vector<bool> &random_set)
+    VASTRelay::randomSet (int size, int total, vector<bool> &random_set)
     {        
         if (size > total)
         {
@@ -882,7 +976,7 @@ namespace Vast
 
         // empty out
         for (int i=0; i < total; i++)
-            random_set[i] = false;
+            random_set.push_back (false);
        
         int selected = 0;
 

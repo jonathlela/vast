@@ -25,14 +25,43 @@ namespace Vast
     // static member variables
     Compressor net_emu::_compressor;
 
+    net_emu::net_emu (net_emubridge &b)
+        :_bridge (b)
+    {
+        // TODO: check validity of this?
+        // obtain a temporary id first
+        _id = _bridge.obtain_id (this);
+
+        registerHostID (_id, true);
+    }
+
+    /*
     void 
     net_emu::
-    registerID (id_t my_id)
+    registerHostID (id_t my_id)
     {        
         // first replace ID used in bridge's lookup
-        _bridge.registerID (_id, my_id);       
+        _bridge.registerHostID (_id, my_id);       
 
-        VASTnet::registerID (my_id);
+        VASTnet::registerHostID (my_id);
+    }
+    */
+
+    void 
+    net_emu::start ()
+    {
+        _active = true;
+        _binded = true;
+        VASTnet::start ();            
+    }
+
+    void 
+    net_emu::stop ()
+    {
+        VASTnet::stop ();
+		_bridge.releaseHostID (_addr.host_id);
+        _binded = false;
+        _active = false;
     }
 
     // Note:
@@ -127,15 +156,17 @@ namespace Vast
         // distinct messages to different target logical nodes
         // this is to simulate message de-multiplex in real network
         char *p = (char *)msg;
-        size_t      msg_size;
-        id_t        fromhost;
-        timestamp_t senttime;
+        VASTHeader header;
+        //size_t      msg_size;
+        //id_t        fromhost;
+        //timestamp_t senttime;
 
         while (p < (msg + size))
         {            
-            memcpy (&msg_size, p, sizeof (size_t));
-            p += sizeof (size_t);
+            memcpy (&header, p, sizeof (VASTHeader));
+            p += sizeof (VASTHeader);
 
+            /*
             msg_size -= (sizeof (id_t) + sizeof (timestamp_t));
 
             memcpy (&fromhost, p, sizeof (id_t));
@@ -143,9 +174,11 @@ namespace Vast
 
             memcpy (&senttime, p, sizeof (timestamp_t));
             p += sizeof (timestamp_t);
+            */
 
-            receiver->storeRawMessage (fromhost, p, msg_size, senttime, recvtime);
-            p += msg_size;
+            // TODO: record recvtime?
+            receiver->processRawMessage (header, p, _id);
+            p += header.msg_size;
         }
 
         return size;
@@ -174,7 +207,7 @@ namespace Vast
         for (multimap<byte_t, QMSG *>::iterator it = _msgqueue.begin (); it != _msgqueue.end (); it++)
         {
             qmsg = it->second;
-            if (time > qmsg->senttime)
+            if (time > qmsg->recvtime)
             {
                 _msgqueue.erase (it);
                 return qmsg;
@@ -187,13 +220,41 @@ namespace Vast
     // store a message into priority queue
     // returns success or not
     bool 
-    net_emu::
-    store (QMSG *qmsg)
+    net_emu::store (QMSG *qmsg)
     {
         // we store message according to message priority
         _msgqueue.insert (std::multimap<byte_t, QMSG *>::value_type (qmsg->msg->priority, qmsg));        
 
         return true;
+    }
+
+    // methods to keep track of active connections (associate ID with connection stream)
+    // returns NET_ID_UNASSIGNED if failed
+    id_t 
+    net_emu::register_conn (id_t id, void *stream)
+    {
+        if (_id2conn.find (id) != _id2conn.end ())
+            return NET_ID_UNASSIGNED;
+        
+       // make a record of connection
+       _id2conn[id] = stream;
+
+       return id;        
+    }
+
+    id_t 
+    net_emu::unregister_conn (id_t id)
+    {
+        // cut connection
+        map<id_t, void *>::iterator it = _id2conn.find (id); 
+        
+        // error connection doesn't exist
+        if (it == _id2conn.end ())
+            return NET_ID_UNASSIGNED;
+       
+        _id2conn.erase (it);
+
+        return id;
     }
 
     // remote host has connected to me
@@ -204,18 +265,9 @@ namespace Vast
         if (_active == false)
             return false;
 
-        if (_id2conn.find (remote_id) == _id2conn.end ())
-        {
-            // make a record of connection
-            _id2conn[remote_id] = 0;
-
-            // check for information consistency
-            if (_id2addr.find (remote_id) != _id2addr.end () &&
-                _id2addr[remote_id] != addr)
-                printf ("net_emu::remoteConnect (): remote address and local address remote mismatch.\n");
-
-            _id2addr[remote_id] = addr;
-        }
+        // store dummy (NULL) stream connection
+        register_conn (remote_id, NULL);
+        storeMapping (addr);
 
         return true;
     }
@@ -225,12 +277,11 @@ namespace Vast
     net_emu::
     remoteDisconnect (Vast::id_t remote_id)
     {
-        // cut connection
-        if (_id2conn.find (remote_id) != _id2conn.end ())
-            _id2conn.erase (remote_id);
+        unregister_conn (remote_id);
 
         // send a DISCONNECT notification
-        storeRawMessage (remote_id, 0, 0, getTimestamp (), getTimestamp ());
+        Message *msg = new Message (DISCONNECT);
+        storeRawMessage (remote_id, msg);
     }
 
 

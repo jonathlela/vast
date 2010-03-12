@@ -39,45 +39,69 @@
 #include <string>
 #include <sstream>
 #include <vector>
-
+#include <map>
 
 namespace Vast
 {
 
 // # of most significant bits reserved for private ID assignments by each host
 // must be even # of bits
-#define VAST_ID_PRIVATE_BITS 16   
+
+/*
+#define VAST_ID_PRIVATE_BITS 32
 
 // the most significant bits are private, least significant bits are hostID
-#define EXTRACT_HOST_ID(x)  (x & (0xFFFFFFFF >> VAST_ID_PRIVATE_BITS))
-#define EXTRACT_LOCAL_ID(x) (x >> (32 - VAST_ID_PRIVATE_BITS))
+#define EXTRACT_HOST_ID(x)  (x & (0xFFFFFFFFFFFFFFFF >> VAST_ID_PRIVATE_BITS))
+#define EXTRACT_LOCAL_ID(x) (x >> (64 - VAST_ID_PRIVATE_BITS))
 
 // turn any number into unique ID by reserving the least significant bits as local ID
+// so format is local+host
 #define UNIQUE_ID(x,y) ((y << (32 - VAST_ID_PRIVATE_BITS)) | x)
+*/
 
+typedef unsigned long long  id_t;           // hostID or nodeID (unique within each world)
+typedef unsigned long       timestamp_t;    // short: 0 - 65535  long: 0 - 4294967296
+                                            // NOTE: that current net_ace time is millisecond accuracy since program start (so up to 50 days since execution)
+typedef unsigned char       byte_t;
+typedef unsigned short      word_t;
 
-typedef unsigned long   id_t;           // node ID (per IP/port pair)
-typedef unsigned long   timestamp_t;    // short: 0 - 65535  long: 0 - 4294967296
-                                        // NOTE: that current net_ace time is millisecond accuracy since program start (so up to 50 days since execution)
-typedef unsigned char   byte_t;
-typedef unsigned short  word_t;
+typedef float               coord_t;        // type of coordinates
+typedef unsigned long       length_t;       // type for a length, for radius or rectangle length
 
-typedef float           coord_t;        // type of coordinates
-typedef unsigned long   length_t;       // type for a length, for radius or rectangle length
+typedef unsigned short  msgtype_t;          // the types of messages (0 - 65535)
+typedef unsigned short  layer_t;            // the number of layers in the overlay (0 - 255)
 
-typedef unsigned short  msgtype_t;      // the types of messages (0 - 65535)
-typedef unsigned short  layer_t;        // the number of layers in the overlay (0 - 255)
-
-typedef unsigned char   listsize_t;     // size of a list sent over network
+typedef unsigned char   listsize_t;         // size of a list sent over network
 
 #define VAST_MSGTYPE_RESERVED 8                         // 8 bits for reserved message type
 #define VAST_MSGTYPE(x) (0x0FF & x)                     // mask off app-specific message types
 #define APP_MSGTYPE(x)  (x >> VAST_MSGTYPE_RESERVED)    // mask off app-specific message types
 
+// this constant is to determine how far will two different points be considered the same
+// potential BUG: is it small enough?
+const double EQUAL_DISTANCE = 0.000001;
+
+// optimized data structure for positions (used by VON_MOVE)
+typedef struct 
+{
+    coord_t x, y;
+
+} VONPosition;
+
+// status on known nodes in the neighbor list, can be either just inserted / deleted / updated
+typedef enum  
+{
+    INSERTED = 1,
+    DELETED,
+    UNCHANGED,
+    UPDATED
+} NeighborUpdateStatus;
+
 // node / message handler can all have these states
 typedef enum 
 {
     ABSENT  = 0,
+    QUERYING,           // finding / determing certain thing
     JOINING,            // different stages of join
     JOINING_2,
     JOINING_3,
@@ -164,7 +188,7 @@ public:
 
     // restores a buffer into the object
     // returns number of bytes restored (should be > 0 if correct)
-    virtual size_t deserialize (const char *buffer) = 0;
+    virtual size_t deserialize (const char *buffer, size_t size) = 0;
 };
 
 //
@@ -342,9 +366,10 @@ public:
         return sizeOf ();
     }
 
-    size_t deserialize (const char *p)
+    size_t deserialize (const char *p, size_t size)
     {
-        if (p != NULL)
+        // perform size check        
+        if (p != NULL && size >= sizeOf ())
         {
             memcpy (&x, p, sizeof (coord_t));   p += sizeof (coord_t);
             memcpy (&y, p, sizeof (coord_t));   p += sizeof (coord_t);
@@ -382,6 +407,11 @@ public:
         return (this->center == a.center && this->radius == a.radius && this->height == a.height);
     }
 
+    bool operator!=(const Area& a)
+    {
+        return !(*this == a);
+    }
+
     Area &operator=(const Area & a)
     {
         this->center = a.center;
@@ -398,7 +428,7 @@ public:
     }
 
     // whether this area covers a given position
-    bool overlaps (Position &pos)
+    bool overlaps (const Position &pos)
     {
         // circular area
         if (height == 0)
@@ -406,6 +436,17 @@ public:
         // rectangular area
         else
             return (fabs (center.x - pos.x) <= radius/2) && (fabs (center.y - pos.y) <= height/2);
+    }
+
+    // whether this area covers a given position
+    bool overlaps (const Area &area)
+    {
+        // circular area
+        if (height == 0)
+            return (center.distance (area.center) <= (radius + area.radius));
+        // rectangular area
+        else
+            return (fabs (center.x - area.center.x) <= ((radius + area.radius)/2)) && (fabs (center.y - area.center.y) <= ((height + area.height)/2));
     }
 
     size_t serialize (char *p) const
@@ -419,13 +460,14 @@ public:
         return sizeOf ();
     }
 
-    size_t deserialize (const char *p)
+    size_t deserialize (const char *p, size_t size)
     {
-        if (p != NULL)
+        if (p != NULL && size >= sizeOf ())
         {
-            p += center.deserialize (p);
+            p += center.deserialize (p, size);
             memcpy (&radius, p, sizeof (length_t));     p += sizeof (length_t);            
             memcpy (&height, p, sizeof (length_t));
+            
             return sizeOf ();
         }
         return 0;
@@ -506,10 +548,11 @@ public:
 
     static int parseIP (IPaddr & addr, const std::string & instr)
     {
-        if ((signed) instr.find (":") == -1)
+        size_t port_part;
+
+        if ((port_part = instr.find (":")) == ((unsigned)(-1)))
             return -1;
 
-        size_t port_part = instr.find (":");
         int port = atoi (instr.substr (port_part + 1).c_str ());
         if (port <= 0 || port >= 65535)
             return -1;
@@ -540,9 +583,9 @@ public:
         return sizeOf ();
     }
 
-    size_t deserialize (const char *p)
+    size_t deserialize (const char *p, size_t size)
     {        
-        if (p != NULL)
+        if (p != NULL && size >= sizeOf ())
         {
             memcpy (&host, p, sizeof (unsigned long));  p += sizeof (unsigned long);            
             memcpy (&port, p, sizeof (unsigned short)); p += sizeof (unsigned short);
@@ -553,7 +596,7 @@ public:
     }
 
     // NOTE: that pad right now is used to store layer info in VASTATE
-    // see Relay::addPeer (). do not change it without also modifying VASTATE
+    // see VASTNode::addPeer (). do not change it without also modifying VASTATE
     // TODO: cleaner way?
 
     unsigned long       host;
@@ -578,12 +621,17 @@ public:
     
     Addr ()
     {
+        this->clear ();
     }
 
-    Addr (id_t i, IPaddr &addr)
+    Addr (id_t i, const IPaddr *pub) //, IPaddr *priv = NULL)
     {
         host_id  = i;
-        publicIP = addr;
+        publicIP = *pub;
+        
+        //if (priv != NULL)
+        //    privateIP = *priv;
+
         lastAccessed = 0;
     }
 
@@ -597,6 +645,9 @@ public:
         lastAccessed = 0;
         publicIP.host = 0;
         publicIP.port = 0;
+        
+        //privateIP.host = 0;
+        //privateIP.port = 0;
     }
 
     void setPublic (unsigned long i, unsigned short p)
@@ -605,17 +656,17 @@ public:
         publicIP.port = p;
     }
     
-    /*
+/*
     void setPrivate (unsigned long i, unsigned short p)
     {
         privateIP.host = i;
         privateIP.port = p;
     }
-    */
+*/
     
-    const std::string & toString ()
+    const bool toString (std::string &str)
     {
-        static std::string str;
+        //static std::string str;
 
         // temp variables to help output
         std::ostringstream oss;
@@ -626,36 +677,41 @@ public:
         publicIP.getString (tmpstr);
         oss << tmpstr << ":" << publicIP.port;
 
-        /*
+/*
         if (privateIP.port != 0)
         {
             str.append ("|");
             privateIP.getString (tmpstr);
             oss << tmpstr << ":" << privateIP.port;
         }
-        */
+*/
 
         str = oss.str ();
 
-        return str;
+        return true;
+        //return str;
     }
 
+    //    
+    // format is "publicIP:publicPort|privateIP:privatePort"  (privateIP part is optional)
+    //
     // return 0 on success
     int fromString (const std::string & str)
     {
         clear ();
 
-        size_t spt_pos = str.find ("|");
-        // find no "|" mark
-        if ((signed) spt_pos == -1)
+        size_t pos = str.find ("|");
+
+        // found no "|" mark, indicates public IP only
+        if (pos == (size_t)(-1))
         {
             if (IPaddr::parseIP (publicIP, str))
                 return -1;
         }
         else
         {
-            std::string pub = str.substr (0, spt_pos);
-            std::string priv = str.substr (spt_pos + 1);
+            std::string pub = str.substr (0, pos);
+            //std::string priv = str.substr (pos + 1);
 
             if (IPaddr::parseIP (publicIP, pub)) // || IPaddr::parseIP (privateIP, priv))
                 return -1;
@@ -666,7 +722,8 @@ public:
     
     inline bool operator== (const Addr & adr) const
     {
-        return (publicIP == adr.publicIP); //&& ((privateIP.port == adr.privateIP.port == 0) || (privateIP == adr.privateIP)));
+        return (host_id == adr.host_id && 
+                publicIP == adr.publicIP); // && privateIP == adr.privateIP);
     }
 
     Addr &operator=(const Addr& a)
@@ -674,6 +731,7 @@ public:
         this->host_id = a.host_id;
         this->lastAccessed = a.lastAccessed;
         this->publicIP = a.publicIP;
+        //this->privateIP = a.privateIP;
 
         return *this;
     }
@@ -685,7 +743,7 @@ public:
 
     size_t sizeOf () const
     {
-        return sizeof (id_t) + sizeof (timestamp_t) + publicIP.sizeOf ();
+        return sizeof (id_t) + sizeof (timestamp_t) + publicIP.sizeOf (); // + privateIP.sizeOf ();
     }
 
     size_t serialize (char *p) const
@@ -693,30 +751,31 @@ public:
         if (p != NULL)
         {
             memcpy (p, &host_id, sizeof (id_t));                p += sizeof (id_t);            
-            memcpy (p, &lastAccessed, sizeof (timestamp_t));    p += sizeof (timestamp_t);            
-            publicIP.serialize (p);
+            memcpy (p, &lastAccessed, sizeof (timestamp_t));    p += sizeof (timestamp_t);
+            publicIP.serialize (p);                             //p += publicIP.sizeOf ();
+            //privateIP.serialize (p);
         }
         return sizeOf ();
     }
 
-    size_t deserialize (const char *p)
+    size_t deserialize (const char *p, size_t size)
     {        
-        if (p != NULL)
+        if (p != NULL && size >= sizeOf ())
         {
             memcpy (&host_id, p, sizeof (id_t));                p += sizeof (id_t);            
             memcpy (&lastAccessed, p, sizeof (timestamp_t));    p += sizeof (timestamp_t);            
-            publicIP.deserialize (p);
+            publicIP.deserialize (p, publicIP.sizeOf ());      //p += publicIP.sizeOf ();
+            //privateIP.deserialize (p);
+            
             return sizeOf ();
         }
         return 0;        
     }
 
-    id_t            host_id;        // hostID associated with this address (this is a unique one-to-one mapping)
+    id_t            host_id;        // hostID uniquely associated with this address
     timestamp_t     lastAccessed;   // last time something gets send to this address
-    IPaddr          publicIP;       // public IP used
-    //IPaddr          privateIP;    // we do not deal with private IP any more
-
-
+    IPaddr          publicIP;       // public IP
+    //IPaddr          privateIP;      // private IP
 };
 
 class EXPORT Node : public Serializable
@@ -776,14 +835,16 @@ public:
         return sizeOf ();
     }
 
-    size_t deserialize (const char *p)
+    size_t deserialize (const char *p, size_t size)
     {        
-        if (p != NULL)
+        if (p != NULL && size >= sizeOf ())
         {
             memcpy (&id, p, sizeof (id_t));             p += sizeof (id_t);
             memcpy (&time, p, sizeof (timestamp_t));    p += sizeof (timestamp_t);
-            p += aoi.deserialize (p);
-            addr.deserialize (p);
+            p += aoi.deserialize (p, aoi.sizeOf ());
+            addr.deserialize (p, addr.sizeOf ());
+
+            return sizeOf ();
         }
         return 0;        
     }
@@ -794,6 +855,143 @@ public:
     Addr            addr;       // IP address for this node    
 };
 
+class EXPORT Subscription : public Serializable
+{
+public:
+    Subscription ()
+    {
+    }
+
+    ~Subscription ()
+    {
+    }
+
+    bool addNeighbor (Subscription *neighbor)
+    {
+        std::map<id_t, Area>::iterator it;
+
+        // if neighbor already exists, simply update AOI
+        if ((it = _neighbors.find (neighbor->id)) != _neighbors.end ())
+        {
+            // check if there's update in position
+            if (it->second != neighbor->aoi)
+            {
+                _neighbor_states[neighbor->id] = UPDATED;
+                it->second = neighbor->aoi;                
+            }
+            // also record if not changed (to check for out-of-AOI neighbors later)
+            else
+                _neighbor_states[neighbor->id] = UNCHANGED;
+        }
+        else
+        {
+            // new neighbor, insert it
+            _neighbor_states[neighbor->id] = INSERTED;
+            _neighbors[neighbor->id] = neighbor->aoi;            
+        }
+
+        return true;
+    }
+
+    // remove neighbors no longer in view
+    // returns # of neighbors still in view
+    // TODO: more efficient method (than to look up in map every time?)
+    int clearInvisibleNeighbors ()
+    {
+        std::map<id_t, Area>::iterator it = _neighbors.begin ();
+        std::vector<id_t> remove_list;
+
+        for (; it != _neighbors.end (); it++)
+            // the neighbor is no longer visible, remove it
+            if (_neighbor_states.find (it->first) == _neighbor_states.end ())
+                remove_list.push_back (it->first);
+
+        for (size_t i=0; i < remove_list.size (); i++)
+        {
+            _neighbors.erase (remove_list[i]);
+            _neighbor_states[remove_list[i]] = DELETED;
+        }
+
+        return 0;
+    }
+
+    // reset all neighbor states so to perform a new round of visibility test
+    void clearStates ()
+    {
+        _neighbor_states.clear ();
+        in_region = false;
+    }
+
+    // obtain an update of the states of neighbors
+    std::map<id_t, NeighborUpdateStatus>& getUpdateStatus ()
+    {
+        return _neighbor_states;
+    }
+
+    /*
+    // get the info for a particular neighbor
+    Subscription *getNeighbor (id_t id)
+    {
+        std::map<id_t, Area>::iterator it;
+        if ((it = _neighbors.find (id)) == _neighbors.end ())
+            return NULL;
+
+        return it->second;
+    }
+    */
+
+    // size of this class
+    size_t sizeOf () const
+    {
+        return sizeof (id_t) * 2 + sizeof (layer_t) + aoi.sizeOf () + relay.sizeOf ();
+    }
+
+    // NOTE that 'active' 'time' flag is not serialized and will be restored as 'false' by default
+    size_t serialize (char *p) const
+    {
+        if (p != NULL)
+        {
+            memcpy (p, &host_id, sizeof (id_t));        p += sizeof (id_t);
+            memcpy (p, &id, sizeof (id_t));             p += sizeof (id_t);            
+            memcpy (p, &layer, sizeof (layer_t));       p += sizeof (layer_t);
+            //memcpy (p, &active, sizeof (bool));         p += sizeof (bool);
+            p += aoi.serialize (p);
+            relay.serialize (p);
+        }
+        return sizeOf ();
+    }
+
+    // NOTE that 'active' 'time' flag is not serialized and will be restored as 'false' by default
+    size_t deserialize (const char *p, size_t size)
+    {        
+        if (p != NULL && size >= sizeOf ())
+        {
+            memcpy (&host_id, p, sizeof (id_t));        p += sizeof (id_t);
+            memcpy (&id, p, sizeof (id_t));             p += sizeof (id_t);
+            memcpy (&layer, p, sizeof (layer_t));       p += sizeof (layer_t);
+            //memcpy (&active, p, sizeof (bool));         p += sizeof (bool);
+            this->active = false;
+            p += aoi.deserialize (p, aoi.sizeOf ());
+            relay.deserialize (p, relay.sizeOf ());
+
+            return sizeOf ();
+        }
+        return 0;        
+    }
+
+    id_t        host_id;        // HostID of the subscriber
+    id_t        id;             // subscriptionID (different subscriptions may have same hostID)
+    layer_t     layer;          // layer number for the subscription    
+    bool        active;         // whether the subscription is successful
+    bool        in_region;      // whether the subscriber lies within the current managed region
+    timestamp_t time;           // last update time for this subscriber
+    Area        aoi;            // aoi of the subscription (including a center position)
+    Addr        relay;          // the address of the relay of the subscriber (to receive messages)
+
+private:
+    std::map<id_t, NeighborUpdateStatus> _neighbor_states;
+    std::map<id_t, Area> _neighbors;
+};
 
 class EXPORT Message : public Serializable
 {
@@ -805,8 +1003,8 @@ public:
         from      = sender;
         msggroup  = 0;
         msgtype   = type;
-        reliable  = true;
-        priority  = 3;          // default is 3, smaller value indicates more important
+        reliable  = true;       // default is reliable message
+        priority  = 3;          // default is 3, smaller value indicates higher importance
         _alloc    = true;
         _curr     = data = new char[VAST_MSGSIZ];                
         size      = 0;
@@ -972,6 +1170,11 @@ public:
         return store ((char *)&item, sizeof (id_t));
     }
 
+    bool store (timestamp_t item)
+    {
+        return store ((char *)&item, sizeof (timestamp_t));
+    }
+
     bool store (listsize_t item)
     {
         return store ((char *)&item, sizeof (listsize_t));
@@ -1046,7 +1249,9 @@ public:
             _curr = data + size - item_size;
         }
 
-        obj.deserialize (_curr);
+        if (obj.deserialize (_curr, item_size) == 0)
+            return 0;
+
         _curr += item_size;
 
         // restore _curr pointer and reduce size if extracting from end
@@ -1063,6 +1268,12 @@ public:
     {
         extract ((char *)&id, sizeof (id_t), from_end);
         return sizeof (id_t);
+    }
+
+    size_t extract (timestamp_t &item, bool from_end = false)
+    {
+        extract ((char *)&item, sizeof (timestamp_t), from_end);
+        return sizeof (timestamp_t);
     }
 
     size_t extract (layer_t &item, bool from_end = false)
@@ -1109,10 +1320,27 @@ public:
 
         if (buffer != NULL)
         {            
-            // copy sender & receiver NodeIDs
+            // copy header part:
+            //  sender, size, type, group, priority, reliablity
             memcpy (p, &from, sizeof (id_t));
             p += sizeof (id_t);
 
+            memcpy (p, &size, sizeof (size_t));
+            p += sizeof (size_t);
+            
+            memcpy (p, &msgtype, sizeof (msgtype_t));
+            p += sizeof (msgtype_t);
+
+            memcpy (p, &msggroup, sizeof (byte_t));
+            p += sizeof (byte_t);
+
+            memcpy (p, &priority, sizeof (byte_t));
+            p += sizeof (byte_t);
+
+            memcpy (p, &reliable, sizeof (bool));
+            p += sizeof (bool);
+
+            // copy target IDs
             listsize_t num_targets = (listsize_t)targets.size ();
             memcpy (p, &num_targets, sizeof (listsize_t));
             p += sizeof (listsize_t);
@@ -1123,80 +1351,95 @@ public:
                 p += sizeof (id_t);
             }
 
-            // copy message type, message group, reliablity, priority, message size, message
-            memcpy (p, &msgtype, sizeof (msgtype_t));
-            p += sizeof (msgtype_t);
-
-            memcpy (p, &msggroup, sizeof (byte_t));
-            p += sizeof (byte_t);
-
-            memcpy (p, &reliable, sizeof (bool));
-            p += sizeof (bool);
-
-            memcpy (p, &priority, sizeof (byte_t));
-            p += sizeof (byte_t);
-
-            memcpy (p, &size, sizeof (size_t));
-            p += sizeof (size_t);
-
+            // copy data
             memcpy (p, data, size);
             p += size;
 
             return (size_t)(p - buffer);
         }
 
-        return sizeOf ();        
+        return sizeOf ();
     }
 
     // restores a buffer into the Message object
     // returns number of bytes of the message restored (should be >= 0 if correct)
     // NOTE: message size could be 0 and is still correct
-    size_t deserialize (const char *buffer)
+    // TODO: more efficient error checking
+    size_t deserialize (const char *buffer, size_t size)
     {
         size_t size_restored = 0;
         char *p = (char *)buffer;
         clear (0, 0);
         
+        // NOTE: we cannot yet check whether 'size' is correct because it'll depend on
+        //       what we find while decoding content in buffer
         if (buffer != NULL)
         {            
-            // restore sender & receiver NodeIDs
+            // restore header part first
+            // sender, size, type, group, priority, reliablity
+            size_t header_size = sizeof (id_t) + 
+                                 sizeof (size_t) +
+                                 sizeof (msgtype_t) + 
+                                 sizeof (byte_t) +
+                                 sizeof (byte_t) +
+                                 sizeof (bool) + 
+                                 sizeof (listsize_t);
+
+            // size check
+            if (size < header_size)
+                return 0;
+            size -= header_size;
+                                                                  
+            // restore from ID
             memcpy (&from, p, sizeof (id_t));
             p += sizeof (id_t);
 
-            listsize_t num_targets;
-            memcpy (&num_targets, p, sizeof (listsize_t));
-            p += sizeof (listsize_t);
+            // restore message size
+            memcpy (&size_restored, p, sizeof (size_t));
+            p += sizeof (size_t);
 
-            id_t target;
-            for (size_t i=0; i < (size_t)num_targets; i++)
-            {
-                memcpy (&target, p, sizeof (id_t));
-                p += sizeof (id_t);
-                targets.push_back (target);
-            }
-
-            // restore message type, priority, message size & content
+            // restore message type, priority, message size 
             memcpy (&msgtype, p, sizeof (msgtype_t));            
             p += sizeof (msgtype_t);            
 
             memcpy (&msggroup, p, sizeof (byte_t));
             p += sizeof (byte_t);
 
-            memcpy (&reliable, p, sizeof (bool));
-            p += sizeof (bool);
-
             memcpy (&priority, p, sizeof (byte_t));
             p += sizeof (byte_t);
 
-            memcpy (&size_restored, p, sizeof (size_t));
-            p += sizeof (size_t);
+            memcpy (&reliable, p, sizeof (bool));
+            p += sizeof (bool);
 
+            // restore receiver NodeIDs
+            listsize_t num_targets;
+            memcpy (&num_targets, p, sizeof (listsize_t));
+            p    += sizeof (listsize_t);
+            
+            // check target size & content size
+            if (size < (num_targets * sizeof (id_t) + size_restored))
+                return 0;
+           
+            id_t target;
+            for (listsize_t i=0; i < num_targets; i++)
+            {
+                memcpy (&target, p, sizeof (id_t));
+                p += sizeof (id_t);             
+                targets.push_back (target);
+            }
+
+            // restore message content
             if (store (p, size_restored) == false)
-                return (size_t)(-1);
+                return 0;
            
             // restore internal _curr pointer (very important!)
             // otherwise subsequent calls to extract () would be incorrect
             _curr = data;
+
+            // total size restored includes header
+            // NOTE: this also makes sure that a message with content size = 0 is
+            //       acceptable to send / receive
+            size_restored += header_size;
         }
 
         return size_restored;
@@ -1231,8 +1474,9 @@ public:
         return (sizeof (id_t) +                     // sender (from)    
                 sizeof (size_t) +                   // msg size
                 sizeof (msgtype_t) +                // msgtype
-                sizeof (word_t) +                   // msggroup + reliable                
+                sizeof (byte_t) +                   // msggroup                 
                 sizeof (byte_t) +                   // priority
+                sizeof (bool) +                     // reliable               
                 sizeof (listsize_t) +               // target length
                 sizeof (id_t) * targets.size () +   // targets                                
                 size);                              // msg content                
@@ -1245,8 +1489,8 @@ public:
     size_t      size;           // size of the message
     msgtype_t   msgtype;        // type of message
     byte_t      msggroup;       // msggroup to indicate which handler should process the message
-    bool        reliable;       // whether the message should be sent reliably    
     byte_t      priority;       // priority of message
+    bool        reliable;       // whether the message should be sent reliably        
     byte_t      reserved1;      // reserved
     byte_t      reserved2;      // reserved
     byte_t      reserved3;      // reserved

@@ -50,10 +50,11 @@ namespace Vast
         return new_id;
     }
 
+    /*
     // replace the temp id with a new id
     void 
     net_emubridge::
-    registerID (id_t temp_id, id_t id)
+    registerHostID (id_t temp_id, id_t id)
     {
         // print out warning or error for ids already in use?
         if (_id2ptr.find (id) != _id2ptr.end () ||
@@ -65,23 +66,18 @@ namespace Vast
         if (id != temp_id)
 		{
             _id2ptr.erase (temp_id);
-#ifdef ENABLE_LATENCY
-			_vivaldi->release_phys_coord(temp_id);
-#endif // ENABLE_LATENCY
 		}
     }
+    */
 
     void 
     net_emubridge::
-    release_id (id_t id)
+    releaseHostID (id_t id)
     {
         if (_id2ptr.find (id) != _id2ptr.end ())
 		{         
 			_id2ptr.erase (id);
 		}
-#ifdef ENABLE_LATENCY
-		_vivaldi->release_phys_coord(id);
-#endif // ENABLE_LATENCY
     }
            
     // obtain the arrived timestamp of a packet, subject to packet loss or latency
@@ -96,10 +92,11 @@ namespace Vast
         reliable = true;
 
         timestamp_t time;
+
 #ifdef ENABLE_LATENCY
 		if (_vivaldi != NULL)
 		{//calculate the receiving time
-			float latency_time = _vivaldi->get_latency(sender, receiver);			
+			float latency_time = _vivaldi->get_latency (sender, receiver);			
 			//time = getTimestamp () + (timestamp_t)ceil((latency_time/SEC_PER_STEP));
 			float d_time = (latency_time/SEC_PER_STEP);
 			int r = round (d_time);

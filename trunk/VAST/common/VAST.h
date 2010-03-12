@@ -1,6 +1,6 @@
 /*
  * VAST, a scalable peer-to-peer network for virtual environments
- * Copyright (C) 2005-2009 Shun-Yun Hu (syhu@yahoo.com)
+ * Copyright (C) 2005-2010 Shun-Yun Hu (syhu@yahoo.com)
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -25,6 +25,7 @@
  *          2007/01/11  ver 0.2     simplify interface   
  *			2008/08/20  ver 0.3		re-written for generic overlay
  *          2009/04/02  ver 0.4		re-defined for SPS
+ *          2010/02/09  ver 0.5     re-structured to separate "matcher" from "relay"
  */
 
 #ifndef _VAST_H
@@ -39,16 +40,34 @@ using namespace std;
 
 namespace Vast
 {
+    // NOTE: we start the message number slightly higher than VONPeer
+    typedef enum 
+    {
+        // internal message # must begin with VON_MAX_MSG as VONpeer is used and share the MessageQueue        
+        MATCHER_JOIN = VON_MAX_MSG,     // join the overlay as a matcher
+        MATCHER_JOIN_R,                 // reply to the joining matcher
+        MATCHER_JOINED,                 // notify gateway a matcher has joined successfully
+        MATCHER_CANDIDATE,              // notify gateway of a candidate matcher         
+        PUBLISH,                        // publish a message         
+        SUBSCRIBE,                      // send subscription
+        SUBSCRIBE_R,                    // to reply whether a node has successfully subscribed (VON node joined)        
+        MOVE,                           // position update to normal nodes
+        MOVE_F,                         // full update for an AOI region
+        LEAVE,                          // departure of a client
+        NEIGHBOR,                       // send back a list of known neighbors
+        MESSAGE,                        // deliver a message to a node        
+    } VAST_Message;
+
 
     //
     // NOTE that we currently assume two things are decided
     //      outside of the VAST class:
     //
-    //          1. unique ID (hostID obtained via IDGenerator, handlerID by MessageQueue)
-    //          2. a coordinate representing physical location
+    //          1. unique ID (hostID obtained via VASTnet)
+    //          2. a coordinate representing physical location (Vivaldi)
     //      
     //      Also, a VAST node (the same one) serves as both a Client at a regular node
-    //            but a Relay at a super-peer
+    //      and also a Relay/Matcher at super-peers
     //
     class EXPORT VAST : public MessageHandler
     {
@@ -60,39 +79,45 @@ namespace Vast
 		//
 
         VAST ()
-            :MessageHandler (MSG_GROUP_VAST_RELAY)
+            :MessageHandler (MSG_GROUP_VAST_CLIENT)
         {
         }
          
         //virtual ~VAST () = 0;
         
-	/**
+        /**
 		join the overlay 
 
-		@param  pos     physical coordinate of the joining client node
-	*/
-        // specify a joining position (physical coordinate?)
-        virtual bool        join (Position &pos, bool as_relay = true) = 0;
+		@param  gateway     address of gateway server
+        */
+
+        // join by specify the gateway to contact
+        virtual bool        join (const IPaddr &gateway) = 0;
 
         // quit the overlay
         virtual void        leave () = 0;
         
-	// specify a subscription area for point or area publications 
-        // returns a unique subscription number that represents subscribed area
-        virtual id_t        subscribe (Area &area, layer_t layer) = 0;
+        // specify a subscription area for point or area publications 
+        virtual bool        subscribe (Area &area, layer_t layer) = 0;
 
         // send a message to all subscribers within a publication area
         virtual bool        publish (Area &area, layer_t layer, Message &message) = 0;
             
         // move a subscription area to a new position
         // returns actual AOI in case the position is already taken, or NULL if subscription does not exist
-        virtual Area *      move (id_t subNo, Area &aoi, bool update_only = false) = 0;
+        virtual Area *      move (id_t subID, Area &aoi, bool update_only = false) = 0;
 
-        // send a custom message to a particular node
+        // send a custom message to a particular VAST node (ID obtained from list ())
         virtual bool        send (Message &message) = 0;
 
         // obtain a list of subscribers with an area
         virtual vector<Node *>& list (Area *area = NULL) = 0;
+
+        // obtain a list of physically closest hosts
+        virtual vector<Node *>& getPhysicalNeighbors () = 0;
+
+        // obtain a list of logically closest hosts (a subset of nodes by list () that are relay-level)
+        virtual vector<Node *>& getLogicalNeighbors () = 0;
 
         // get a message from the network queue
         virtual Message *   receive () = 0;
@@ -107,28 +132,24 @@ namespace Vast
         virtual bool isJoined () = 0;
 
         // whether the current node is listening for publications
-        virtual bool isSubscribing (id_t sub_no) = 0;
+        virtual id_t isSubscribing () = 0;
 
         // whether I am a relay node
         virtual bool isRelay () = 0;
 
+        // whether I'm the gateway node
+        //virtual bool isGateway () = 0;
+
         // whether I have public IP
         virtual bool hasPublicIP () = 0;
-
+        
         //
         // accessor (non-essential) functions for GUI display
         //
 
-        // get a particular peer's info
-        virtual Node *getPeer (id_t peer_id) = 0;
-
-        // get the neighbors for a particular peer
-        // returns NULL if the peer does not exist
-        virtual vector<Node *> *getPeerNeighbors (id_t peer_id) = 0;
-
         // obtain access to Voronoi class (usually for drawing purpose)
-        // returns NULL if the peer does not exist
-        virtual Voronoi *getVoronoi (id_t peer_id) = 0;
+        // returns NULL if matcher does not exist on this node
+        //virtual Voronoi *getVoronoi () = 0;
 
         // 
         // stat collectors
@@ -140,7 +161,7 @@ namespace Vast
         virtual StatType *getMessageLatency (msgtype_t msgtype) = 0;
 
         // get # of peers hosted at this relay, returns NULL for no record (at non-relays)
-        virtual StatType *getPeerStat () = 0;
+        //virtual StatType *getPeerStat () = 0;
 
     };
 
