@@ -207,6 +207,9 @@ namespace Vast
                 //msg.reliable = false;
                 sendMessage (msg);
             }
+
+            // update into 'self'
+            _self.aoi = prev_aoi;
         }
         
         // TODO: possibily perform collison detection for positions
@@ -311,8 +314,9 @@ namespace Vast
     // get current statistics about this node (a NULL-terminated string)
     char *
     VASTClient::getStat (bool clear)
-    {
-        return NULL;
+    {        
+        static char str[] = "not implemented\0";
+        return str;
     }
 
     // get the current node's information
@@ -427,6 +431,11 @@ namespace Vast
         
                 _sub.id = sub_no;
                 _sub.active = true;
+
+                // store to 'self' so it can be accessed externally
+                // TODO: may need to remove for cleanness?
+                _self.id  = _sub.id;
+                _self.aoi = _sub.aoi;
                                       
                 // notify network so incoming messages can be processed by this host
                 notifyMapping (sub_no, &_net->getHostAddress ());
@@ -555,7 +564,9 @@ namespace Vast
                 {
                     for (size_t i=0; i < _neighbors.size (); i++)
                         delete _neighbors[i];
-                    _neighbors.clear ();                   
+                    _neighbors.clear ();
+
+                    // TODO: find new matchers
                 }
                 // if the relay fails
                 else if (in_msg.from == _relay->getRelayID ())

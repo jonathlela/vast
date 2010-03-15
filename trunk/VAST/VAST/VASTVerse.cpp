@@ -26,7 +26,7 @@
 
 #include "MessageQueue.h"
 //#include "Relay.h"
-#include "IDGenerator.h"
+//#include "IDGenerator.h"
 #include "VASTRelay.h"
 #include "VASTClient.h"
 #include "VASTMatcher.h"

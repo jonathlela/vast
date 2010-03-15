@@ -51,7 +51,6 @@ using namespace std;
 #define DIM_Y               768
 #define STEPS_PER_SECOND    10      // default steps per second
 
-
 typedef struct {
     int     VAST_MODEL;
     int     NET_MODEL;
@@ -79,6 +78,7 @@ typedef enum
 {
     IDLE,
     WAITING,
+    SUBSCRIBING,
     NORMAL,
     FAILING,
     FAILED
@@ -86,9 +86,9 @@ typedef enum
 } SimNodeState;
 
 // initialize parameters, returns which node index to simulate, -1 for error, 0 for manual control
-EXPORT int                  InitPara (const char *cmdline, bool &is_gateway, Area &aoi, VASTPara_Net &netpara, SimPara &para, Addr &gateway, vector<IPaddr> &entries);
+EXPORT int                  InitPara (VAST_NetModel model, VASTPara_Net &netpara, SimPara &simpara, const char *cmdline = NULL, bool *is_gateway = NULL, Area *aoi = NULL, Addr *gateway = NULL, vector<IPaddr> *entries = NULL);
 EXPORT bool                 ReadPara (SimPara &para);
-EXPORT int                  InitSim (SimPara &para);
+EXPORT int                  InitSim (SimPara &para, VASTPara_Net &netpara);
 EXPORT int                  CreateNode (bool wait_till_ready = true);
 EXPORT int                  NextStep ();
 EXPORT Node *               GetNode (int index);

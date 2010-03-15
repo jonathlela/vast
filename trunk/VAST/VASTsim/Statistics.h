@@ -482,10 +482,18 @@ public:
 		fprintf (_fp, "             send       recv   DISCONNCT       ID    QUERY    HELLO       EN     MOVE   MOVE_B     NODE  OVERCAP  PAYLOAD\n");
 
 		for (i=0; i<_simnodes.size (); i++)
-        {
+        {            
             SimNode *node = _simnodes[i];
-            
-            fprintf (_fp, "[%4ld] %10u %10u\t%s\t", node->get_id (), node->accumulated_send (), node->accumulated_recv (), node->vnode->getStat ());
+
+            if (node->vnode == NULL)
+                continue;
+
+            id_t id = node->get_id ();
+            char *str = node->vnode->getStat ();
+            size_t send = node->accumulated_send ();
+            size_t recv = node->accumulated_recv ();
+
+            fprintf (_fp, "[%llu] %10u %10u\t%s\t", id, send, recv, str);
 
             /*
             StatType *peersize = _simnodes[i]->vnode->getPeerStat ();

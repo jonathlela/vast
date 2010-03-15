@@ -35,10 +35,12 @@ using namespace std;        // vector
 using namespace Vast;       // vast
 
 SimPara             g_para;
+VASTPara_Net        g_netpara;
 statistics          g_stat;
 vector<SimNode *>   g_nodes;            // pointer to all simulation nodes
 vector<bool>        g_as_relay;
 MovementGenerator   g_move_model;
+Addr                g_gateway;          // address to gateway node
 SectionedFile      *g_pos_record = NULL;
 
 //map<int, VAST *>    g_peermap;          // map from node index to the peer's relay id
@@ -51,8 +53,15 @@ bool                g_joining   = true;
 
 
 // Initilize parameters, including setting default values or read from INI file
-int InitPara (const char *cmdline, bool &is_gateway, Area &aoi, VASTPara_Net &netpara, SimPara &simpara, Addr &gateway, vector<IPaddr> &entries)
+int InitPara (VAST_NetModel model, VASTPara_Net &netpara, SimPara &simpara, const char *cmdline, bool *p_is_gateway, Area *p_aoi, Addr *p_gateway, vector<IPaddr> *p_entries)
 {
+    netpara.model = model;
+
+    // parameters to be filled
+    bool is_gateway;
+    Area aoi;
+    vector<IPaddr> entries;
+
     // default default values
     aoi.center.x = (coord_t)(rand () % DIM_X);
     aoi.center.y = (coord_t)(rand () % DIM_Y);
@@ -79,45 +88,47 @@ int InitPara (const char *cmdline, bool &is_gateway, Area &aoi, VASTPara_Net &ne
     char *p;
     int para_count = 0;
     
-    char command[255];
-    strcpy (command, cmdline);
-
-    p = strtok (command, " ");
-
-    while (p != NULL)
+    if (cmdline != NULL)
     {
-        switch (para_count)
+        char command[255];
+        strcpy (command, cmdline);
+    
+        p = strtok (command, " ");
+    
+        while (p != NULL)
         {
-        // port
-        case 0:
-            netpara.port = (unsigned short)atoi (p);
-            break;
-
-        // Gateway IP
-        case 1:
-            sprintf (GWstr, "%s:%d", p, netpara.port);
-            break;
-
-        case 2:
-            // 3rd parameter: node to simulate                
-            node_no = atoi (p);
-            break;
-
-        // X-coord
-        case 3:
-            aoi.center.x = (coord_t)atoi (p);
-            break;
-
-        // Y-coord
-        case 4:
-            aoi.center.y = (coord_t)atoi (p);
-            break;
+            switch (para_count)
+            {
+            // port
+            case 0:
+                netpara.port = (unsigned short)atoi (p);
+                break;
+    
+            // Gateway IP
+            case 1:
+                sprintf (GWstr, "%s:%d", p, netpara.port);
+                break;
+    
+            case 2:
+                // 3rd parameter: node to simulate                
+                node_no = atoi (p);
+                break;
+    
+            // X-coord
+            case 3:
+                aoi.center.x = (coord_t)atoi (p);
+                break;
+    
+            // Y-coord
+            case 4:
+                aoi.center.y = (coord_t)atoi (p);
+                break;
+            }
+    
+            p = strtok (NULL, " ");
+            para_count++;
         }
-
-        p = strtok (NULL, " ");
-        para_count++;
     }
-	
 	    
     // see if simulation behavior file exists for simulated behavior            
     if (ReadPara (simpara) == true)
@@ -154,15 +165,13 @@ int InitPara (const char *cmdline, bool &is_gateway, Area &aoi, VASTPara_Net &ne
         netpara.is_entry = true;
         sprintf (GWstr, "127.0.0.1:%d", netpara.port);
     }        
-    
-    netpara.model = VAST_NET_ACE;
-    
+        
     // if physical coordinate is not supplied, VAST will need to obtain it itself
     //g_netpara.phys_coord = g_aoi.center;    
 
     // translate gateway string to Addr object
     string str (GWstr);
-    gateway = *VASTVerse::translateAddress (str);
+    g_gateway = *VASTVerse::translateAddress (str);
 
     // create VAST node factory (with default physical coordinate)          
 
@@ -170,8 +179,21 @@ int InitPara (const char *cmdline, bool &is_gateway, Area &aoi, VASTPara_Net &ne
     // NOTE: the very first node does not know other existing relays
     if (is_gateway == false)
     {
-        entries.push_back (gateway.publicIP);
+        entries.push_back (g_gateway.publicIP);
     }
+
+    // return values, if needed
+    if (p_is_gateway != NULL)
+        *p_is_gateway = is_gateway;
+
+    if (p_aoi != NULL)
+        *p_aoi = aoi;
+
+    if (p_gateway != NULL)
+        *p_gateway = g_gateway;
+
+    if (p_entries != NULL)
+        *p_entries = entries;
 
     return node_no;
 }
@@ -227,9 +249,20 @@ bool ReadPara (SimPara &para)
 }
 
 
-int InitSim (SimPara &para)
+int InitSim (SimPara &para, VASTPara_Net &netpara)
 {
     g_para = para;
+    g_netpara = netpara;
+
+    // note there's no need to assign the gateway ID as it'll be found automatically
+    g_netpara.model        = (VAST_NetModel)para.NET_MODEL;
+    g_netpara.port         = GATEWAY_DEFAULT_PORT;    
+    g_netpara.client_limit = para.PEER_LIMIT;
+    g_netpara.relay_limit  = para.RELAY_LIMIT;        
+    g_netpara.conn_limit   = para.CONNECT_LIMIT;
+    g_netpara.recv_quota   = para.DOWNLOAD_LIMIT;
+    g_netpara.send_quota   = para.UPLOAD_LIMIT;
+    g_netpara.step_persec  = para.STEPS_PERSEC;
 
     // create / open position log file
     char filename[80];
@@ -285,7 +318,7 @@ int CreateNode (bool wait_till_ready)
     // obtain current node index
     size_t i = g_nodes.size ();        
 
-    SimNode *n = new SimNode (i+1, &g_move_model, g_para, g_as_relay[i]);
+    SimNode *n = new SimNode (i+1, &g_move_model, g_gateway, g_para, g_netpara, g_as_relay[i]);
     g_nodes.push_back (n);
 
     // NOTE: it's important to advance the logical time here, because nodes would 
@@ -443,7 +476,7 @@ Node *GetNode (int index)
 
     return g_peermap[index]->getPeer (g_peerid[index]);
     */
-    if ((unsigned)index >= g_nodes.size ())
+    if ((unsigned)index >= g_nodes.size () || g_nodes[index]->vnode == NULL)
         return NULL;
 
     return g_nodes[index]->vnode->getSelf ();
@@ -457,8 +490,8 @@ std::vector<Node *>* GetNeighbors (int index)
     // neighbors as stored on the relay's VONPeers
     //return g_peermap[index]->getPeerNeighbors (g_peerid[index]);
 
-    // neighbors as known at each Clients
-    if ((unsigned)index >= g_nodes.size ())
+    // check if index is invalid, or the node referred has not yet joined successfully
+    if ((unsigned)index >= g_nodes.size () || g_nodes[index]->vnode == NULL)
         return NULL;
 
     return &g_nodes[index]->vnode->list ();

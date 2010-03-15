@@ -41,7 +41,7 @@ class SimNode
 {
 public:
     
-    SimNode (int id, MovementGenerator *move_model, SimPara &para, bool as_relay);
+    SimNode (int id, MovementGenerator *move_model, Addr &gateway, SimPara &para, VASTPara_Net &netpara, bool as_relay);
     
     ~SimNode ();
 
@@ -105,6 +105,8 @@ public:
 private:
     MovementGenerator   *_move_model;   // movement model (to provide a series of position updates)
     VASTVerse           *_world;        // factory class for VAST    
+
+    Addr                _gateway;       // address to gateway
 
     SimPara             _para;
     VASTPara_Net        _netpara;       // network parameters sent to VASTVerse

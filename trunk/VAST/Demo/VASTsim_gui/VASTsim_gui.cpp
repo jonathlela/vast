@@ -18,11 +18,11 @@
 
 // use VASTsim as underlying library
 // must set dependency for projects "VASTsim"
-//#include "VASTsim.h"
+#include "VASTsim.h"
 
 // use VASTATEsim as underlying library
 // must set dependency for projects "VASTATEsim"
-#include "VASTATEsim.h"
+//#include "VASTATEsim.h"
 
 using namespace Vast;
 using namespace std;
@@ -192,7 +192,7 @@ VOID Render (HWND hWnd)
         // draw node id
         if (show_node_id)
         {
-            sprintf (str, "%d", EXTRACT_HOST_ID(self->id));
+            sprintf (str, "%d", VASTnet::resolveAssignedID (self->id));
             TextOut (hdc, x-5, y-25, str, strlen(str));
         }
 
@@ -220,7 +220,7 @@ VOID Render (HWND hWnd)
             //Ellipse( hdc, x-aoi_buf, y-aoi_buf, x+aoi_buf, y+aoi_buf );
             
             // draw neighbor dots
-            for(j=0; j<(int)nodes.size (); j++)
+            for (j=0; j<(int)nodes.size (); j++)
             {
                 int x = (int)nodes[j]->aoi.center.x; 
                 int y = (int)nodes[j]->aoi.center.y;
@@ -243,7 +243,7 @@ VOID Render (HWND hWnd)
                 // draw node id
                 if (show_node_id)
                 {
-                    sprintf (str, "%d", EXTRACT_HOST_ID(nodes[j]->id));
+                    sprintf (str, "%d", VASTnet::resolveAssignedID (nodes[j]->id));
                     TextOut (hdc, x-5, y-25, str, strlen(str));
                 }
             }
@@ -252,7 +252,7 @@ VOID Render (HWND hWnd)
             if (show_edges && GetEdges (i) != NULL)
             {    
                 vector<line2d> &lines = *GetEdges (i); 
-                for(j=0; j<(int)lines.size (); j++)
+                for (j=0; j<(int)lines.size (); j++)
                 {    
                     POINT points[2];
                     
@@ -276,7 +276,7 @@ VOID Render (HWND hWnd)
                 lines.push_back (line2d (max.x, max.y, min.x, max.y));
                 lines.push_back (line2d (min.x, max.y, min.x, min.y));
 
-                for(j=0; j<(int)lines.size (); j++)
+                for (j=0; j<(int)lines.size (); j++)
                 {    
                     POINT points[2];
                     
@@ -299,14 +299,14 @@ VOID Render (HWND hWnd)
         sprintf (str2, "[END]");
 
     //sprintf( str, "step: %d (%d, %d) node: %d/%d [%d, %d] aoi: %d AN: %d %s %s %s char: [%d, %d]", g_steps, g_cursor.x-g_origin.x, g_cursor.y-g_origin.y, g_id, g_nodes_active, selected_x, selected_y, g_aoi, size_AN, str2, (follow_mode ? "[follow]" : ""), (step_mode ? "[stepped]" : ""), wvalue, lvalue);
-    sprintf( str, "step: %d (%d, %d) node: %d/%d [%d, %d] aoi: %d AN: %d %s %s %s missing: %d", g_steps, g_cursor.x-g_origin.x, g_cursor.y-g_origin.y, g_id, g_nodes_active, selected_x, selected_y, g_aoi, size_AN, str2, (follow_mode ? "[follow]" : ""), (step_mode ? "[stepped]" : ""), missing_count);
-    TextOut( hdc, 10-g_origin.x, 10-g_origin.y, str, strlen(str) );    
+    sprintf (str, "step: %d (%d, %d) node: %d/%d [%d, %d] aoi: %d AN: %d %s %s %s missing: %d", g_steps, g_cursor.x-g_origin.x, g_cursor.y-g_origin.y, (int)VASTnet::resolveAssignedID (g_id), g_nodes_active, selected_x, selected_y, g_aoi, size_AN, str2, (follow_mode ? "[follow]" : ""), (step_mode ? "[stepped]" : ""), missing_count);
+    TextOut (hdc, 10-g_origin.x, 10-g_origin.y, str, strlen(str) );    
     
     // EndPaint balances off the BeginPaint call.
     EndPaint(hWnd,&ps);
 }
 
-VOID MoveOnce( HWND hWnd )
+VOID MoveOnce (HWND hWnd)
 {
     if (finished == true)
         return;
@@ -320,6 +320,7 @@ VOID MoveOnce( HWND hWnd )
         {
             // only make sure gateway is fully joined before creating next node
             CreateNode (g_nodes_created == 0);
+            //CreateNode (true);
             
             //CreateNode (true);
             g_show_aoi[g_nodes_created++] = false;
@@ -545,32 +546,12 @@ LRESULT WINAPI MsgProc (HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 //-----------------------------------------------------------------------------
 INT WINAPI WinMain( HINSTANCE hInst, HINSTANCE, LPSTR, INT )
 {
-    // set default parameters if not available through config file
-    if (ReadPara (g_para) == false)
-    {
-        g_para.VAST_MODEL      =  1;        // 1: Direct connection 2: Forwarding
-        g_para.NET_MODEL       =  1;        // 1: emulated 2: emulated with bandwidth limit
-        g_para.MOVE_MODEL      =  2;        // 1: random 2: cluster
-        g_para.WORLD_WIDTH     =  800;
-        g_para.WORLD_HEIGHT    =  600;
-        g_para.NODE_SIZE       =  10;
-        g_para.RELAY_SIZE      =  3;
-        g_para.TIME_STEPS      =  1000;
-        g_para.STEPS_PERSEC    =  10;
-        g_para.AOI_RADIUS      =  100;
-        g_para.AOI_BUFFER      =  15;
-        g_para.CONNECT_LIMIT   =  0;
-        g_para.VELOCITY        =  5;
-        g_para.LOSS_RATE       =  0;
-        g_para.FAIL_RATE       =  0;        
-        g_para.UPLOAD_LIMIT    =  2000;   
-        g_para.DOWNLOAD_LIMIT  =  10000;
-        g_para.PEER_LIMIT      =  100;
-        g_para.RELAY_LIMIT     =  10;
-        g_para.OVERLOAD_LIMIT  =  10;
-    }
+    VASTPara_Net netpara;
+
+    // read parameters and initialize simulations
+    InitPara (VAST_NET_EMULATED, netpara, g_para);
     
-    InitSim (g_para);
+    InitSim (g_para, netpara);
     
     // Register the window class
     WNDCLASSEX wc = { sizeof(WNDCLASSEX), CS_CLASSDC, MsgProc, 0L, 0L,

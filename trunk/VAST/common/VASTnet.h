@@ -209,7 +209,7 @@ namespace Vast {
 
         // accept or assign ID for newly joined remote host (depend on whether public IP exists or not)
         // also send back the remote host's ID if it's newly assigned
-        id_t processIDRequest (Message &msg, IPaddr &actualIP);
+        id_t processIDRequest (Message &msg, IPaddr *actualIP);
 
         // store an incoming assignment of my ID
         // returns the newly assigned ID

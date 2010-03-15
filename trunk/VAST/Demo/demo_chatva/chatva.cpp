@@ -666,7 +666,7 @@ INT WINAPI WinMain (HINSTANCE hInst, HINSTANCE, LPSTR lpCmdLine, INT)
 
     bool is_gateway;
 
-    if ((g_node_no = InitPara (lpCmdLine, is_gateway, g_aoi, g_netpara, simpara, g_gateway, entries)) == (-1))
+    if ((g_node_no = InitPara (VAST_NET_ACE, g_netpara, simpara, lpCmdLine, &is_gateway, &g_aoi, &g_gateway, &entries)) == (-1))
         exit (0);
 
     //bool simulate_behavior = (g_node_no > 0);

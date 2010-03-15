@@ -9,9 +9,9 @@
 #include "SimNode.h"
 
     
-    SimNode::SimNode (int id, MovementGenerator *move_model, SimPara &para, bool as_relay)
-        :_move_model (move_model), _para (para), _as_relay (as_relay)
-    {            
+    SimNode::SimNode (int id, MovementGenerator *move_model, Addr &gateway, SimPara &para, VASTPara_Net &netpara, bool as_relay)
+        :_move_model (move_model), _gateway (gateway), _para (para), _netpara (netpara), _as_relay (as_relay)
+    {                     
         _self.id = NET_ID_UNASSIGNED;
         _nodeindex = id;
         if (_para.AOI_RADIUS < 0)
@@ -25,30 +25,17 @@
         Position *pos = _move_model->getPos (_nodeindex-1, _steps);
         _self.aoi.center = *pos;
 
-        // note there's no need to assign the gateway ID as it'll be found automatically
-        //IPaddr ip ("127.0.0.1", 3737); 
-        //Addr addr ((Vast::id_t)0, &ip);
-        //_netpara.gateway    = addr;      
-        //_netpara.is_gateway = (_nodeindex == 1);
-        _netpara.model        = (VAST_NetModel)_para.NET_MODEL;
-        _netpara.port         = 3737;
         _netpara.phys_coord   = _self.aoi.center;     // use our virtual coord as physical coordinate
-        _netpara.client_limit = _para.PEER_LIMIT;
-        _netpara.relay_limit  = _para.RELAY_LIMIT;        
-        _netpara.conn_limit   = _para.CONNECT_LIMIT;
-        _netpara.recv_quota   = _para.DOWNLOAD_LIMIT;
-        _netpara.send_quota   = _para.UPLOAD_LIMIT;
-        _netpara.step_persec  = _para.STEPS_PERSEC;
 
         _simpara.fail_rate    = _para.FAIL_RATE;
         _simpara.loss_rate    = _para.LOSS_RATE;
 
         // create fake entry points
         vector<IPaddr> entries;
-        string str ("127.0.0.1:3737");
-        Addr *addr = VASTVerse::translateAddress (str);
-
-        entries.push_back (addr->publicIP);
+                
+        // if not gateway, store some IPs to home
+        if (id != 1)
+            entries.push_back (_gateway.publicIP);
         
         _world = new VASTVerse (entries, &_netpara, &_simpara);
 
@@ -170,10 +157,9 @@
         if (state == IDLE)
         {
             // TODO: we should obtain a physical coordinate point for joining
-            //       right now we just use the logical coord as the physical coordinate
-            Addr gateway = *VASTVerse::translateAddress (string ("127.0.0.1:3737"));
+            //       right now we just use the logical coord as the physical coordinate            
 
-            if ((vnode = _world->createClient (gateway.publicIP)) != NULL)
+            if ((vnode = _world->createClient (_gateway.publicIP)) != NULL)
             {
                 //vnode->join (gateway.publicIP);
                 state = WAITING;
@@ -186,12 +172,18 @@
             {
                 // after the VASTnode has successfully joined the overlay, 
                 // get assigned unique ID & initiate subscription
-                
-                state = NORMAL;
-                _sub_no = vnode->subscribe (_self.aoi, LAYER_EVENT);
-                
-                // update my peer ID (equals subscription number)
+                vnode->subscribe (_self.aoi, LAYER_UPDATE);
+                state = SUBSCRIBING;                           
+            }
+        }
+
+        else if (state == SUBSCRIBING)
+        {
+            if (vnode->isSubscribing ())
+            {
+                _sub_no = vnode->isSubscribing ();
                 _self.id = _sub_no;
+                state = NORMAL;
             }
         }
 

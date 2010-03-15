@@ -28,11 +28,24 @@ namespace Vast
     net_emu::net_emu (net_emubridge &b)
         :_bridge (b)
     {
-        // TODO: check validity of this?
-        // obtain a temporary id first
-        _id = _bridge.obtain_id (this);
+        // NOTE: we mimic what happens with net_ace, where the IP/port is first obtained
+        //       but unique ID is yet assigned (need to query gateway)
 
-        registerHostID (_id, true);
+        // obtain a temporary id first
+        
+        id_t id = _bridge.obtain_id (this);
+        //registerHostID (id, true);
+
+        //ACE_INET_Addr addr (1037, getIPFromHost ());
+        //gateway = *VASTVerse::translateAddress (str);
+
+        // store IP:port for this host
+        _addr.setPublic (2130706433, (unsigned short)(1037 + id - 1));
+
+        // translate our ID
+        id_t new_id = VASTnet::resolveHostID (&_addr.publicIP);
+
+        _bridge.replaceHostID (id, new_id);
     }
 
     /*
@@ -100,7 +113,8 @@ namespace Vast
             return (-1);
 
         // notify remote host of connection
-        receiver->remoteConnect (_id, _id2addr[_id]);
+        //receiver->remoteConnect (_id, _id2addr[_id]);        
+        receiver->remoteConnect (_addr.host_id, _addr);
         
         return 0;
     }

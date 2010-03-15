@@ -44,31 +44,35 @@ namespace Vast
     net_emubridge::
     obtain_id (void *pointer)
     {
-        id_t new_id = _id_count--;
+        //id_t new_id = _id_count--;
+        
+        id_t new_id = _id_count++;
         _id2ptr[new_id] = pointer;
             
         return new_id;
     }
 
-    /*
+    
     // replace the temp id with a new id
     void 
     net_emubridge::
-    registerHostID (id_t temp_id, id_t id)
+    replaceHostID (id_t temp_id, id_t id)
     {
         // print out warning or error for ids already in use?
         if (_id2ptr.find (id) != _id2ptr.end () ||
-            _id2ptr.find (temp_id) != _id2ptr.end ())
+            _id2ptr.find (temp_id) == _id2ptr.end ())
         {
-            // printf
+            printf ("net_emubridge::replaceHostID () warning, tempID not found or ID already in use\n");      
         }
+
         _id2ptr[id] = _id2ptr[temp_id];
+        
         if (id != temp_id)
 		{
             _id2ptr.erase (temp_id);
 		}
     }
-    */
+    
 
     void 
     net_emubridge::

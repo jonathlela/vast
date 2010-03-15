@@ -77,7 +77,7 @@ namespace Vast {
         // get IP address from host name
         const char *getIPFromHost (const char *hostname)
         {
-            return NULL;
+            return "127.0.0.1";
         }
 
         // check the validity of an IP address, modify it if necessary

@@ -574,19 +574,8 @@ namespace Vast
                 }
             }
 
-            // if no relays are known and no physical coordinate specified, 
-            // we *assume* that we're the very first node on the network
-            if (_relays.size () == 0)
-            {
-                if (_state == ABSENT)
-                {
-                    _self.aoi.center = _temp_coord = Position (0, 0, 0);
-                    setJoined ();
-                }
-            }
-
             // send ping if some relays are known
-            else 
+            if (_relays.size () > 0)
             {
                 // re-send PING to known relays
                 printf ("VASTRelay::postHandling () pinging relays to determine physical coord\n");
@@ -608,9 +597,17 @@ namespace Vast
 
         if (_state == ABSENT)
         {
+            // if no relays are known and no physical coordinate specified, 
+            // we *assume* that we're the very first node on the network
+            if (_relays.size () == 0)
+            {
+                _self.aoi.center = _temp_coord;
+                setJoined ();
+            }
+
             // first check if we've gotten physical coordinate, 
             // if so then we start to query the closest relay 
-            if (getPhysicalCoordinate () != NULL)
+            else if (getPhysicalCoordinate () != NULL)
                 _state = QUERYING;
         }
         else if (_state == QUERYING)

@@ -50,7 +50,7 @@ namespace Vast
     VASTnet::start ()
     {
         //_active = true;
-        _addr.host_id = NET_ID_UNASSIGNED;
+        //_addr.host_id = NET_ID_UNASSIGNED;
     }
 
     void 
@@ -150,7 +150,7 @@ namespace Vast
             // check if we're considered as an entry point, if so we can determine HostID by self
             if (_entries.size () == 0)
             {
-                id_t id = resolveHostID (&_addr.publicIP);   
+                id_t id = resolveHostID (&_addr.publicIP);
 
                 // note we need to use registerHostID to modify _id instead of directly
                 registerHostID (id, true);
@@ -172,8 +172,9 @@ namespace Vast
                 //
                 // TODO: cleaner way?
 
-                // determine our self ID
-                id_t id = resolveHostID (&_addr.publicIP);                
+                // determine our self ID / store to 'addr' temporariliy (for net_emu)
+                id_t id = resolveHostID (&_addr.publicIP);             
+                _addr.host_id = id;
 
                 // create & send ID request message, consists of
                 //   1) determined hostID and 2) detected IP of the host
@@ -247,7 +248,8 @@ namespace Vast
 
             newmsg->fromhost = _id;
             newmsg->msg      = new Message (msg);
-            
+            newmsg->recvtime = 0;                   // set 0 so it'll be processed immediately
+
             // reset the message so that it can be properly decoded
             newmsg->msg->reset ();
 
@@ -344,7 +346,7 @@ namespace Vast
                 else
                 {
                     // assign
-                    remote_id = processIDRequest (*msg, *actual_IP);       
+                    remote_id = processIDRequest (*msg, actual_IP);       
                 
                     // if new ID is accepted or assigned successfully
                     if (remote_id != NET_ID_UNASSIGNED)
@@ -749,7 +751,7 @@ namespace Vast
     }
 
     id_t
-    VASTnet::processIDRequest (Message &msg, IPaddr &actualIP)
+    VASTnet::processIDRequest (Message &msg, IPaddr *actualIP)
     {
         // extract the ID request message, consists of
         //   1) determined hostID and 2) detected IP
@@ -762,8 +764,15 @@ namespace Vast
 
         // debug msg
         //printf ("[%lld] ID request from: %lld (%s:%d) actual address (%s:%d)\n", _host. addr.host_id, IP_sent, addr.publicIP.port, IP_actual, actual_addr.publicIP.port);
-
-        bool is_public = (actualIP.host == detectedIP.host);
+        
+        // we assume the remote host has public IP
+        // if actual IP is provided, we perform a more accurate check
+        bool is_public = true;
+                
+        if (actualIP != NULL)
+        {
+            is_public = (actualIP->host == detectedIP.host);
+        }
 
         // if the remote host does not have have public IP, assign one
         if (!is_public)      
