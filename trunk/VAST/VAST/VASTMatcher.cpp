@@ -264,7 +264,10 @@ namespace Vast
                     msg.msggroup = MSG_GROUP_VAST_CLIENT;
                     msg.priority = 1;
 
+                    // store both the assigned subscription ID, and also this matcher's address
+                    // (so the client may switch the current matcher)
                     msg.store (sub.id);
+                    msg.store (_self.addr);
                     msg.addTarget (in_msg.from);
                     sendMessage (msg);
                 }

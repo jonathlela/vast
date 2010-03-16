@@ -936,7 +936,10 @@ namespace Vast
         static float C_c = RELAY_CONSTANT_FRACTION;
 
 		// weight = err_i / (err_i + err_j)
+        // if local error is large relative to remote error, weight will be heavier
 		float weight;
+
+        // no error exists, we're perfect (possible to achieve?)
         if (ei + ej == 0)
             weight = 0;
         else

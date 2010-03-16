@@ -46,8 +46,10 @@ const int TIMEOUT_RELAY_JOIN  = 10;
 
 #define MAX_CONCURRENT_PING          (5)
 
-#define RELAY_CONSTANT_ERROR      (0.2f)     
-#define RELAY_CONSTANT_FRACTION   (0.1f)      
+// NOTE the below parameters need to be fine-tuned & tested
+//      currently local tests reveal that it'll take about 3-7 ping-pong to converge a physical coordinate upon join (~ 2 seconds)
+#define RELAY_CONSTANT_ERROR      (0.7f)     // affects how heavy the local error will count in updating the local error (moving average) 
+#define RELAY_CONSTANT_FRACTION   (1.0f)     // % of weight the position will move (given the difference between estimated / actual distance, larger = faster movement)
 #define RELAY_TOLERANCE           (0.5f)     // how much local error is considered okay
 #define RELAY_DEFAULT_ERROR       (1.0f)     // default value for local error
 

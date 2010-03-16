@@ -427,8 +427,10 @@ namespace Vast
                 }
 
                 id_t sub_no;
+                Addr matcher_addr;
                 in_msg.extract (sub_no);
-        
+                in_msg.extract (matcher_addr);
+          
                 _sub.id = sub_no;
                 _sub.active = true;
 
@@ -439,10 +441,31 @@ namespace Vast
                                       
                 // notify network so incoming messages can be processed by this host
                 notifyMapping (sub_no, &_net->getHostAddress ());
+
+                // record new matcher, if different from existing one
+                if (matcher_addr.host_id != _matcher_id)
+                {
+                    _matcher_id = matcher_addr.host_id;
+                    notifyMapping (matcher_addr.host_id, &matcher_addr);
+                }
             }
             break;
 
-            
+        // notification from existing matcher about a new current matcher
+        case MATCHER_NOTIFY:
+            {
+                // we only accept notify from current matcher
+                if (in_msg.from == _matcher_id)
+                {
+                    Addr new_matcher;
+                    in_msg.extract (new_matcher);
+
+                    _matcher_id = new_matcher.host_id;
+                    notifyMapping (_matcher_id, &new_matcher);
+                }
+            }
+            break;
+           
         // notification from VASTClient about currently known AOI neighbors
         case NEIGHBOR:
             {

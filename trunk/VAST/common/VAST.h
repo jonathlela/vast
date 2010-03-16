@@ -47,7 +47,8 @@ namespace Vast
         MATCHER_JOIN = VON_MAX_MSG,     // join the overlay as a matcher
         MATCHER_JOIN_R,                 // reply to the joining matcher
         MATCHER_JOINED,                 // notify gateway a matcher has joined successfully
-        MATCHER_CANDIDATE,              // notify gateway of a candidate matcher         
+        MATCHER_CANDIDATE,              // notify gateway of a candidate matcher    
+        MATCHER_NOTIFY,                 // current matcher notifying client of new current matcher
         PUBLISH,                        // publish a message         
         SUBSCRIBE,                      // send subscription
         SUBSCRIBE_R,                    // to reply whether a node has successfully subscribed (VON node joined)        
