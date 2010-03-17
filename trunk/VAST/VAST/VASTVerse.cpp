@@ -187,11 +187,14 @@ namespace Vast
     VASTVerse::
     VASTVerse (vector<IPaddr> &entries, VASTPara_Net *netpara, VASTPara_Sim *simpara)
     {
+        _state = ABSENT;
+
         _logined = false;
 
         // make the local copy of the parameters
         _entries = entries;
         _netpara = *netpara;
+
         if (simpara != NULL)
             _simpara = *simpara;
         else
@@ -266,6 +269,85 @@ namespace Vast
         _logined = false;
     }
 
+    // create & destroy a VASTNode
+    bool  
+    VASTVerse::createVASTNode (const IPaddr &gateway, Area &area, layer_t layer)
+    {
+        // right now can only create one
+        if (_vastinfo.size () != 0)
+            return false;
+
+        Subscription info;
+        size_t id = _vastinfo.size () + 1; 
+
+        // store info about the VASTNode to be created
+        // NOTE we store gateway's info in relay
+        info.relay.publicIP = gateway; 
+        info.aoi = area;
+        info.layer = layer;
+        info.id = id;
+
+        _vastinfo.push_back (info);
+
+        return true;
+    }
+
+    bool 
+    VASTVerse::destroyVASTNode (VAST *node)
+    {
+        if (_vastinfo.size () == 0)
+            return false;
+
+        _vastinfo.clear ();
+      
+        return destroyClient (node);
+    }
+
+    // obtain a reference to the created VASTNode
+    VAST *
+    VASTVerse::getVASTNode ()
+    {
+        // error check
+        if (_vastinfo.size () == 0)
+        {
+            printf ("VASTVerse::getVASTNode () attempt to get VASTNode without first calling createVASTNode ()\n");
+            return NULL;
+        }
+
+        VASTPointer *handlers = (VASTPointer *)_pointers;
+        Subscription &info = _vastinfo[0];
+
+        // create the VAST node
+        switch (_state)
+        {
+        case ABSENT:
+            if ((createClient (info.relay.publicIP)) != NULL)
+            {                            
+                _state = JOINING;
+            }
+            break;
+    
+        case JOINING:
+            if (handlers->client->isJoined ())
+            {
+                handlers->client->subscribe (info.aoi, info.layer);
+                _state = JOINING_2;
+            }
+            break;
+        case JOINING_2:
+            if (handlers->client->getSubscriptionID () != NET_ID_UNASSIGNED)
+            {
+                _state = JOINED;
+            }
+            break;
+        }
+
+        if (_state == JOINED)
+            return handlers->client;
+        else
+            return NULL;
+    }
+
     // whether this VASTVerse is initialized to create VASTNode instances
     bool 
     VASTVerse::isLogined ()
@@ -332,7 +414,7 @@ namespace Vast
             printf ("VASTVerse::isLogined () VASTRelay obtained [%llu] (%.3f, %.3f)\n", handlers->net->getHostID (), physcoord->x, physcoord->y);
 
             // create (idle) 'matcher' instance
-            handlers->matcher = new VASTMatcher ();
+            handlers->matcher = new VASTMatcher (_netpara.overload_limit);
             handlers->msgqueue->registerHandler (handlers->matcher);
 
             _logined = true;
@@ -474,7 +556,7 @@ namespace Vast
     // obtain access to Voronoi class (usually for drawing purpose)
     // returns NULL if matcher does not exist on this node
     Voronoi *
-    VASTVerse::getVoronoi ()
+    VASTVerse::getMatcherVoronoi ()
     {
         if (isLogined () == false)
             return NULL;

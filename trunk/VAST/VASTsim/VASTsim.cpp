@@ -70,11 +70,9 @@ int InitPara (VAST_NetModel model, VASTPara_Net &netpara, SimPara &simpara, cons
     netpara.port  = GATEWAY_DEFAULT_PORT;
     netpara.step_persec = STEPS_PER_SECOND;
 
-/*
-    netpara.peer_limit = 100;
-    netpara.relay_limit = 10;
-    netpara.client_limit = 10;
-*/
+    netpara.relay_limit     = 0;
+    netpara.client_limit    = 0;
+    netpara.overload_limit  = 0;
 
     simpara.NODE_SIZE = 10;
 
@@ -143,12 +141,13 @@ int InitPara (VAST_NetModel model, VASTPara_Net &netpara, SimPara &simpara, cons
 #endif
 */
         netpara.step_persec   = simpara.STEPS_PERSEC;           
-        aoi.radius            = simpara.AOI_RADIUS;
+        netpara.overload_limit = simpara.OVERLOAD_LIMIT;
+        aoi.radius            = simpara.AOI_RADIUS;        
     }
     else  
     {
         // INI file not found, cannot perform simulation
-        if (node_no != (-1))
+        if (node_no != 0)
         {
             printf ("warning: INI file is not found at working directory, it's required for simulation\n");
             return (-1);
@@ -225,6 +224,7 @@ bool ReadPara (SimPara &para)
         &para.DOWNLOAD_LIMIT,
         &para.PEER_LIMIT,
         &para.RELAY_LIMIT,
+        &para.OVERLOAD_LIMIT,
         0
     };
 

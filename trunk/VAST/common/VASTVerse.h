@@ -53,6 +53,7 @@ namespace Vast
         Position        phys_coord;     // default physical coordinate (optional)
         int             client_limit;   // max number of clients connectable to this relay
         int             relay_limit;    // max number of relays each node maintains
+        int             overload_limit; // max number of subscriptions at each matcher
         int             conn_limit;     // connection limit
         int             step_persec;    // step/ sec (network layer)
         size_t          send_quota;     // upload quota (bandwidth limit)
@@ -90,26 +91,14 @@ namespace Vast
         VASTVerse (vector<IPaddr> &entries, VASTPara_Net *netpara, VASTPara_Sim *simpara);
         ~VASTVerse ();
 
-        // whether we'ved connect with the closest relay
-        // (ready to create client)
-        bool isLogined ();
+        // create & destroy a VASTNode
+        // currently only supports one per VASTVerse
+        bool createVASTNode (const IPaddr &gateway, Area &area, layer_t layer);    
+        bool destroyVASTNode (VAST *node);
 
-        // obtain my virtual coordinate in the physical Internet
-        // return NULL if not yet ready
-        //Position *getPhysicalCoordinate ();
-
-        // obtain topology class
-        // TODO: necessary to make VASTRelay public?
-        //VASTRelay *getVASTRelay ();
-
-        // create & destroy a VAST client
-        VAST *   createClient (const IPaddr &gateway);
-        bool     destroyClient (VAST *node);
-
-        // obtain & destory a Voronoi object
-        Voronoi *createVoronoi ();
-        bool     destroyVoronoi (Voronoi *v);
-
+        // obtain a reference to the created VASTNode
+        VAST *getVASTNode ();
+       
         // TODO: support this function? so clients can enter a different world
         //       without having to destroyClient?
         // bool switchWorld (IPaddr &gateway);
@@ -128,7 +117,7 @@ namespace Vast
 
         // obtain access to Voronoi class of the matcher (usually for drawing purpose)
         // returns NULL if matcher does not exist on this node
-        Voronoi *getVoronoi ();
+        Voronoi *getMatcherVoronoi ();
 
         // obtain the tranmission size by message type, default is to return all types
         size_t  getSendSize (const msgtype_t msgtype = 0);
@@ -145,11 +134,25 @@ namespace Vast
 
     private:
 
+        // create & destroy a VAST client
+        VAST *   createClient (const IPaddr &gateway);
+        bool     destroyClient (VAST *node);
+
+        // obtain & destory a Voronoi object
+        Voronoi *createVoronoi ();
+        bool     destroyVoronoi (Voronoi *v);
+
+        // whether we'ved connect with the closest relay
+        // (ready to create client)
+        bool isLogined ();
+
+        NodeState           _state;
         VASTPara_Net        _netpara;
         VASTPara_Sim        _simpara;
         void               *_pointers;      // pointers to VASTPointer
         bool                _logined;
 
+        vector<Subscription> _vastinfo;     // info about a VASTNode to be created
         vector<IPaddr>      _entries;       // entry points for the overlay
     };
 

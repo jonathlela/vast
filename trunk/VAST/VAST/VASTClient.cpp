@@ -335,7 +335,7 @@ namespace Vast
 
     // whether the current node is listening for publications
     id_t 
-    VASTClient::isSubscribing ()
+    VASTClient::getSubscriptionID ()
     {
         if (_sub.active == false)
             return 0;

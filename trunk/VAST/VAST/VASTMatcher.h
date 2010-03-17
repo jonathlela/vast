@@ -42,6 +42,12 @@
 
 using namespace std;
 
+// load balancing settings
+#define MATCHER_MOVEMENT_FRACTION (0.1f)    // fraction of remaining distance to move for arbitrators
+
+#define TIMEOUT_OVERLOAD_REQUEST  (3)       // seconds to re-send a overload help request
+
+
 namespace Vast
 {
 
@@ -51,7 +57,7 @@ namespace Vast
 
     public:
 
-        VASTMatcher ();
+        VASTMatcher (int overload_limit);
         ~VASTMatcher ();
         
         // join the Matcher overlay at a logical location for a given world
@@ -141,24 +147,59 @@ namespace Vast
         // update the neighbor list for each subscriber
         void updateSubscriptionNeighbors ();
 
+        //
+        // Matcher maintain functions
+        //
+
+        // whether the matcher has properly joined the VON network
+        void checkMatcherJoin ();
+
+        // change position of matcher for load balancing purpose
+        void moveMatcher ();
+
+        // update the list of neighboring matchers
+        void updateMatchers ();
+
+        // check to call additional matchers for load sharing
+        void checkOverload ();
+
+        // let current node know of overload/underload status
+        void notifyLoading (int status);
+        
+        // check to see if subscriptions have migrated 
+        int transferOwnership ();
+
+        // tell clients updates of their neighbors (changes in other nodes subscribing at same layer)
+        void notifyClients (); 
+
+        // obtain the center of currently subscribing clients
+        bool getSubscriptionCenter (Position &sub_center);
+
         Node                _self;          // information regarding current node
         NodeState           _state;         // current state
         Node                _newpos;        // new AOI & position to be updated
 
         Addr                _gateway;       // info about the gateway server
 
-        VONPeer *           _VONpeer;     // interface as a participant in a VON
-        
-        //map<id_t,VONPeer *> _peers;     // pointers to peers hosted on this relay (might include my own peer)
-        //map<id_t,NodeState> _peer_state;// the join state of peers hosted on this relay
-        //map<id_t, id_t>     _peer2host; // host_IDs of the peers hosted on this relay        
-
-        //map<id_t, id_t>     _host2peer;   // state of subscriptions (of remote hosts)
-        
-        StatType            _peerstat;      // stats for peers hosted on this relay
+        VONPeer *           _VONpeer;       // interface as a participant in a VON
 
         map<id_t, Subscription> _subscriptions; // a list of subscribers managed by this matcher
-                                            // searchable by the hostID of the subscriber
+                                                // searchable by the hostID of the subscriber
+
+        // TODO: record these counters in other cleaner ways?
+        int                 _overload_limit;    // maximum # of subscriptions at a matcher
+
+        // counters
+        int                 _load_counter;          // counter for # of timesteps overloaded (positive) or underloaded (negative)
+        //int                 _overload_requests;     // counter for # of times a OVERLOAD_M request is sent
+
+        int                 _tick;          // number of logical steps
+
+        //
+        // stat collection
+        //
+
+        StatType        _stat_sub;          // statistics on actual subscriptions at this matcher
                                             
 	};
 

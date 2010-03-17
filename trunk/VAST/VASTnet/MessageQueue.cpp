@@ -310,9 +310,14 @@ namespace Vast
                 {
                     recvmsg->from = from_list[i];
 
-                    // send DISCONNECT to all handlers
-                    for (it = _handlers.begin (); it != _handlers.end (); it++)                    
-                        it->second->handleMessage (*recvmsg);
+                    // send DISCONNECT to all handlers, note that msgtype may be replaced by
+                    // the message handlers when handling the DISCONNECT message (e.g., replace VON_DISCONNECT with DISCONNECT, as by VASTMatcher)
+                    for (it = _handlers.begin (); it != _handlers.end (); it++)  
+                    {
+                        // make sure DISCONNECT is specified every time
+                        recvmsg->msgtype = DISCONNECT;
+                        it->second->handleMessage (*recvmsg);                        
+                    }
 
                     // remove id to host mapping
                     _id2host.erase (from_list[i]);

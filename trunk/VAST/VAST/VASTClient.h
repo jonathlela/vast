@@ -117,7 +117,7 @@ namespace Vast
 
         // whether the current node is listening for publications, returns subscription ID
         // 0 indicates no subscription
-        id_t isSubscribing ();
+        id_t getSubscriptionID ();
 
         // if I'm a relay
         inline bool isRelay ();

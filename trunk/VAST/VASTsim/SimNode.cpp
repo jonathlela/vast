@@ -38,8 +38,9 @@
             entries.push_back (_gateway.publicIP);
         
         _world = new VASTVerse (entries, &_netpara, &_simpara);
+        _world->createVASTNode (_gateway.publicIP, _self.aoi, LAYER_UPDATE);
 
-        state = IDLE;
+        state = WAITING;
 
         _last_recv = _last_send = 0;        
         clear_variables ();
@@ -48,7 +49,7 @@
     SimNode::~SimNode ()
     {   
         vnode->leave ();
-        _world->destroyClient (vnode);
+        _world->destroyVASTNode (vnode);
         delete _world;
     }
 
@@ -152,36 +153,12 @@
     
     void SimNode::processmsg ()
     {        
-        // check if we have properly joined the overlay, and should initiate
-        // subscription
-        if (state == IDLE)
-        {
-            // TODO: we should obtain a physical coordinate point for joining
-            //       right now we just use the logical coord as the physical coordinate            
-
-            if ((vnode = _world->createClient (_gateway.publicIP)) != NULL)
+        // check if we have properly joined the overlay and subscribed
+        if (state == WAITING)
+        {            
+            if ((vnode = _world->getVASTNode ()) != NULL)
             {
-                //vnode->join (gateway.publicIP);
-                state = WAITING;
-            }
-        }
-
-        else if (state == WAITING)
-        {
-            if (vnode->isJoined ())
-            {
-                // after the VASTnode has successfully joined the overlay, 
-                // get assigned unique ID & initiate subscription
-                vnode->subscribe (_self.aoi, LAYER_UPDATE);
-                state = SUBSCRIBING;                           
-            }
-        }
-
-        else if (state == SUBSCRIBING)
-        {
-            if (vnode->isSubscribing ())
-            {
-                _sub_no = vnode->isSubscribing ();
+                _sub_no = vnode->getSubscriptionID ();
                 _self.id = _sub_no;
                 state = NORMAL;
             }

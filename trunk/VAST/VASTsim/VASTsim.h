@@ -71,14 +71,13 @@ typedef struct {
     int     DOWNLOAD_LIMIT;     // download bandwidth limitation
     int     PEER_LIMIT;         // max # of peers hosted at each relay
     int     RELAY_LIMIT;        // max # of relays each node keeps
-    int     OVERLOAD_LIMIT;     // limit to consider as overloaded (not used)
+    int     OVERLOAD_LIMIT;     // limit to consider as overloaded
 } SimPara;
 
 typedef enum  
 {
     IDLE,
     WAITING,
-    SUBSCRIBING,
     NORMAL,
     FAILING,
     FAILED

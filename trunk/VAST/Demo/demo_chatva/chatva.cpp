@@ -115,7 +115,7 @@ VOID Render (HWND hWnd)
 
 #ifdef USE_VAST
     vector<Node *>&nodes = g_self->list ();
-    g_Voronoi = g_world->getVoronoi ();
+    g_Voronoi = g_world->getMatcherVoronoi ();
 #else
     vector<Node *>&nodes = g_self->getNeighbors ();    
 #endif
@@ -337,63 +337,16 @@ VOID MoveOnce (HWND hWnd)
 VOID CheckJoin ()
 {
 #ifdef USE_VAST
-
-    /*
-    // create the VAST node
     if (g_state == ABSENT)
     {
-        if ((g_self = g_world->createClient (g_gateway.publicIP)) != NULL)
-        {                                    
-            // non-gateway join as Client only 
-            if (g_self->getSelf ()->id == NET_ID_GATEWAY)
-                g_self->join (g_aoi.center, true);
-            else
-                g_self->join (g_aoi.center, false);
-            
-            g_state = JOINING;
-        }
-    }       
-    
-    else if (g_state == JOINING)
-    {           
-        if (g_self->isJoined ())
+        if ((g_self = g_world->getVASTNode ()) != NULL)
         {
-            g_sub_no = g_self->subscribe (g_self->getSelf ()->aoi, VAST_EVENT_LAYER);
+            g_sub_no = g_self->getSubscriptionID ();
             g_state = JOINED;
         }
     }
-    */
-    
-    // create the VAST node
-    switch (g_state)
-    {
-    case ABSENT:
-        if ((g_self = g_world->createClient (g_gateway.publicIP)) != NULL)
-        {                            
-            g_state = JOINING;
-        }
-        break;
 
-    case JOINING:
-        if (g_self->isJoined ())
-        {
-            g_self->subscribe (g_aoi, VAST_EVENT_LAYER);
-            g_state = JOINING_2;
-        }
-        break;
-    case JOINING_2:
-        if (g_self->isSubscribing () != NET_ID_UNASSIGNED)
-        {
-            g_sub_no = g_self->isSubscribing ();
-            g_state = JOINED;
-        }
-        break;
-
-    default:
-        break;
-    }
 #else
-
     // created the agent & arbitrator
     if (g_state == ABSENT)
     {
@@ -419,7 +372,6 @@ VOID CheckJoin ()
 
         g_state = JOINED;        
     }
-
 #endif
 
 }
@@ -483,7 +435,7 @@ LRESULT WINAPI MsgProc (HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
                 if (g_state == JOINED)            
                     MoveOnce (hWnd);
                 else
-                {                
+                {              
                     CheckJoin ();
 
                     // update window title if we've just joined
@@ -701,6 +653,7 @@ INT WINAPI WinMain (HINSTANCE hInst, HINSTANCE, LPSTR lpCmdLine, INT)
 
     // create VAST node factory    
     g_world = new VASTVerse (entries, &g_netpara, NULL);
+    g_world->createVASTNode (g_gateway.publicIP, g_aoi, VAST_EVENT_LAYER);
 
 #else
     VASTATEPara para;
@@ -741,7 +694,8 @@ INT WINAPI WinMain (HINSTANCE hInst, HINSTANCE, LPSTR lpCmdLine, INT)
     UnregisterClass ("VASTdemo", hInst);
 
 #ifdef USE_VAST
-    g_world->destroyClient (g_self);
+    g_world->destroyVASTNode (g_self);
+
 #else
     
     g_world->destroyNode ();

@@ -152,24 +152,9 @@ void checkJoin ()
     switch (g_state)
     {
     case ABSENT:
-        if ((g_self = g_world->createClient (g_gateway.publicIP)) != NULL)
+        if ((g_self = g_world->getVASTNode ()) != NULL)
         {                
-            //g_self->join ();
-            g_state = JOINING;
-        }
-        break;
-
-    case JOINING:
-        if (g_self->isJoined ())
-        {
-            g_self->subscribe (g_aoi, VAST_EVENT_LAYER);
-            g_state = JOINING_2;
-        }
-        break;
-    case JOINING_2:
-        if (g_self->isSubscribing () != NET_ID_UNASSIGNED)
-        {
-            g_sub_no = g_self->isSubscribing ();
+            g_sub_no = g_self->getSubscriptionID (); 
             g_state = JOINED;
         }
         break;
@@ -471,6 +456,8 @@ int main (int argc, char *argv[])
 
     // create VAST node factory    
     g_world = new VASTVerse (entries, &g_netpara, NULL);
+    g_world->createVASTNode (g_gateway.publicIP, g_aoi, VAST_EVENT_LAYER);
+
 #else
 
     g_world = new VASTATE (para, g_netpara, NULL);    
@@ -667,7 +654,7 @@ int main (int argc, char *argv[])
     // depart
 #ifdef VAST_ONLY
     g_self->leave ();
-    g_world->destroyClient (g_self);
+    g_world->destroyVASTNode (g_self);
 #else
     if (g_agent != NULL)
     {

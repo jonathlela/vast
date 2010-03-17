@@ -133,7 +133,7 @@ namespace Vast
         virtual bool isJoined () = 0;
 
         // whether the current node is listening for publications
-        virtual id_t isSubscribing () = 0;
+        virtual id_t getSubscriptionID () = 0;
 
         // whether I am a relay node
         virtual bool isRelay () = 0;

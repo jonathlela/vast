@@ -860,10 +860,21 @@ class EXPORT Subscription : public Serializable
 public:
     Subscription ()
     {
+        clear ();
     }
 
     ~Subscription ()
     {
+    }
+
+    void clear ()
+    {
+        host_id = 0;
+        id = 0;   
+        layer = 0;        
+        active = false;    
+        in_region = false; 
+        time = 0;
     }
 
     bool addNeighbor (Subscription *neighbor)
