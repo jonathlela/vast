@@ -91,6 +91,13 @@ namespace Vast
         VASTVerse (vector<IPaddr> &entries, VASTPara_Net *netpara, VASTPara_Sim *simpara);
         ~VASTVerse ();
 
+        // whether we'ved connect with the closest relay
+        // (ready to create client)
+        bool isLogined ();
+        
+        // NOTE: to run a gateway-like entry point only, there's no need to call
+        //       createVASTNode (), as long as isLogined () returns success
+        
         // create & destroy a VASTNode
         // currently only supports one per VASTVerse
         bool createVASTNode (const IPaddr &gateway, Area &area, layer_t layer);    
@@ -141,10 +148,6 @@ namespace Vast
         // obtain & destory a Voronoi object
         Voronoi *createVoronoi ();
         bool     destroyVoronoi (Voronoi *v);
-
-        // whether we'ved connect with the closest relay
-        // (ready to create client)
-        bool isLogined ();
 
         NodeState           _state;
         VASTPara_Net        _netpara;

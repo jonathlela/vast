@@ -62,6 +62,9 @@ namespace Vast
         // get current physical timestamp
         virtual timestamp_t getTimestamp () = 0;
 
+        // get how many ticks exist in a second (for timeout-related tasks)
+        virtual int getTickPerSecond () = 0;
+
     };
 
 } // namespace Vast

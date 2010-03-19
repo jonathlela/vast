@@ -13,9 +13,8 @@ namespace Vast
     VASTMatcher::VASTMatcher (int overload_limit)
             :MessageHandler (MSG_GROUP_VAST_MATCHER), 
              _state (ABSENT),
-             _VONpeer (NULL),
+             _VSOpeer (NULL),
              _overload_limit (overload_limit),
-             _load_counter (0),
              _tick (0)
     {
     }
@@ -28,25 +27,31 @@ namespace Vast
     bool 
     VASTMatcher::join (const Position &pos)
     {
-        // avoid redundent join for a given arbitrator
-        if (_VONpeer != NULL)
+        // avoid redundent join for a given node
+        if (_VSOpeer != NULL)
             return false;
 
         // we use the hostID of the matcher as the ID in the matcher VON
-        _VONpeer = new VONPeer (_self.id, this);
-        
+        _VSOpeer = new VSOPeer (_self.id, this, this);
+       
         // NOTE: use a small default AOI length as we only need to know enclosing matchers
         _self.aoi.center = pos;
         _self.aoi.radius = 5;
-        _newpos = _self;
 
-        // we assume that a VAST node at the gateway can access the gateway VON node, 
-        // so a joining VON node can reach a gateway VON node (via the gateway VAST node) 
-        Node VON_gateway (_gateway.host_id, 0, _self.aoi, _gateway);
-        _VONpeer->join (_self.aoi, &VON_gateway);
+        // if we're gateway, then our VSOpeer also has to join
+        if (isGateway ())
+        {
+            Node gateway;
+            gateway.id = _gateway.host_id;
+            gateway.addr = _gateway;
 
-        _state = JOINING;
+            // NOTE: no need to send in gateway address
+            _VSOpeer->join (_self.aoi, &gateway);            
+        }
 
+        // matcher is considered joined (initialized complete) once VSOpeer is created
+        _state = JOINED; 
+              
         return true;
     }
 
@@ -57,12 +62,12 @@ namespace Vast
         if (isJoined () == false)
             return false;
 
-        // leave the arbitrator overlay
-        _VONpeer->leave ();
-        _VONpeer->tick ();
+        // leave the node overlay
+        _VSOpeer->leave ();
+        _VSOpeer->tick ();
 
-        delete _VONpeer;
-        _VONpeer = NULL;
+        delete _VSOpeer;
+        _VSOpeer = NULL;
 
         _state = ABSENT;
       
@@ -104,59 +109,16 @@ namespace Vast
         return (_gateway.host_id == _self.id);
     }
 
-    /*   
-    // get a particular peer's info
-    Node *
-    VASTMatcher::getPeer (id_t peer_id)
-    {
-        if (_peers.find (peer_id) != _peers.end ())
-            return _peers[peer_id]->getSelf ();
-        else
-            return NULL;
-    }
-
-    // obtain a list of peers hosted on this matcher
-    map<id_t, VONPeer *>& 
-    VASTMatcher::getPeers ()
-    {
-        return _peers;
-    }
-
-    // get # of peers hosted at this relay, returns NULL for no record (non-relay)
-    StatType *
-    VASTMatcher::getPeerStat ()
-    {
-        if (_relay_id != _self.id)
-            return NULL;
-
-        _peerstat.calculateAverage ();
-        return &_peerstat;
-    }
-
-    // get the neighbors for a particular peer
-    // returns NULL if the peer does not exist
-    vector<Node *> *
-    VASTMatcher::getPeerNeighbors (id_t peer_id)
-    {
-        if (_peers.find (peer_id) != _peers.end ())
-            return &_peers[peer_id]->getNeighbors ();
-        else
-            return NULL;
-    }
-    */
-
     // obtain access to Voronoi class (usually for drawing purpose)
     // returns NULL if the peer does not exist
     Voronoi *
     VASTMatcher::getVoronoi ()
     {
-        if (_VONpeer != NULL)
-            return _VONpeer->getVoronoi ();
+        if (_VSOpeer != NULL)
+            return _VSOpeer->getVoronoi ();
         else
             return NULL;
     }
-
-
 
     //
     // VONNetwork
@@ -199,6 +161,13 @@ namespace Vast
     VASTMatcher::getTimestamp ()
     {
         return _net->getTimestamp ();
+    }
+
+    // get the # of ticks in each second;
+    int 
+    VASTMatcher::getTickPerSecond ()
+    {
+        return _net->getTickPerSecond ();
     }
 
     // perform initialization tasks for this handler (optional)
@@ -244,7 +213,7 @@ namespace Vast
                 Subscription sub;
                 in_msg.extract (sub);
 
-                Voronoi *voronoi = _VONpeer->getVoronoi ();
+                Voronoi *voronoi = _VSOpeer->getVoronoi ();
 
                 // find the closest neighbor and forward
                 id_t closest = voronoi->closest_to (sub.aoi.center);
@@ -273,6 +242,9 @@ namespace Vast
                     msg.store (_self.addr);
                     msg.addTarget (in_msg.from);
                     sendMessage (msg);
+
+                    printf ("VASTMatcher: SUBSCRIBE request from [%llu] success\n", in_msg.from);
+
                 }
                 else
                 {
@@ -381,7 +353,9 @@ namespace Vast
                 {
                     vector<id_t> failed_targets;
 
-                    in_msg.msggroup = MSG_GROUP_VAST_CLIENT;
+                    //in_msg.msggroup = MSG_GROUP_VAST_RELAY;
+                    // NOTE: this message will be processed by a relay node
+                    //       under MESSAGE first
                     sendMessage (in_msg, &failed_targets);
 
                     // some targets are invalid, remove the subscribers
@@ -403,37 +377,44 @@ namespace Vast
             }
             break;
         
-        // receiving a published message
+        // receiving a forwarded message (source can be either PUBLISH or SEND)
         case MESSAGE:
             {
+                // forward message to clients 
 
-                // check sending to remote hosts
                 // NOTE must send to remote first before local, as sendtime will be extracted by local host
                 //      and the message structure will get changed
                 in_msg.msgtype = (app_msgtype << VAST_MSGTYPE_RESERVED) | MESSAGE;
                 in_msg.msggroup = MSG_GROUP_VAST_CLIENT;
                 sendMessage (in_msg);
 
-                // we should not have any local targets, as matchers receiving this message
-                // can only be relays 
+                // NOTE: we should not have any local targets, 
+                // as matchers receiving this message can only be relays 
 
-                /*
-                // check if the message is targeted locally
-                if (to_local)
+            }
+            break;
+
+        // process messages sent by clients to particular targets
+        case SEND:
+            {
+                // extract targets 
+                listsize_t n;
+                in_msg.extract (n, true);
+
+                // restore targets
+                in_msg.targets.clear ();
+                id_t target;
+                for (size_t i=0; i < n; i++)
                 {
-                    // restore app-specific message type
-                    in_msg.msgtype = app_msgtype;
-                    
-#ifdef VAST_RECORD_LATENCY
-                    timestamp_t sendtime;
-                    in_msg.extract (sendtime, true);
-                    recordLatency (PUBLISH, sendtime);
-#endif
-
-                    in_msg.reset ();
-                    storeMessage (in_msg);
+                    in_msg.extract (target, true);
+                    in_msg.addTarget (target);
                 }
-                */
+
+                in_msg.reset ();
+                in_msg.msgtype = (app_msgtype << VAST_MSGTYPE_RESERVED) | MESSAGE;
+
+                // send to correct targets
+                sendMessage (in_msg);
             }
             break;
 
@@ -451,7 +432,7 @@ namespace Vast
 
                 // if the host is a matcher, notify the VONPeer component
                 in_msg.msgtype = VON_DISCONNECT;
-                _VONpeer->handleMessage (in_msg);
+                _VSOpeer->handleMessage (in_msg);
 
             }
             break;
@@ -461,7 +442,7 @@ namespace Vast
             {
                 // check if the message is directed towards the VONpeer
                 if (in_msg.msgtype < VON_MAX_MSG)
-                    _VONpeer->handleMessage (in_msg);
+                    _VSOpeer->handleMessage (in_msg);
 
                 /*
                 // ignore messages not directly towards VONPeers
@@ -498,16 +479,13 @@ namespace Vast
     VASTMatcher::postHandling ()
     {
         // perform regular tick and check if our VONpeer has joined
-        if (_VONpeer == NULL)
+        if (_VSOpeer == NULL)
             return;
 
-        _VONpeer->tick ();
+        _VSOpeer->tick ();
 
-        if (_VONpeer->isJoined () == false)
+        if (_VSOpeer->isJoined () == false)
             return;
-
-        // make sure this matcher has properly notify gateway of its join
-        checkMatcherJoin ();
 
         // perform per-second tasks
         if (++_tick == _net->getTickPerSecond ())
@@ -518,15 +496,15 @@ namespace Vast
             //reportLoading ();
 
             // move matcher to new position
-            moveMatcher ();
+            //moveMatcher ();
 
         }
 
         // update the list of neighboring matchers
-        updateMatchers ();
+        refreshNeighbors ();
 
         // check to call additional matchers for load sharing
-        //checkOverload ();
+        checkOverload ();
 
         // check to see if subscriptions have migrated 
         transferOwnership ();
@@ -586,11 +564,6 @@ namespace Vast
             return false;
 
         _subscriptions.erase (sub_no);
-
-        /*
-        _peer_state.erase (sub_no);
-        _peer2host.erase (sub_no);
-        */
         
         return true;
     }
@@ -601,7 +574,7 @@ namespace Vast
     VASTMatcher::updateSubscriptionNeighbors ()
     {    
         // nodes within the Voronoi        
-        Voronoi *voronoi = _VONpeer->getVoronoi ();
+        Voronoi *voronoi = _VSOpeer->getVoronoi ();
 
         // clear visible neighbor states for all subscribers
         map<id_t, Subscription>::iterator it = _subscriptions.begin (); 
@@ -687,6 +660,7 @@ namespace Vast
     void
     VASTMatcher::checkMatcherJoin ()
     {
+        /*
         // check whether the matcher has properly notify gateway of its join
         if (_state == JOINING)
         {
@@ -704,113 +678,80 @@ namespace Vast
 
             _state = JOINED;
         }
-    }
-
-    // change position of this arbitrator in response to overload signals
-    void 
-    VASTMatcher::moveMatcher ()
-    {
-       // move myself towards the center of agents
-        Position center;
-        if (getSubscriptionCenter (center))
-            _newpos.aoi.center += ((center - _newpos.aoi.center) * MATCHER_MOVEMENT_FRACTION);
-
-        // if nothing has changed
-        if (_newpos.aoi.center == _self.aoi.center)
-            return;
-
-        // performe actual movement
-        _VONpeer->move (_newpos.aoi);
-
-        // update self info
-        // NOTE: currently only position will change, not AOI
-        _self.aoi.center = _newpos.aoi.center;
-
-        // update other info (such as AOI) for the new position
-        _newpos = _self;
+        */
     }
 
     // check with VON to refresh current neighboring matchers
     void 
-    VASTMatcher::updateMatchers ()
-    {
-        /*
-        vector<id_t> en_arb;
-        if (getEnclosingArbitrators (en_arb) == false)
+    VASTMatcher::refreshNeighbors ()
+    {        
+        vector<id_t> enclosing;
+        if (getEnclosingNeighbors (enclosing) == false)
             return;
 
-        map<id_t, Node *> node_map;
+        // we use the timestamp field in neighbor list to indicate aliveness
+        map<id_t, Node>::iterator it = _neighbors.begin ();
+
+        for (; it != _neighbors.end (); ++it)        
+            it->second.time = 0;
+       
         vector<id_t> targets;
 
-        // loop through new list of arbitrators and update my current list
+        // loop through new list to update my current list
         size_t i;
         bool has_changed = false;
 
-        for (i=0; i < en_arb.size (); ++i)
+        for (i=0; i < enclosing.size (); ++i)
         {
-            id_t id = en_arb[i];
-            Node *node = _VONpeer->getNeighbor (id);
+            id_t id = enclosing[i];
+            Node *node = _VSOpeer->getNeighbor (id);
 
-            // check if a new Arbitrator is found
-            if (_arbitrators.find (id) == _arbitrators.end ())
+            // check if a new neighbor is found
+            if (_neighbors.find (id) == _neighbors.end ())
             {
-                // add a new arbitrator
-                _arbitrators[id] = *node;
+                // add a new neighbor
+                has_changed = true;                
+                _neighbors[id] = *node;
+                _neighbors[id].time = 1;
 
-                //if (_event_queue.find (id) == _event_queue.end ())
-                //    _event_queue[id] = map<timestamp_t, vector<Event *> > ();
-
-                // arbitrator set has changed
-                has_changed = true;
-                                
-                // send owned objects to the new arbitrator
-                //sendObjects (id, true);
-                
-                // notify new arbitrator of objects that I own
-                targets.clear ();
-                targets.push_back (id);
-                notifyOwnership (targets);                
+                // TODO: notify new neighbor of things I own?
+                //targets.clear ();
+                //targets.push_back (id);
+                //notifyOwnership (targets);                
             }
             else 
             {
-                // update the arbitrator's info
-                _arbitrators[id].aoi.radius = node->aoi.radius;
+                Node &known = _neighbors[id];
+                // update the neighbor's info
+                known.aoi.radius = node->aoi.radius;
 
-                if (_arbitrators[id].aoi.center != node->aoi.center)
+                if (known.aoi.center != node->aoi.center)
                 {
-                    _arbitrators[id].aoi.center = node->aoi.center;
+                    known.aoi.center = node->aoi.center;
                     has_changed = true;
                 }
-            }
 
-            // create lookup map to find arbitrators that no longer are enclosing
-            node_map[id] = node;
+                known.time = 1;
+            }
         }
         
-        // loop through current list of arbitrators to remove those no longer connected
+        // loop through current list of nodes to remove those no longer connected
         vector<id_t> remove_list;
-        for (map<id_t, Node>::iterator it = _arbitrators.begin (); it != _arbitrators.end (); ++it)
+        for (it = _neighbors.begin (); it != _neighbors.end (); ++it)
         {
-            if (node_map.find (it->first) == node_map.end ())
+            if (it->second.time == 0)
             {
                 remove_list.push_back (it->first);
                 has_changed = true;
             }
         }
 
-        if (remove_list.size () > 0)
-        {
-            // remove arbitrators that are no longer enclosing
-            for (i=0; i < remove_list.size (); ++i)
-            {
-                // do it before _arbitrators list updates
-                //sendObjects (remove_list[i], true, true);
-                
-                _arbitrators.erase (remove_list[i]);                            
-            }
-        }
-
-        // notify connected agents of the change in enclosing arbitrators
+        // remove nodes that are no longer enclosing
+        for (i=0; i < remove_list.size (); ++i)                    
+            _neighbors.erase (remove_list[i]);                            
+        
+        // notify connected clients of change in 
+        /*
         if (has_changed)
         {
             for (map<id_t, Node>::iterator it = _agents.begin (); it != _agents.end (); it++)
@@ -818,7 +759,7 @@ namespace Vast
                 id_t agent = it->second.id;
                 notifyArbitratorship (agent);
             }
-        }
+        } 
         */
     }    
 
@@ -838,143 +779,37 @@ namespace Vast
 
         // if # of subscriptions exceed limit, notify for overload
         else if (n > _overload_limit)
-            notifyLoading (n);
+            _VSOpeer->notifyLoading (((float)n / (float)_overload_limit));
         
         // underload
         // TODO: if UNDERLOAD threshold is not 0,
         // then we need proper mechanism to transfer subscription out before matcher departs
         else if (n == 0)
-            notifyLoading (-1);
+            _VSOpeer->notifyLoading ((float)(-1));
         
         // normal loading
         else
-            notifyLoading (0);
+            _VSOpeer->notifyLoading (0);
     }
 
-
-    // Arbitrator overloaded, call for help
-    // note that this will be called continously until the situation improves
-    void
-    VASTMatcher::notifyLoading (int status)
-    {                               
-        switch (status)
-        {
-        // normal load
-        case 0:           
-            _load_counter = 0;
-            return;
-        // underload
-        case -1:
-            _load_counter--;
-            break;
-        default:
-            _load_counter++;
-        }
-
-        /*
-        // if overload persists, we try to insert new matcher
-        if (_load_counter > TIMEOUT_OVERLOAD_REQUEST * _net->getTickPerSecond ())
-        {    
-            // reset
-            if (_overload_requests < 0)
-                _overload_requests = 0;
-
-            _overload_requests++;
-                       
-            // if the overload situation just occurs, try to move boundary first
-            if (_overload_requests < 5) 
-            {
-                // notify neighbors to move closer                            
-                id_t self_id = _VONpeer->getSelf ()->id;
-                listsize_t load = (listsize_t)status;
-                        
-                // send the level of loading to neighbors
-                // NOTE: important to store the VONpeer ID as this is how the responding arbitrator will recongnize
-                Message msg (OVERLOAD_M);        
-                msg.from = self_id;         
-                msg.priority = 1;
-            
-                msg.store (load);
-                if (getEnclosingArbitrators (msg.targets) == true)
-                    sendMessage (msg);
-            }
-
-            // if the overload situation persists, 
-            // ask gateway to insert arbitrator at given location
-            else
-            {           
-                Position pos = findArbitratorInsertion (_VONpeer->getVoronoi (), _VONpeer->getSelf ()->id);
-            
-                Message msg (OVERLOAD_I);
-                msg.priority = 1;
-                msg.store ((char *)&status, sizeof (int));
-                msg.store (pos);
-                msg.addTarget (NET_ID_GATEWAY);
-                sendMessage (msg);    
-
-                _overload_requests = 0;
-            }      
-
-            _load_counter = 0;
-        }
-        // underload event
-        else if (_load_counter < (-TIMEOUT_OVERLOAD_REQUEST))
-        {            
-            // reset
-            if (_overload_requests > 0)
-                _overload_requests = 0;
-
-            _overload_requests--;
-
-            if (_overload_requests > (-5))
-            {
-                // TODO: notify neighbors to move further away?
-            }
-
-            // check for arbitrator departure
-            else if (isGateway (_self.id) == false)
-            {                
-                // depart as arbitrator if loading is below threshold
-                
-                //leave ();
-
-                // notify gateway that I'm available again
-                //Message msg (ARBITRATOR_C);
-                //msg.priority = 1;
-                //msg.store (_self);
-                //msg.addTarget (NET_ID_GATEWAY);
-                //sendMessage (msg);
-                
-
-                _overload_requests = 0;
-            }
-                    
-            _load_counter = 0;
-        }
-        // normal loading, reset # of OVERLOAD_M requests
-        else if (_load_counter == 0)
-            _overload_requests = 0;
-        */
-    }
 
     // see if any of my objects should transfer ownership
-    // or if i should claim ownership to any new objects (if neighboring arbitrators fail)
+    // or if i should claim ownership to any new objects (if neighboring nodes fail)
     int 
     VASTMatcher::transferOwnership ()
     {        
-        if (_VONpeer == NULL || _state != JOINED)
+        if (_state != JOINED || _VSOpeer == NULL || _VSOpeer->isJoined () == false)
             return 0;
         
-        
-        // get a reference to the Voronoi object and my VON id
-        Voronoi *voronoi = _VONpeer->getVoronoi ();
-        id_t VON_selfid  = _VONpeer->getSelf ()->id;
-
         int num_transfer = 0;
-        /*
         
+        /*
+        // get a reference to the Voronoi object and my VON id
+        Voronoi *voronoi = _VSOpeer->getVoronoi ();
+        id_t VON_selfid  = _VSOpeer->getSelf ()->id;
+                      
         //
-        // transfer ownership of currently owned objects to neighbor arbitrators
+        // transfer ownership of currently owned objects to neighbor nodes
         //
         for (map<obj_id_t, StoredObject>::iterator it = _obj_store.begin (); it != _obj_store.end (); ++it)
         {
@@ -993,16 +828,16 @@ namespace Vast
                     else
                         _transfer_countdown[obj_id]--;
 
-                    // if counter's up, then begin transfer to nearest arbitrator
+                    // if counter's up, then begin transfer to nearest node
                     if (_transfer_countdown[obj_id] == 0)
                     {
                         id_t closest = voronoi->closest_to (obj->getPosition ());
                         
-                        vector<id_t> en_arb;
+                        vector<id_t> enclosing;
                         if (closest != VON_selfid)
                         {
 #ifdef SEND_OBJECT_ON_TRANSFER
-                            // send full states to the neighbor arbitrator first
+                            // send full states to the neighbor node first
                             vector<id_t> targets;
                             targets.push_back (closest);                            
                             sendFullObject (obj, targets, MSG_GROUP_VASTATE_ARBITRATOR);
@@ -1015,26 +850,26 @@ namespace Vast
                             msg.store (VON_selfid);
 
                             
-                            // TODO: notify other arbitrators to remove ghost objects?
+                            // TODO: notify other nodes to remove ghost objects?
                             // remove closest & send to all other neighbors
                             // causes crash? 
 
                             
-                            if (getEnclosingArbitrators (en_arb))
+                            if (getEnclosingArbitrators (enclosing))
                             {
                                 // remove the closest from list
-                                for (size_t i=0; i < en_arb.size (); i++)
+                                for (size_t i=0; i < enclosing.size (); i++)
                                 {
-                                    if (en_arb[i] == closest) 
+                                    if (enclosing[i] == closest) 
                                     {
-                                        en_arb.erase (en_arb.begin () + i);
+                                        enclosing.erase (enclosing.begin () + i);
                                         break;
                                     }
                                 }
-                                // send to non-closest enclosing arbitrators
-                                if (en_arb.size () > 0)
+                                // send to non-closest enclosing nodes
+                                if (enclosing.size () > 0)
                                 {
-                                    msg.targets = en_arb;
+                                    msg.targets = enclosing;
                                     sendMessage (msg);
                                     msg.targets.clear ();
                                 }
@@ -1096,7 +931,7 @@ namespace Vast
                 if (it->second.is_owner == false)
                 {
                     // initiate a countdown, and if the countdown is reached, 
-                    // automatically claim ownership (we assume neighboring arbitrators will
+                    // automatically claim ownership (we assume neighboring nodes will
                     // have consensus over ownership eventually, as topology becomes consistent)
                     if (_reclaim_countdown.find (obj_id) == _reclaim_countdown.end ())
                         _reclaim_countdown[obj_id] = COUNTDOWN_TRANSFER * 4;
@@ -1106,7 +941,7 @@ namespace Vast
                     // we claim ownership if countdown is reached
                     if (_reclaim_countdown[obj_id] == 0)
                     {                         
-                        // reclaim only if we're the closest arbitrator
+                        // reclaim only if we're the closest node
                         if (it->second.closest_arb == 0)
                         {
                             it->second.is_owner = true;
@@ -1122,11 +957,11 @@ namespace Vast
                         _reclaim_countdown.erase (obj_id);
                         
                         // NOTE: we do not notify the agent, as the agent
-                        //       should detect current arbitrator leave by itself,
+                        //       should detect current node leave by itself,
                         //       and reinitiate sending the JOIN event to 
-                        //       its new current arbitrator
+                        //       its new current node
                         //
-                        // notify avatar object's agent's of its new arbitrator
+                        // notify avatar object's agent's of its new node
                         if (obj->agent != 0)
                         {                                                        
                             Message msg (REJOIN);
@@ -1290,10 +1125,91 @@ namespace Vast
 
     }
 
+    // get a list of my enclosing nodes
+    bool 
+    VASTMatcher::getEnclosingNeighbors (vector<id_t> &list)
+    {
+        vector<Node *> &nodes   = _VSOpeer->getNeighbors ();
+        Voronoi *voronoi        = _VSOpeer->getVoronoi ();
+
+        if (nodes.size () <= 1 || voronoi == NULL)
+            return false;
+
+        id_t self_id = _VSOpeer->getSelf ()->id;
+
+        list.clear ();
+
+        for (size_t i=0; i < nodes.size (); i++)
+        {
+            id_t id = nodes[i]->id;
+
+            // skip self or non-enclosing neighbors
+            if (id == self_id || voronoi->is_enclosing (id) == false)
+                continue;
+
+            list.push_back (id);
+        }
+
+        return true;
+    }
+
+
+    /*
+    // obtain the position to insert a new matcher
+    Position
+    VASTMatcher::findInsertion (Voronoi *voronoi)
+    {
+        vector<Position> legal_positions;
+
+        Position sub_center;              
+        
+        // get center of all known agents
+        getSubscriptionCenter (sub_center);
+        
+        // find center of nodes
+        Position arb_center;        
+        
+        // final insert position
+        Position insert_pos;        
+
+        if (getArbitratorCenter (arb_center))
+        {
+            // final center        
+            insert_pos.x = (coord_t)((arb_center.x + agent_center.x) / 2.0);
+            insert_pos.y = (coord_t)((arb_center.y + agent_center.y) / 2.0);
+        }
+        else
+            insert_pos = agent_center;
+      
+        if (isLegalPosition (insert_pos))
+            legal_positions.push_back (insert_pos);
+        else if (isLegalPosition (arb_center))
+            legal_positions.push_back (arb_center);        
+        else if (isLegalPosition (agent_center))
+            legal_positions.push_back (agent_center);
+
+        // generate a legal random position if no positions are available
+        if (legal_positions.size () == 0)
+        {
+            Position pos;
+            do
+            {
+                pos.set ((coord_t)(rand () % _para.world_width), (coord_t)(rand () % _para.world_height), 0);
+            } 
+            while (!isLegalPosition (pos));
+
+            legal_positions.push_back (pos);
+        }
+
+        // randomly select a center
+        int r = _self.id % legal_positions.size ();
+        return legal_positions[r];
+    }
+    */
 
     // get the center of all current agents I maintain
     bool
-    VASTMatcher::getSubscriptionCenter (Position &sub_center)
+    VASTMatcher::getLoadCenter (Position &sub_center)
     {
         if (_subscriptions.size () == 0)
             return false;
@@ -1315,5 +1231,26 @@ namespace Vast
         return true;
     }
 
+    // whether the current node can be a spare node for load balancing
+    bool 
+    VASTMatcher::isCandidate ()
+    {
+        // currently all nodes with public IP can be candidates
+        return _net->isPublic ();
+    }
+
+    // obtain the ID of the gateway node
+    id_t 
+    VASTMatcher::getGatewayID ()
+    {
+        return _gateway.host_id;
+    }
+
+    // whether is particular ID is the gateway node
+    bool 
+    VASTMatcher::isGateway (id_t id)
+    {
+        return (_gateway.host_id == id);
+    }
 
 } // end namespace Vast

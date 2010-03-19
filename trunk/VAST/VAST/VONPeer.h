@@ -46,11 +46,8 @@ using namespace std;
 namespace Vast
 {
 
-// NOTE that we assume roughly 10 ticks per second
-#define TICK_PER_SECOND     (10)
-
-#define MAX_DROP_COUNT      (2  * TICK_PER_SECOND) // # of ticks to disconnect a non-overlapped neighbor
-#define MAX_TIMELY_PERIOD   (60 * TICK_PER_SECOND) // # of ticks to be considered as still active
+#define MAX_DROP_COUNT      (2)     // # of seconds to disconnect a non-overlapped neighbor
+#define MAX_TIMELY_PERIOD   (60)    // # of seconds to be considered as still active
     
 // NOTE: a way to estimate the proper buffer:
 //       average speed * 3 hops (from neighbor detection to discovery) * 2 (nodes heading towards directly)
@@ -88,6 +85,8 @@ namespace Vast
         VON_MOVE_FB,        // VON's move for boundary neighbors with full notification on AOI
         VON_BYE,            // VON's disconnecting a remote node
         VON_NODE            // discovery of new nodes 
+
+        // NOTE: to add new messag types, must modify starting number for VSO_Message as well
     } VON_Message;
 
 
@@ -105,7 +104,7 @@ namespace Vast
         ~VONPeer ();                        
 
         // join & leave the overlay 
-        void        join (Area &aoi, Node *gateway = NULL);
+        void        join (Area &aoi, Node *gateway);
         void        leave (bool notify_neighbors = true);
                         
         // move a subscription area to a new position
@@ -135,9 +134,23 @@ namespace Vast
         void tick ();
 
         // returns whether the message was successfully handled
-        bool handleMessage (Message &in_msg);
+        // decleared as 'virtual' to allow partial override of its functions
+        virtual bool handleMessage (Message &in_msg);
 
-private:
+    protected:
+
+        //
+        // variables accessible by sub-class of VONPeer
+        //
+
+        VONNetwork         *_net;                       // pointer to network interface
+        Node                _self;                      // info about my self
+        NodeState           _state;                     // state of joining
+        vector<Node *>      _neighbors;                 // a list of currently connected neighboring managers
+        
+        Voronoi            *_Voronoi;                   // a Voronoi diagram for keeping AOI neighbors                
+
+    private:
 
         //
         //  process functions
@@ -192,17 +205,12 @@ private:
         inline bool isRelevantNeighbor (Node &node1, Node &node2, length_t buffer = 0);
 
         // whether a neighbor has stayed alive with regular updates
-        inline bool isTimelyNeighbor (id_t id, timestamp_t period = MAX_TIMELY_PERIOD);
+        // period is in seconds
+        inline bool isTimelyNeighbor (id_t id, int period = MAX_TIMELY_PERIOD);
 
         // check if a node is self
         inline bool isSelf (id_t id);
 
-        VONNetwork         *_net;                       // pointer to network interface
-        Node                _self;                      // info about my self
-        NodeState           _state;                     // state of joining
-        vector<Node *>      _neighbors;                 // a list of currently connected neighboring managers
-        
-        Voronoi            *_Voronoi;                   // a Voronoi diagram for keeping AOI neighbors                
                  
         map<id_t, Node>     _id2node;                   // mapping from id to basic node info                        
         map<id_t, map<id_t, int> *> _neighbor_states;   // neighbors' knowledge of my neighbors (for neighbor discovery check)        

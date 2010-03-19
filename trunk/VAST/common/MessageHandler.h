@@ -85,21 +85,9 @@ namespace Vast
         // get a specific address by nodeID
         Addr &getAddress (id_t id);
 
-        // obtain a unique ID generated on this host, based on an optional user-specified group ID
-        //id_t getUniqueID (int group_id = 0, bool is_gateway = false);
-
         // used by MessageQueue only to store pointer to the MessageQueue
         // returns the unique ID for this handler
         id_t setQueue (void *msgqueue, VASTnet *net);
-
-        /*
-        // test if an ID is from gateway
-        bool isGatewayID (id_t id);
-
-        // obtain address to Gateway
-        Addr &getGateway ();
-        */
-
 
         byte_t       _msggroup;         // unique ID to identify which message group the handler belongs
         void *       _msgqueue;         // pointer to message queue (in case to register new handlers from within)    

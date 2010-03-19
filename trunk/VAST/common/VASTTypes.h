@@ -538,7 +538,7 @@ public:
 
     void getString (char *p)
     {
-        sprintf (p, "%d.%d.%d.%d", (int)((host>>24) & 0xff), (int)((host>>16) & 0xff), (int)((host>>8) & 0xff), (int)(host & 0xff));
+        sprintf (p, "%d.%d.%d.%d:%u\0", (int)((host>>24) & 0xff), (int)((host>>16) & 0xff), (int)((host>>8) & 0xff), (int)(host & 0xff), port);
     }
 
     void parseIP (const std::string & instr)
@@ -669,13 +669,9 @@ public:
         //static std::string str;
 
         // temp variables to help output
-        std::ostringstream oss;
-        char tmpstr[4*4];   // max 3 digit + 1 dot and 4 fields totally
-
-        str.empty ();
-
+        char tmpstr[4*4+7];   // max 3 digit + 1 dot and 4 fields + ":" and port totally
+        
         publicIP.getString (tmpstr);
-        oss << tmpstr << ":" << publicIP.port;
 
 /*
         if (privateIP.port != 0)
@@ -686,7 +682,8 @@ public:
         }
 */
 
-        str = oss.str ();
+        str.empty ();
+        str = std::string (tmpstr);
 
         return true;
         //return str;

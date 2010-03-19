@@ -393,7 +393,7 @@ namespace Vast
             // NOTE we will try to determine physical coordinate only after unique ID is gotten
             if (id != NET_ID_UNASSIGNED)
             {
-                printf ("VASTVerse::isLogined () unique ID obtained [%llu], creating VASTRelay...\n", id);
+                printf ("unique ID obtained [%llu]\n", id);
                 printf ("if this hangs, check if physical coordinate is obtained correctly\n");
 
                 bool hasPhysCoord = !(_netpara.phys_coord.x == 0 && _netpara.phys_coord.y == 0);
@@ -411,7 +411,7 @@ namespace Vast
         {             
             // relay has just been properly created, get physical coordinates
             physcoord = handlers->relay->getPhysicalCoordinate ();
-            printf ("VASTVerse::isLogined () VASTRelay obtained [%llu] (%.3f, %.3f)\n", handlers->net->getHostID (), physcoord->x, physcoord->y);
+            printf ("[%llu] physical coord: (%.3f, %.3f)\n", handlers->net->getHostID (), physcoord->x, physcoord->y);
 
             // create (idle) 'matcher' instance
             handlers->matcher = new VASTMatcher (_netpara.overload_limit);
@@ -422,21 +422,6 @@ namespace Vast
    
         return _logined;
     }
-
-    /*
-    // obtain topology class, 
-    // NOTE that VASTRelay is returnable / usable only after we've properly joined 
-    //           (i.e. gotten unique ID *and* also the physical coordinate)
-    VASTRelay *
-    VASTVerse::getVASTRelay ()
-    {
-        // we need to obtain unique ID first
-        if (isLogined () == false)
-            return NULL;
-        else
-            return handlers->relay;
-    }
-    */
 
     VAST *
     VASTVerse::createClient (const IPaddr &gateway)
@@ -450,18 +435,17 @@ namespace Vast
         if (handlers->client != NULL)
             return handlers->client;
 
-        // TODO: clean-up? don't do every time
-        handlers->matcher->setGateway (gateway);
+        // make sure matcher has joined first
+        if (handlers->matcher->isJoined () == false)
+        {
+            // TODO: clean-up? don't do every time
+            handlers->matcher->setGateway (gateway);
 
-        // allow matcher to join first for gateway node
-        if (handlers->matcher->isGateway ())
-        {           
+            // join at dummy position
             Position pos (0, 0, 0);
             handlers->matcher->join (pos);
             
-            // make sure matcher has joined first
-            if (handlers->matcher->isJoined () == false)
-                return NULL;
+            return NULL;
         }
 
         VAST *vnode = createNode (handlers->msgqueue, (VASTPointer *)_pointers);

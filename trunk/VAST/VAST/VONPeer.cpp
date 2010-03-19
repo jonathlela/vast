@@ -800,7 +800,7 @@ namespace Vast
                 _count_drop[id]++;
                                         
             // if count has exceed maximum count, then prepare to delete
-            if (_count_drop[id] > MAX_DROP_COUNT)
+            if (_count_drop[id] > MAX_DROP_COUNT * _net->getTickPerSecond ())
                 delete_list.push_back (id);
         }
         
@@ -1050,9 +1050,13 @@ namespace Vast
     }
 
     // whether a neighbor has stayed alive with regular updates
+    // period is in # of ticks
     inline bool 
-    VONPeer::isTimelyNeighbor (id_t id, timestamp_t period)
+    VONPeer::isTimelyNeighbor (id_t id, int period)
     {
+        period *= _net->getTickPerSecond ();
+        
+
         return true;
                 
         //return ((_tick_count - _id2node[id].addr.lastAccessed) < period);

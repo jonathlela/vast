@@ -219,9 +219,9 @@ namespace Vast {
         else
             strcpy (hostname, host);
  
-        printf ("hostname=%s, calling gethostbyname ()\n", hostname);
+        //printf ("hostname=%s, calling gethostbyname ()\n", hostname);
         hostent *remoteHost = ACE_OS::gethostbyname (hostname);
-        printf ("net_ace::getIPFromHost (): gethostbyname () success!\n");
+        //printf ("net_ace::getIPFromHost (): gethostbyname () success!\n");
 
         //printf("\tOfficial name: %s\n", remoteHost->h_name);
 

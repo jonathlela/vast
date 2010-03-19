@@ -59,6 +59,10 @@ namespace Vast
         Addr addr (VASTnet::resolveHostID (&gateway), &gateway);
         //((MessageQueue *)_msgqueue)->setGateway (addr);
      
+        char GW_str[80];
+        gateway.getString (GW_str);
+        printf ("[%llu] VASTClient::join () gateway is: %s\n", _self.id, GW_str);
+
         // gateway is the initial matcher
         _matcher_id = addr.host_id;
 
@@ -225,10 +229,24 @@ namespace Vast
 
         Message msg (message);
         msg.msggroup = MSG_GROUP_VAST_MATCHER;
+
+#ifdef VAST_RECORD_LATENCY
         msg.store (_net->getTimestamp ());  // store sendtime for latency calculation
+#endif
+
+        // store targets
+        listsize_t n = (unsigned char)msg.targets.size ();
+        for (listsize_t i=0; i < n; i++)
+            msg.store (msg.targets[i]);
+        
+        msg.store (n);
+
+        // we clear out the targets field to send to matcher first for processing
+        msg.targets.clear ();
+        msg.addTarget (_matcher_id);
 
         // modify the msgtype to indicate this is an app-specific message
-        msg.msgtype = (msg.msgtype << VAST_MSGTYPE_RESERVED) | MESSAGE;
+        msg.msgtype = (msg.msgtype << VAST_MSGTYPE_RESERVED) | SEND;
 
         return ((sendMessage (msg) > 0) ? true : false);
     }
@@ -430,7 +448,10 @@ namespace Vast
                 Addr matcher_addr;
                 in_msg.extract (sub_no);
                 in_msg.extract (matcher_addr);
-          
+
+                printf ("VASTClient: [%llu] subscribe success [%llu]\n", _self.id, sub_no);
+
+
                 _sub.id = sub_no;
                 _sub.active = true;
 

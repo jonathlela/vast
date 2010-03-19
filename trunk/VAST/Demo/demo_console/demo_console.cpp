@@ -432,12 +432,17 @@ int main (int argc, char *argv[])
         strcat (cmd, " ");
     }
 
+    // store default gateway address
+    string str ("127.0.0.1:1037");
+    g_gateway = *VASTVerse::translateAddress (str);
+
     // initialize parameters
     SimPara simpara;
     vector<IPaddr> entries;
 
     bool is_gateway;
 
+    // obtain parameters from command line and/or INI file
     if ((g_node_no = InitPara (VAST_NET_ACE, g_netpara, simpara, cmd, &is_gateway, &g_aoi, &g_gateway, &entries)) == (-1))
         exit (0);
 

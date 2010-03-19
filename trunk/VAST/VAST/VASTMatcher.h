@@ -38,21 +38,13 @@
 #include "MessageHandler.h"
 #include "VAST.h"
 #include "Voronoi.h"
-#include "VONPeer.h"
+#include "VSOPeer.h"
 
 using namespace std;
 
-// load balancing settings
-#define MATCHER_MOVEMENT_FRACTION (0.1f)    // fraction of remaining distance to move for arbitrators
-
-#define TIMEOUT_OVERLOAD_REQUEST  (3)       // seconds to re-send a overload help request
-
-
 namespace Vast
 {
-
-
-    class VASTMatcher : public MessageHandler, public VONNetwork
+    class VASTMatcher : public MessageHandler, public VONNetwork, public VSOPolicy
     {
 
     public:
@@ -78,22 +70,9 @@ namespace Vast
         // whether I'm a gateway node
         bool    isGateway ();
 
-        // obtain a list of peers hosted on this relay
-        //map<id_t, VONPeer *>& getPeers ();
-
-        // get # of peers hosted at this relay, returns NULL for no record
-        //StatType *getPeerStat ();
-
         // 
         // GUI helper functions 
         //
-
-        // get a particular peer's info
-        //Node *getPeer (id_t peer_id);
-
-        // get the neighbors for a particular peer
-        // returns NULL if the peer does not exist
-        //vector<Node *> *getPeerNeighbors (id_t peer_id);
 
         // obtain access to Voronoi class (usually for drawing purpose)
         // returns NULL if the peer does not exist
@@ -133,6 +112,21 @@ namespace Vast
         // get current physical timestamp
         timestamp_t getTimestamp ();
 
+        // get the # of ticks in each second;
+        int getTickPerSecond ();
+
+        //
+        // VSOPolicy
+        //
+
+        // obtain the center of loads
+        bool getLoadCenter (Position &center); 
+
+        // whether the current node can be a spare node for load balancing
+        bool isCandidate ();
+
+        // obtain the ID of the gateway node
+        id_t getGatewayID ();
 
         //
         // Subscription maintain functions
@@ -154,17 +148,14 @@ namespace Vast
         // whether the matcher has properly joined the VON network
         void checkMatcherJoin ();
 
-        // change position of matcher for load balancing purpose
-        void moveMatcher ();
-
         // update the list of neighboring matchers
-        void updateMatchers ();
+        void refreshNeighbors ();
 
         // check to call additional matchers for load sharing
         void checkOverload ();
 
         // let current node know of overload/underload status
-        void notifyLoading (int status);
+        void notifyLoading (float level);
         
         // check to see if subscriptions have migrated 
         int transferOwnership ();
@@ -172,26 +163,33 @@ namespace Vast
         // tell clients updates of their neighbors (changes in other nodes subscribing at same layer)
         void notifyClients (); 
 
-        // obtain the center of currently subscribing clients
-        bool getSubscriptionCenter (Position &sub_center);
+        //
+        // helper functions
+        //
+
+        // TODO: factor these into an independent / generic class?
+        // obtain a list of hostIDs for enclosing neighbors
+        bool getEnclosingNeighbors (vector<id_t> &list);
+
+        // obtain the position to insert a new matcher
+        //Position findInsertion (Voronoi *voronoi);
+
+        // whether is particular ID is the gateway node
+        inline bool isGateway (id_t id);
 
         Node                _self;          // information regarding current node
         NodeState           _state;         // current state
-        Node                _newpos;        // new AOI & position to be updated
-
+        
         Addr                _gateway;       // info about the gateway server
 
-        VONPeer *           _VONpeer;       // interface as a participant in a VON
+        VSOPeer *           _VSOpeer;       // interface as a participant in a VON
 
+        map<id_t, Node>     _neighbors;     // list of neighboring matchers
+                                                                                                            
         map<id_t, Subscription> _subscriptions; // a list of subscribers managed by this matcher
                                                 // searchable by the hostID of the subscriber
 
-        // TODO: record these counters in other cleaner ways?
-        int                 _overload_limit;    // maximum # of subscriptions at a matcher
-
-        // counters
-        int                 _load_counter;          // counter for # of timesteps overloaded (positive) or underloaded (negative)
-        //int                 _overload_requests;     // counter for # of times a OVERLOAD_M request is sent
+        int                 _overload_limit;    // # of subscriptions considered overload
 
         int                 _tick;          // number of logical steps
 

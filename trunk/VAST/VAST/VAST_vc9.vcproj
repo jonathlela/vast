@@ -232,6 +232,10 @@
 				RelativePath=".\VONPeer.cpp"
 				>
 			</File>
+			<File
+				RelativePath=".\VSOPeer.cpp"
+				>
+			</File>
 		</Filter>
 		<Filter
 			Name="Header Files"
@@ -263,6 +267,14 @@
 			</File>
 			<File
 				RelativePath=".\VONPeer.h"
+				>
+			</File>
+			<File
+				RelativePath=".\VSOPeer.h"
+				>
+			</File>
+			<File
+				RelativePath=".\VSOPolicy.h"
 				>
 			</File>
 		</Filter>

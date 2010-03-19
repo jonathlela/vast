@@ -47,7 +47,6 @@ namespace Vast
         MATCHER_JOIN = VON_MAX_MSG,     // join the overlay as a matcher
         MATCHER_JOIN_R,                 // reply to the joining matcher
         MATCHER_JOINED,                 // notify gateway a matcher has joined successfully
-        MATCHER_CANDIDATE,              // notify gateway of a candidate matcher    
         MATCHER_NOTIFY,                 // current matcher notifying client of new current matcher
         PUBLISH,                        // publish a message         
         SUBSCRIBE,                      // send subscription
@@ -56,6 +55,7 @@ namespace Vast
         MOVE_F,                         // full update for an AOI region
         LEAVE,                          // departure of a client
         NEIGHBOR,                       // send back a list of known neighbors
+        SEND,                           // send a particular message to certain targets
         MESSAGE,                        // deliver a message to a node        
     } VAST_Message;
 
