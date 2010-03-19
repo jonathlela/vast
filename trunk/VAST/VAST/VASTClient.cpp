@@ -294,14 +294,22 @@ namespace Vast
             delete _logicals[i];
         _logicals.clear ();
 
+        // build a map to avoid overlapping neighbors
+        map<id_t, bool> hostmap;
+
         // go through each AOI neighbors and keep only those with public IP
         for (i=0; i < _neighbors.size (); i++)
         {
-            id_t id = _neighbors[i]->id;
-            if (_neighbors[i]->addr.host_id == id)
+            // we only insert unique hosts
+            id_t host_id = _neighbors[i]->addr.host_id;
+            if (hostmap.find (host_id) == hostmap.end ())
             {
-                _logicals.push_back (new Node (*_neighbors[i]));
-            }
+                hostmap[host_id] = true;
+                Node *node = new Node (*_neighbors[i]);
+                node->id = node->addr.host_id;
+
+                _logicals.push_back (node);
+            }            
         }
 
         return _logicals;

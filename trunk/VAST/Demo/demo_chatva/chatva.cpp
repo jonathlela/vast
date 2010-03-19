@@ -468,8 +468,11 @@ LRESULT WINAPI MsgProc (HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
                 send_msg.clear (123);
                 send_msg.store (g_input, count, true);
 
-                /* SEND-based 
-                vector<Node *>&nodes = g_self->list ();
+                /* SEND-based */
+                //vector<Node *>&nodes = g_self->list ();
+                vector<Node *>&nodes = g_self->getLogicalNeighbors ();
+                //vector<Node *>&nodes = g_self->getPhysicalNeighbors ();
+                
                 for(size_t j=0; j < nodes.size (); j++)
                 {
                     Position pos = nodes[j]->aoi.center;
@@ -480,10 +483,10 @@ LRESULT WINAPI MsgProc (HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 
                 // send away message
                 g_self->send (send_msg);
-                */
+                
 
                 // PUBLISH-based                
-                g_self->publish (g_aoi, VAST_EVENT_LAYER, send_msg);
+                //g_self->publish (g_aoi, VAST_EVENT_LAYER, send_msg);
 
 #else
                 // process CREATE message
