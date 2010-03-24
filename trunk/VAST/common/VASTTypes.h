@@ -234,6 +234,11 @@ public:
         return *this;
     }
 
+    void clear ()
+    {
+        x = y = z = 0;
+    }
+
     bool operator==(const Position& c)
     {
         return (this->x == c.x && this->y == c.y && this->z == c.z);
@@ -401,6 +406,13 @@ public:
     ~Area ()
     {
     };
+
+    void clear ()
+    {
+        radius = 0;
+        height = 0;
+        center.clear ();
+    }
 
     bool operator==(const Area& a)
     {
@@ -872,6 +884,7 @@ public:
         active = false;    
         in_region = false; 
         time = 0;
+        aoi.clear ();
     }
 
     bool addNeighbor (Subscription *neighbor)
@@ -979,6 +992,7 @@ public:
             memcpy (&layer, p, sizeof (layer_t));       p += sizeof (layer_t);
             //memcpy (&active, p, sizeof (bool));         p += sizeof (bool);
             this->active = false;
+            this->time = 0;
             p += aoi.deserialize (p, aoi.sizeOf ());
             relay.deserialize (p, relay.sizeOf ());
 

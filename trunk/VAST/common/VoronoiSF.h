@@ -73,7 +73,7 @@ public:
     vector<id_t> &get_en (id_t id, int level = 1);
     
     // check if a circle overlaps with a particular region
-    bool overlaps (id_t id, const Position &center, length_t radius, bool accuracy_mode = false);
+    bool overlaps (id_t id, const Position &center, length_t radius, bool accurate_mode = false);
 
     // remove all sites in the diagram
     void clear ();

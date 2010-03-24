@@ -111,10 +111,6 @@ namespace Vast
         // delete allocated memory                
         // NOTE: no need to clear the Node pointers in _neighbors as 
         //       they are simply references to data in _id2node
-        //it = _id2node.begin ();
-        //for (; it != _id2node.end (); it++)
-        //    delete _neighbor_states[it->first];
-
         for (map<id_t, map<id_t, int> *>::iterator it = _neighbor_states.begin (); it != _neighbor_states.end (); it++)
             delete it->second;
         _neighbor_states.clear ();
@@ -651,7 +647,7 @@ namespace Vast
         // (i.e., those that have sent a MOVE_B message)
         //
 
-#ifdef CHECK_REQNODE_ONLY        
+#ifdef CHECK_REQUESTING_NODES_ONLY
         for (map<id_t, bool>::iterator itr = _req_nodes.begin (); itr != _req_nodes.end (); ++itr)
         {
             from_id = itr->first; 
@@ -724,18 +720,13 @@ namespace Vast
                     //       2. notify about new overlap, even if the node is known to be an EN
 
                     // check if the neighbors not overlapped previously is
-                    //    1) currently overlapped, or... 2) previously wasn't enclosing, but now is
+                    //    1) currently overlapped, or... 
+                    //    2) previously wasn't enclosing, but now is
                     
                     if ((known_state & NEIGHBOR_OVERLAPPED) == false && 
                         ((state & NEIGHBOR_OVERLAPPED) > 0 || ((known_state & NEIGHBOR_ENCLOSED) == 0 && (state & NEIGHBOR_ENCLOSED) > 0)))                        
                         notify_list.push_back (id);
                     
-                    /*
-                    if (((known_state & NEIGHBOR_OVERLAPPED) == 0 && (state & NEIGHBOR_OVERLAPPED) > 0) ||
-                        ((known_state & NEIGHBOR_ENCLOSED)   == 0 && (state & NEIGHBOR_ENCLOSED) > 0))                        
-                        notify_list.push_back (id);
-                    */
-
                     // store the state of this particular neighbor
                     known_list->insert (map<id_t, int>::value_type (id, state));
                 }
@@ -761,12 +752,10 @@ namespace Vast
         //vector<id_t> en_list = _Voronoi->get_en (in_msg.from);
         vector<id_t> en_list = _Voronoi->get_en (_self.id);
                                 
-        // notify my enclosing neighbors to check for discovery
-        // TODO: a bit overkill to send HELLO, optimize it
+        // notify my enclosing neighbors to check for discovery        
         for (size_t i=0; i<en_list.size (); i++)
         {
-            id_t target = en_list[i];
-            //sendHello (target, _Voronoi->get_en (target));
+            id_t target = en_list[i];            
             if (target != skip_id)
                 sendEN (target);
         }                      
@@ -1056,10 +1045,8 @@ namespace Vast
     {
         period *= _net->getTickPerSecond ();
         
-
-        return true;
-                
         //return ((_tick_count - _id2node[id].addr.lastAccessed) < period);
+        return true;                
     }
 
     // check if a node is self

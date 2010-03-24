@@ -40,10 +40,12 @@
 #include "Voronoi.h"
 #include "VSOPeer.h"
 
+
 using namespace std;
 
 namespace Vast
 {
+
     class VASTMatcher : public MessageHandler, public VONNetwork, public VSOPolicy
     {
 
@@ -120,7 +122,7 @@ namespace Vast
         //
 
         // obtain the center of loads
-        bool getLoadCenter (Position &center); 
+        //bool getLoadCenter (Position &center); 
 
         // whether the current node can be a spare node for load balancing
         bool isCandidate ();
@@ -128,38 +130,49 @@ namespace Vast
         // obtain the ID of the gateway node
         id_t getGatewayID ();
 
+        // answer a request for objects
+        // returns # of successful transfer
+        int copyObject (id_t target, vector<id_t> &obj_list, bool is_transfer, bool update_only);
+
+        // remove an obsolete unowned object
+        bool removeObject (id_t obj_id);
+
+        // handle the event of a new VSO node's successful join
+        bool peerJoined ();
+
+        // handle the event of a new VSO node's successful join
+        bool peerMoved ();
+
         //
         // Subscription maintain functions
         //  
             
         // create a new subscriber instance at this VASTMatcher
-        bool addSubscription (Subscription &sub);
+        bool addSubscription (Subscription &sub, bool is_owner);
 
         // remove the subscriber instance on this VASTMatcher
         bool removeSubscription (id_t sub_no);
 
+        // update a subscription content
+        bool updateSubscription (id_t sub_no, Area &new_aoi, timestamp_t sendtime);
+
+        // send a full subscription info to a neighboring matcher
+        // returns # of successful transfers
+        int transferSubscription (id_t target, vector<id_t> &sub_list, bool notify_client, bool update_only);
+
         // update the neighbor list for each subscriber
-        void updateSubscriptionNeighbors ();
+        void refreshSubscriptionNeighbors ();
 
         //
         // Matcher maintain functions
         //
 
-        // whether the matcher has properly joined the VON network
-        void checkMatcherJoin ();
-
         // update the list of neighboring matchers
-        void refreshNeighbors ();
+        void refreshMatcherList ();
 
         // check to call additional matchers for load sharing
         void checkOverload ();
-
-        // let current node know of overload/underload status
-        void notifyLoading (float level);
         
-        // check to see if subscriptions have migrated 
-        int transferOwnership ();
-
         // tell clients updates of their neighbors (changes in other nodes subscribing at same layer)
         void notifyClients (); 
 
@@ -170,9 +183,6 @@ namespace Vast
         // TODO: factor these into an independent / generic class?
         // obtain a list of hostIDs for enclosing neighbors
         bool getEnclosingNeighbors (vector<id_t> &list);
-
-        // obtain the position to insert a new matcher
-        //Position findInsertion (Voronoi *voronoi);
 
         // whether is particular ID is the gateway node
         inline bool isGateway (id_t id);
@@ -192,7 +202,7 @@ namespace Vast
         int                 _overload_limit;    // # of subscriptions considered overload
 
         int                 _tick;          // number of logical steps
-
+        
         //
         // stat collection
         //

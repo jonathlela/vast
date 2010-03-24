@@ -46,7 +46,7 @@ namespace Vast
         virtual ~VSOPolicy () {}
 
         // obtain the center of loads
-        virtual bool getLoadCenter (Position &center) = 0; 
+        //virtual bool getLoadCenter (Position &center) = 0; 
 
         // whether the current node can be a spare node for load balancing
         virtual bool isCandidate () = 0;
@@ -54,11 +54,18 @@ namespace Vast
         // obtain the ID of the gateway node
         virtual id_t getGatewayID () = 0;
 
-        // handle the event of a new VSO node's successful join
-        //virtual bool peerJoined () = 0;
+        // answer object request from a neighbor node, 'is_transfer' indicates whether ownership has been transferred 
+        // returns # of successful transfer
+        virtual int copyObject (id_t target, vector<id_t> &obj_list, bool is_transfer, bool update_only) = 0;
+
+        // remove an obsolete unowned object
+        virtual bool removeObject (id_t obj_id) = 0;
 
         // handle the event of a new VSO node's successful join
-        //virtual bool peerMoved () = 0;
+        virtual bool peerJoined () = 0;
+
+        // handle the event of a VSO node's movement
+        virtual bool peerMoved () = 0;
 
     };
 

@@ -321,3 +321,13 @@
         return _sub_no;
     }
 
+    // get the Voronoi from the matcher of this node
+    Voronoi *
+    SimNode::getVoronoi ()
+    {
+        if (_world != NULL)
+            return _world->getMatcherVoronoi ();
+        else
+            return NULL;
+    }
+

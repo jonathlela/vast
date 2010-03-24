@@ -51,11 +51,13 @@ namespace Vast
         PUBLISH,                        // publish a message         
         SUBSCRIBE,                      // send subscription
         SUBSCRIBE_R,                    // to reply whether a node has successfully subscribed (VON node joined)        
+        SUBSCRIBE_TRANSFER,             // transfer a subscription to a neighbor matcher
+        SUBSCRIBE_UPDATE,               // update of a subscription to neighboring matchers
         MOVE,                           // position update to normal nodes
         MOVE_F,                         // full update for an AOI region
         LEAVE,                          // departure of a client
         NEIGHBOR,                       // send back a list of known neighbors
-        SEND,                           // send a particular message to certain targets
+        SEND,                           // send a particular message to certain targets        
         MESSAGE,                        // deliver a message to a node        
     } VAST_Message;
 
@@ -137,9 +139,6 @@ namespace Vast
 
         // whether I am a relay node
         virtual bool isRelay () = 0;
-
-        // whether I'm the gateway node
-        //virtual bool isGateway () = 0;
 
         // whether I have public IP
         virtual bool hasPublicIP () = 0;

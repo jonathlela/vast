@@ -98,6 +98,9 @@ public:
     // return the ID for this Peer
     Vast::id_t getPeerID ();
 
+    // get the Voronoi from the matcher of this node
+    Voronoi *getVoronoi ();
+
     VAST            *vnode;
     SimNodeState    state;
     size_t          max_send_persec, max_recv_persec;

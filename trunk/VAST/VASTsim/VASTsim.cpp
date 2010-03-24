@@ -514,21 +514,19 @@ std::vector<Vast::id_t> *GetEnclosingNeighbors (int index, int level)
     */
 }
 
-std::vector<line2d> *GetEdges(int index)
+std::vector<line2d> *GetEdges (int index)
 {
-    return NULL;
+    //return NULL;
 
-    //if (g_peermap.find (index) == g_peermap.end ())
-    //    return NULL;
+    if ((unsigned)index >= g_nodes.size () || g_nodes[index]->vnode == NULL)
+        return NULL;
 
-    /*
-    Voronoi *v = g_peermap[index]->getVoronoi (g_peerid[index]);
+    Voronoi *v = g_nodes[index]->getVoronoi ();
 
     if (v == NULL)
         return NULL;
 
     return &v->getedges ();
-    */
 }
 
 bool GetBoundingBox (int index, point2d& min, point2d& max)

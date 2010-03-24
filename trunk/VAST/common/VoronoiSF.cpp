@@ -109,7 +109,7 @@ is_enclosing (id_t id, id_t center_node_id)
     recompute();    
     std::set<int> temp;
 
-    int idx = (center_node_id == ((unsigned)-1) ? 0 : get_idx (center_node_id));
+    int idx = (center_node_id == ((id_t)(-1)) ? 0 : get_idx (center_node_id));
     _Voronoi.getNeighborSet (idx, temp);
     
     for (set<int>::iterator it = temp.begin(); it != temp.end(); ++it)
@@ -248,13 +248,13 @@ get_en (id_t id, int level)
 // check if a circle overlaps with a particular region
 bool 
 VoronoiSF::
-overlaps (id_t id, const Position &pt, length_t radius, bool accuracy_mode)
+overlaps (id_t id, const Position &pt, length_t radius, bool accurate_mode)
 {    
     int idx = get_idx (id);
     if (idx == -1) 
         return false;
 
-    if (accuracy_mode)
+    if (accurate_mode)
     {
         // version 1: accurate but slower
         recompute();
@@ -263,7 +263,7 @@ overlaps (id_t id, const Position &pt, length_t radius, bool accuracy_mode)
     }
     else
     {
-        // version 2: simply check if it's within AOI
+        // version 2: simply check if the center of region is within AOI
         Position &pt2 = _sites[idx].second;    
         return (pt2.distance (pt) <= (double)(radius) ? true : false);
     }

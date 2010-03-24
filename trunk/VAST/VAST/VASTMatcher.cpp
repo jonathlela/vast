@@ -229,7 +229,8 @@ namespace Vast
                     // assign a unique subscription number                    
                     sub.id = _net->getUniqueID (ID_GROUP_VON_VAST);
 
-                    addSubscription (sub);
+                    // by default we own the client subscriptions we create
+                    addSubscription (sub, true);
 
                     // send back acknowledgement of subscription to client
                     Message msg (SUBSCRIBE_R);
@@ -244,7 +245,6 @@ namespace Vast
                     sendMessage (msg);
 
                     printf ("VASTMatcher: SUBSCRIBE request from [%llu] success\n", in_msg.from);
-
                 }
                 else
                 {
@@ -255,16 +255,6 @@ namespace Vast
 
                     sendMessage (in_msg);
                 }
-
-                /*
-                // only accept either a self request
-                // or a previously admitted JOIN request
-                if (in_msg.from == _self.id) //|| _accepted.find (in_msg.from) != _accepted.end ())                
-                {
-                    if (addSubscription (in_msg.from, sub_no, area, layer) == true)
-                        _host2peer[in_msg.from] = sub_no;
-                }
-                */
             }
             break;
 
@@ -276,39 +266,28 @@ namespace Vast
                 id_t sub_id;
                 in_msg.extract (sub_id);
 
-                map<id_t, Subscription>::iterator it = _subscriptions.find (sub_id);
-
-                // modify the position of currently subscribed peer accordingly
-                // TODO: check last update time?
-                if (it != _subscriptions.end ())
-                {                                  
-                    timestamp_t send_time = 0;  // time of sending initial MOVE
+                timestamp_t send_time = 0;  // time of sending initial MOVE
 
 #ifdef VAST_RECORD_LATENCY
-                    in_msg.extract (send_time);
+                in_msg.extract (send_time);
 #endif
 
-                    // extract position first
-                    Area &new_aoi = it->second.aoi;
+                VONPosition pos;
+                in_msg.extract ((char *)&pos, sizeof (VONPosition));
+                
+                Area new_aoi; 
+                new_aoi.center.x = pos.x;
+                new_aoi.center.y = pos.y;
 
-                    VONPosition pos;
-                    in_msg.extract ((char *)&pos, sizeof (VONPosition));
-                    new_aoi.center.x = pos.x;
-                    new_aoi.center.y = pos.y;
-
-                    // if radius is also updated
-                    if (in_msg.msgtype == MOVE_F)
-                    {
-                        in_msg.extract ((char *)&new_aoi.radius, sizeof (length_t));
-                        in_msg.extract ((char *)&new_aoi.height, sizeof (length_t));
-                    }
-                    
-                    // record time of movement of the subscribers
-                    it->second.time = send_time;
-                    
-                    // perform movement?
-                    //_peers[sub_no]->move (new_aoi, send_time);
+                // if radius is also updated
+                if (in_msg.msgtype == MOVE_F)
+                {
+                    in_msg.extract ((char *)&new_aoi.radius, sizeof (length_t));
+                    in_msg.extract ((char *)&new_aoi.height, sizeof (length_t));
                 }
+
+                updateSubscription (sub_id, new_aoi, send_time);
+
             }
             break;
 
@@ -418,6 +397,58 @@ namespace Vast
             }
             break;
 
+        // transfer of subscription
+        case SUBSCRIBE_TRANSFER:
+            {
+                // extract # of subscriptions
+                listsize_t n;
+                in_msg.extract (n, true);
+                Subscription sub;
+
+                int success = 0;
+                for (listsize_t i=0; i < n; i++)
+                {
+                    in_msg.extract (sub);
+                    
+                    // NOTE by default a transferred subscription is not owned
+                    //      it will be owned if a corresponding ownership transfer is sent (often later)
+                    if (addSubscription (sub, false))
+                        success++;
+                }
+
+                printf ("[%llu] VASTMatcher::handleMessage () SUBSCRIBE_TRANSFER %d sent %d success\n", _self.id, (int)n, success);
+            }
+            break;
+
+        case SUBSCRIBE_UPDATE:
+            {
+                // extract # of subscriptions
+                listsize_t n;
+                in_msg.extract (n, true);
+                id_t sub_id;
+                Area aoi;
+
+                vector<id_t> missing_list;
+
+                for (listsize_t i=0; i < n; i++)
+                {
+                    in_msg.extract (sub_id);
+                    in_msg.extract (aoi);
+                    
+                    if (updateSubscription (sub_id, aoi, _net->getTimestamp ()) == false)
+                    {
+                        // subscription doesn't exist, request the subscription 
+                        // this happens if the subscription belongs to a neighboring matcher but AOI overlaps with my region
+                        missing_list.push_back (sub_id);                        
+                    }
+                }
+
+                if (missing_list.size () > 0)
+                    // TODO: try not to use requestObjects publicly?
+                    _VSOpeer->requestObjects (in_msg.from, missing_list);
+            }
+            break;
+
         // process universal VASTnet message, msgtype = 0
         case DISCONNECT:
             {   
@@ -443,29 +474,6 @@ namespace Vast
                 // check if the message is directed towards the VONpeer
                 if (in_msg.msgtype < VON_MAX_MSG)
                     _VSOpeer->handleMessage (in_msg);
-
-                /*
-                // ignore messages not directly towards VONPeers
-                if (VASTnet::extractIDGroup (in_msg.from) != ID_GROUP_VON_VAST)
-                    break;
-
-                // check through the targets and deliver to each VONPeer affected            
-                for (size_t i=0; i != in_msg.targets.size (); i++)
-                {
-                    id_t target = in_msg.targets[i];
-                    if (_peers.find (target) == _peers.end ())
-                    {
-#if _DEBUG
-                        printf ("VASTMatcher::handleMessage () cannot find the message's target peer [%d]\n", target);
-#endif
-                        continue;
-                    }
-                    _peers[target]->handleMessage (in_msg);
-
-                    // it's very important to reset the current counter, so that extraction may still work
-                    in_msg.reset ();
-                }
-                */
             }
             break;
         }
@@ -481,58 +489,50 @@ namespace Vast
         // perform regular tick and check if our VONpeer has joined
         if (_VSOpeer == NULL)
             return;
-
-        _VSOpeer->tick ();
-
-        if (_VSOpeer->isJoined () == false)
-            return;
-
-        // perform per-second tasks
-        if (++_tick == _net->getTickPerSecond ())
-        {
-            _tick = 0;
-
-            // report loading to neighbors
-            //reportLoading ();
-
-            // move matcher to new position
-            //moveMatcher ();
-
+        
+        // we perform matcher tasks only if VSOpeer has joined
+        if (_VSOpeer->isJoined ())
+        {         
+            // update the list of neighboring matchers
+            refreshMatcherList ();
+        
+            // check to call additional matchers for load sharing
+            checkOverload ();
+        
+            // discover for each subscriber other neighbors
+            refreshSubscriptionNeighbors ();
+                       
+            // send neighbor updates to VASTClients        
+            notifyClients ();
+        
+            // TODO: adjust client_limit based on resource (bandwidth) availability
+        
+            // perform per-second tasks
+            if (++_tick == _net->getTickPerSecond ())
+            {
+                _tick = 0;
+        
+                // report loading to neighbors
+                //reportLoading ();
+        
+                // report stat collected to gateway
+                //reportStat ();
+            }
         }
 
-        // update the list of neighboring matchers
-        refreshNeighbors ();
-
-        // check to call additional matchers for load sharing
-        checkOverload ();
-
-        // check to see if subscriptions have migrated 
-        transferOwnership ();
-
-        // collect stat periodically
-        // TODO: better way than to pass _para?
-        //if (_tick % (_net->getTickPerSecond () * STAT_REPORT_INTERVAL_IN_SEC) == 0)
-        //    reportStat ();
-
-        // TODO: adjust client_limit based on resource (bandwidth) availability
-
-        // discover for each subscriber other neighbors
-        updateSubscriptionNeighbors ();
-                   
-        // send neighbor updates to VASTClients        
-        notifyClients ();
+        // allow VSOpeer to perform routine tasks
+        _VSOpeer->tick ();
     }
 
-    // create a new Peer instance at this VASTMatcher
-    bool 
-    //VASTMatcher::addSubscription (id_t fromhost, id_t sub_no, Area &area, layer_t layer)
-    VASTMatcher::addSubscription (Subscription &sub)
+    // record a new subscription at this VASTMatcher
+    bool     
+    VASTMatcher::addSubscription (Subscription &sub, bool is_owner)
     {      
         // perhaps we should simply replace it?
         // avoid redundency
         if (_subscriptions.find (sub.id) != _subscriptions.end ())
             return false;
-                
+
         // store layer info 
         // TODO: right now this is a hacked solution, just use whatever available space
         sub.relay.publicIP.pad = (unsigned short)sub.layer;
@@ -540,19 +540,11 @@ namespace Vast
         // record the subscription
         _subscriptions[sub.id] = sub;
 
+        // also store as a shared object (for ownership management)
+        _VSOpeer->insertSharedObject (sub.id, sub.aoi, is_owner, &_subscriptions[sub.id]);
+
         // notify network layer of the subscriberID -> relay hostID mapping
         notifyMapping (sub.id, &sub.relay);
-
-        /*
-        // we assume that a VAST node at the gateway has access to the gateway VON peer 
-        // so that a joining VON node can reach a gateway VON peer (via the gateway VAST node)
-        Node VON_gateway (((MessageQueue *)_msgqueue)->getGatewayID (ID_GROUP_VON_VAST), 0, area, getGateway ());
-           
-        peer->join (area, &VON_gateway);
-        _peers[sub_no] = peer;
-        _peer_state[sub_no] = JOINING;
-        _peer2host[sub_no] = fromhost;
-        */
 
         return true;
     }
@@ -563,15 +555,100 @@ namespace Vast
         if (_subscriptions.find (sub_no) == _subscriptions.end ())
             return false;
 
+        _VSOpeer->deleteSharedObject (sub_no);
         _subscriptions.erase (sub_no);
-        
+
         return true;
+    }
+
+    // update a subscription content
+    bool 
+    VASTMatcher::updateSubscription (id_t sub_no, Area &new_aoi, timestamp_t sendtime)
+    {
+        map<id_t, Subscription>::iterator it = _subscriptions.find (sub_no);
+        if (it == _subscriptions.end ())
+            return false;
+                
+        Subscription &sub = it->second;
+
+        // update AOI
+        sub.aoi.center = new_aoi.center;
+        if (new_aoi.radius != 0)
+            sub.aoi.radius = new_aoi.radius;
+        if (new_aoi.height != 0)
+            sub.aoi.height = new_aoi.height;
+
+        sub.time = sendtime;
+
+        _VSOpeer->updateSharedObject (sub_no, sub.aoi);
+
+        return true;
+    }
+
+    // send a full subscription info to a neighboring matcher
+    // returns # of successful transfers
+    int 
+    VASTMatcher::transferSubscription (id_t target, vector<id_t> &sub_list, bool notify_client, bool update_only)
+    {
+        listsize_t num_transfer = 0;
+     
+        Message msg (SUBSCRIBE_TRANSFER);
+        Message notice (MATCHER_NOTIFY);
+        msg.priority = 1;                 
+
+        msg.addTarget (target);
+
+        for (size_t i=0; i < sub_list.size (); i++)
+        {
+            // extract subscription id
+            id_t sub_id = sub_list[i];
+
+            map<id_t, Subscription>::iterator it = _subscriptions.find (sub_id);
+            if (it != _subscriptions.end ())
+            {
+                Subscription &sub = it->second;
+                // store full subscription or update only
+                if (update_only)
+                {
+                    msg.store (sub_id);
+                    msg.store (sub.aoi);
+                }
+                else
+                    msg.store (sub);
+                num_transfer++;
+
+                // notify the affected client 
+                if (notify_client == true && 
+                    _neighbors.find (target) != _neighbors.end ())
+                {
+                    notice.clear (MATCHER_NOTIFY);
+                    notice.msggroup = MSG_GROUP_VAST_CLIENT;
+                    notice.priority = 1;
+                
+                    notice.store (_neighbors[target].addr);
+                    notice.addTarget (sub_id);
+                    sendMessage (notice);
+                }
+            }          
+        }
+
+        if (num_transfer > 0)
+        {
+            if (update_only)
+                msg.msgtype = SUBSCRIBE_UPDATE;
+
+            // actually send out
+            msg.store (num_transfer);
+            sendMessage (msg);
+        }
+
+        return (int)num_transfer;
     }
 
     // update the neighbors for each subscriber
     // 'neighbor' is defined as other clients subscribing at the same layer & within AOI
     void
-    VASTMatcher::updateSubscriptionNeighbors ()
+    VASTMatcher::refreshSubscriptionNeighbors ()
     {    
         // nodes within the Voronoi        
         Voronoi *voronoi = _VSOpeer->getVoronoi ();
@@ -623,67 +700,12 @@ namespace Vast
             // remove neighbors no longer within AOI
             sub1.clearInvisibleNeighbors ();
 
-        }
-
-        /*
-        for (map<id_t,VONPeer *>::iterator it = _peers.begin (); it != _peers.end (); it++)
-        {
-            id_t sub_no = it->first;
-
-            if (it->second->isJoined () && _peer_state[sub_no] == JOINING)
-            {
-                // this Peer has successfully joined the VON and is now subscribing
-                _peer_state[sub_no] = JOINED;
-                
-                // send a SUBSCRIBE_REPLY back to the corresponding Client
-                Message msg (SUBSCRIBE_REPLY);
-                msg.priority = 1;
-                msg.store (sub_no);
-                msg.addTarget (_peer2host[sub_no]);
-                sendMessage (msg);
-            }        
-        }
-
-        // record simple stats on subscribers
-        if (_peers.size () > _peerstat.maximum)
-            _peerstat.maximum = _peers.size ();
-
-        if (_peers.size () > 0)
-        {
-            _peerstat.total += _peers.size ();
-            _peerstat.num_records++;
-        }
-        */
-        
-    }
-   
-    void
-    VASTMatcher::checkMatcherJoin ()
-    {
-        /*
-        // check whether the matcher has properly notify gateway of its join
-        if (_state == JOINING)
-        {
-            // if I'm not the gateway)
-            if (isGateway () == false)
-            {
-                // notify gateway that I'll be joining as a matcher
-                // (so remove me from waiting list or potential list)
-                Message msg (MATCHER_JOINED);
-                msg.priority = 1;
-                msg.store (_self.id);
-                msg.addTarget (_gateway.host_id);
-                sendMessage (msg);
-            }
-
-            _state = JOINED;
-        }
-        */
-    }
+        }        
+    }   
 
     // check with VON to refresh current neighboring matchers
     void 
-    VASTMatcher::refreshNeighbors ()
+    VASTMatcher::refreshMatcherList ()
     {        
         vector<id_t> enclosing;
         if (getEnclosingNeighbors (enclosing) == false)
@@ -722,6 +744,7 @@ namespace Vast
             else 
             {
                 Node &known = _neighbors[id];
+                
                 // update the neighbor's info
                 known.aoi.radius = node->aoi.radius;
 
@@ -748,26 +771,17 @@ namespace Vast
 
         // remove nodes that are no longer enclosing
         for (i=0; i < remove_list.size (); ++i)                    
-            _neighbors.erase (remove_list[i]);                            
-        
-        // notify connected clients of change in 
-        /*
-        if (has_changed)
-        {
-            for (map<id_t, Node>::iterator it = _agents.begin (); it != _agents.end (); it++)
-            {
-                id_t agent = it->second.id;
-                notifyArbitratorship (agent);
-            }
-        } 
-        */
+            _neighbors.erase (remove_list[i]);
+
+        // TODO: notify client in change in matcher composition?
     }    
 
     // check to call additional matchers for load balancing
     void 
     VASTMatcher::checkOverload () 
     {
-        int n = _subscriptions.size ();
+        //int n = _subscriptions.size ();
+        int n = _VSOpeer->getOwnedObjectSize ();
 
         // collect stats on # of agents 
         if (n > 0)
@@ -792,233 +806,6 @@ namespace Vast
             _VSOpeer->notifyLoading (0);
     }
 
-
-    // see if any of my objects should transfer ownership
-    // or if i should claim ownership to any new objects (if neighboring nodes fail)
-    int 
-    VASTMatcher::transferOwnership ()
-    {        
-        if (_state != JOINED || _VSOpeer == NULL || _VSOpeer->isJoined () == false)
-            return 0;
-        
-        int num_transfer = 0;
-        
-        /*
-        // get a reference to the Voronoi object and my VON id
-        Voronoi *voronoi = _VSOpeer->getVoronoi ();
-        id_t VON_selfid  = _VSOpeer->getSelf ()->id;
-                      
-        //
-        // transfer ownership of currently owned objects to neighbor nodes
-        //
-        for (map<obj_id_t, StoredObject>::iterator it = _obj_store.begin (); it != _obj_store.end (); ++it)
-        {
-            Object *obj = it->second.obj;
-            obj_id_t obj_id = obj->getID ();
-
-            // if the Object is no longer within my region, then transfer to new owner
-            Position pos = obj->getPosition ();
-            if (voronoi->contains (VON_selfid, pos) == false)
-            {
-                if (it->second.is_owner == true)
-                {
-                    // update ownership transfer counter
-                    if (_transfer_countdown.find (obj_id) == _transfer_countdown.end ())
-                        _transfer_countdown[obj_id] = COUNTDOWN_TRANSFER;
-                    else
-                        _transfer_countdown[obj_id]--;
-
-                    // if counter's up, then begin transfer to nearest node
-                    if (_transfer_countdown[obj_id] == 0)
-                    {
-                        id_t closest = voronoi->closest_to (obj->getPosition ());
-                        
-                        vector<id_t> enclosing;
-                        if (closest != VON_selfid)
-                        {
-#ifdef SEND_OBJECT_ON_TRANSFER
-                            // send full states to the neighbor node first
-                            vector<id_t> targets;
-                            targets.push_back (closest);                            
-                            sendFullObject (obj, targets, MSG_GROUP_VASTATE_ARBITRATOR);
-#endif
-                            Message msg (TRANSFER);
-                            msg.priority = 1;
-                        
-                            msg.store (obj_id);
-                            msg.store (closest);
-                            msg.store (VON_selfid);
-
-                            
-                            // TODO: notify other nodes to remove ghost objects?
-                            // remove closest & send to all other neighbors
-                            // causes crash? 
-
-                            
-                            if (getEnclosingArbitrators (enclosing))
-                            {
-                                // remove the closest from list
-                                for (size_t i=0; i < enclosing.size (); i++)
-                                {
-                                    if (enclosing[i] == closest) 
-                                    {
-                                        enclosing.erase (enclosing.begin () + i);
-                                        break;
-                                    }
-                                }
-                                // send to non-closest enclosing nodes
-                                if (enclosing.size () > 0)
-                                {
-                                    msg.targets = enclosing;
-                                    sendMessage (msg);
-                                    msg.targets.clear ();
-                                }
-                            }
-                            
-                            
-                            // transfer agent info 
-                            // only transfer to closest
-                            if (obj->agent != 0 && _agents.find (obj->agent) != _agents.end ())
-                            {
-                                //if (obj->agent == 20)
-                                //    printf ("notice\n");
-
-                                msg.store (_agents[obj->agent]);
-
-#ifdef DISCOVERY_BY_NOTIFICATION
-                                // also transfer agent's obj knowledge for avatar object
-                                if (_known_objs.find (obj->agent) != _known_objs.end ())
-                                {
-                                    map<obj_id_t, version_t> &known_obj = _known_objs[obj->agent];
-                                    listsize_t n = (listsize_t)known_obj.size ();
-                                
-                                    msg.store (n);
-                                
-                                    map<obj_id_t, version_t>::iterator it = known_obj.begin ();
-                                    for (; it != known_obj.end (); it++)
-                                    {
-                                        msg.store (it->first);
-                                        msg.store (it->second);
-                                    }
-                                }
-#endif
-                            }
-
-                            msg.addTarget (closest);                            
-                            sendMessage (msg);
-                                                          
-                            // we release ownership for now (but still be able to process events via transit records)
-                            // this is important as we can only transfer ownership to one neighbor at a time
-                            it->second.is_owner = false;
-                            //_obj_transit [obj_id] = _tick;
-                            it->second.in_transit = _tick;
-                            num_transfer++;                                              
-
-                            _transfer_countdown.erase (obj_id);
-                        }                        
-                    }
-                }
-
-                // if object is no longer in my region and I'm still not owner, remove reclaim counter
-                else if (_reclaim_countdown.find (obj_id) != _reclaim_countdown.end ())
-                    _reclaim_countdown.erase (obj_id);
-            }
-                        
-            // there's an Object in my region but I'm not owner, 
-            // should claim it after a while
-            else 
-            {                
-                if (it->second.is_owner == false)
-                {
-                    // initiate a countdown, and if the countdown is reached, 
-                    // automatically claim ownership (we assume neighboring nodes will
-                    // have consensus over ownership eventually, as topology becomes consistent)
-                    if (_reclaim_countdown.find (obj_id) == _reclaim_countdown.end ())
-                        _reclaim_countdown[obj_id] = COUNTDOWN_TRANSFER * 4;
-                    else
-                        _reclaim_countdown[obj_id]--;
-                
-                    // we claim ownership if countdown is reached
-                    if (_reclaim_countdown[obj_id] == 0)
-                    {                         
-                        // reclaim only if we're the closest node
-                        if (it->second.closest_arb == 0)
-                        {
-                            it->second.is_owner = true;
-                            it->second.in_transit = 0;
-                            it->second.last_update = _tick;                                            
-                        }
-                        // it's not really mine, delete it
-                        else
-                        {
-                            //destroyObject (obj_id);
-                        }
-
-                        _reclaim_countdown.erase (obj_id);
-                        
-                        // NOTE: we do not notify the agent, as the agent
-                        //       should detect current node leave by itself,
-                        //       and reinitiate sending the JOIN event to 
-                        //       its new current node
-                        //
-                        // notify avatar object's agent's of its new node
-                        if (obj->agent != 0)
-                        {                                                        
-                            Message msg (REJOIN);
-                            msg.priority = 1;
-                            msg.addTarget (obj->agent);
-                            msg.msggroup = MSG_GROUP_VASTATE_AGENT;                        
-                            sendAgent (msg);                        
-                        } 
-                        
-                    }                
-                }
-
-                // reset transfer counter, if an object has moved out but moved back again
-                else if (_transfer_countdown.find (obj_id) != _transfer_countdown.end ())
-                {
-                    _transfer_countdown.erase (obj_id);
-                }
-            }     
-
-            // reclaim in transit objects
-
-            if (it->second.in_transit != 0 && 
-                ((_tick - it->second.in_transit) > (COUNTDOWN_TRANSFER * 2)))
-            {
-                it->second.in_transit = 0;
-                it->second.is_owner = true;
-            }
-        }
-
-        // TODO: need to make sure the above countdowns do not stay alive
-        //       and errously affect future countdown detection
-
-
-        // check & reclaim ownership of in-tranit objects
-        map<obj_id_t, timestamp_t>::iterator it = _obj_transit.begin ();
-        for (; it != _obj_transit.end (); it++)
-        {
-            // if some threshold has exceeded
-            if (_tick - it->second > (COUNTDOWN_TRANSFER * 2))
-            {
-                // reclaim ownership
-                if (_obj_store.find (it->first) != _obj_store.end ())
-                {
-                    _obj_store[it->first].is_owner
-
-                }
-                // erase record
-                _obj_transit.erase (it);
-                break;
-            }
-        }
-        */
-
-        return num_transfer;
-    }
-
-
     // tell clients updates of their neighbors (changes in other nodes subscribing at same layer)
     void
     VASTMatcher::notifyClients ()
@@ -1042,10 +829,18 @@ namespace Vast
             if (update_status.size () == 0)
                 continue;
 
+            // NOTE: we do not yet erase the update_status
+            if (_VSOpeer->isOwner (subscriber.id) == false)
+            {
+                //printf ("VASTMatcher::notifyClients () updates exist for non-owned subscription [%llu]\n", subscriber.id);
+                update_status.clear ();
+                continue;
+            }
+
             msg.clear (NEIGHBOR); 
             msg.msggroup = MSG_GROUP_VAST_CLIENT;
-            //msg.store (listsize);
 
+            // NOTE: size is stored at the end
             listsize_t listsize = 0;
             // loop through each neighbor for this peer and record its status change
             map<id_t, NeighborUpdateStatus>::iterator itr = update_status.begin ();
@@ -1129,104 +924,7 @@ namespace Vast
     bool 
     VASTMatcher::getEnclosingNeighbors (vector<id_t> &list)
     {
-        vector<Node *> &nodes   = _VSOpeer->getNeighbors ();
-        Voronoi *voronoi        = _VSOpeer->getVoronoi ();
-
-        if (nodes.size () <= 1 || voronoi == NULL)
-            return false;
-
-        id_t self_id = _VSOpeer->getSelf ()->id;
-
-        list.clear ();
-
-        for (size_t i=0; i < nodes.size (); i++)
-        {
-            id_t id = nodes[i]->id;
-
-            // skip self or non-enclosing neighbors
-            if (id == self_id || voronoi->is_enclosing (id) == false)
-                continue;
-
-            list.push_back (id);
-        }
-
-        return true;
-    }
-
-
-    /*
-    // obtain the position to insert a new matcher
-    Position
-    VASTMatcher::findInsertion (Voronoi *voronoi)
-    {
-        vector<Position> legal_positions;
-
-        Position sub_center;              
-        
-        // get center of all known agents
-        getSubscriptionCenter (sub_center);
-        
-        // find center of nodes
-        Position arb_center;        
-        
-        // final insert position
-        Position insert_pos;        
-
-        if (getArbitratorCenter (arb_center))
-        {
-            // final center        
-            insert_pos.x = (coord_t)((arb_center.x + agent_center.x) / 2.0);
-            insert_pos.y = (coord_t)((arb_center.y + agent_center.y) / 2.0);
-        }
-        else
-            insert_pos = agent_center;
-      
-        if (isLegalPosition (insert_pos))
-            legal_positions.push_back (insert_pos);
-        else if (isLegalPosition (arb_center))
-            legal_positions.push_back (arb_center);        
-        else if (isLegalPosition (agent_center))
-            legal_positions.push_back (agent_center);
-
-        // generate a legal random position if no positions are available
-        if (legal_positions.size () == 0)
-        {
-            Position pos;
-            do
-            {
-                pos.set ((coord_t)(rand () % _para.world_width), (coord_t)(rand () % _para.world_height), 0);
-            } 
-            while (!isLegalPosition (pos));
-
-            legal_positions.push_back (pos);
-        }
-
-        // randomly select a center
-        int r = _self.id % legal_positions.size ();
-        return legal_positions[r];
-    }
-    */
-
-    // get the center of all current agents I maintain
-    bool
-    VASTMatcher::getLoadCenter (Position &sub_center)
-    {
-        if (_subscriptions.size () == 0)
-            return false;
-
-        sub_center.set (0, 0, 0);
-
-        // NOTE/BUG if all coordinates are large, watch for overflow
-        map<id_t, Subscription>::iterator it = _subscriptions.begin ();
-                
-        for (; it != _subscriptions.end (); it++)
-        {
-            sub_center.x += it->second.aoi.center.x; 
-            sub_center.y += it->second.aoi.center.y;
-        }
-
-        sub_center.x /= _subscriptions.size ();
-        sub_center.y /= _subscriptions.size ();
+        list = _VSOpeer->getVoronoi ()->get_en (_self.id);
 
         return true;
     }
@@ -1244,6 +942,36 @@ namespace Vast
     VASTMatcher::getGatewayID ()
     {
         return _gateway.host_id;
+    }
+
+    // answer object request from a neighbor node
+    // returns # of successful transfers
+    int 
+    VASTMatcher::copyObject (id_t target, vector<id_t> &obj_list, bool is_transfer, bool update_only)
+    {        
+        return transferSubscription (target, obj_list, is_transfer, update_only);
+    }
+
+    // remove an obsolete unowned object
+    bool 
+    VASTMatcher::removeObject (id_t obj_id)
+    {
+        return removeSubscription (obj_id);
+    }
+
+    // handle the event of a new VSO node's successful join
+    bool 
+    VASTMatcher::peerJoined ()
+    {
+
+        return true;
+    }
+
+    // handle the event of a new VSO node's successful join
+    bool 
+    VASTMatcher::peerMoved ()
+    {
+        return true;
     }
 
     // whether is particular ID is the gateway node

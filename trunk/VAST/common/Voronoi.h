@@ -71,7 +71,7 @@ namespace Vast {
         virtual std::vector<id_t> & get_en (id_t id, int level = 1) = 0;
         
         // check if a circle overlaps with a particular region
-        virtual bool overlaps (id_t id, const Position &center, length_t radius, bool accuracy_mode = false) = 0;
+        virtual bool overlaps (id_t id, const Position &center, length_t radius, bool accurate_mode = false) = 0;
         
         // remove all sites in the diagram
         virtual void clear () = 0;

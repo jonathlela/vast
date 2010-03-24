@@ -331,7 +331,6 @@ namespace Vast
         map<obj_id_t, StoredObject>     _obj_store;             // repository of all known objects                
         map<obj_id_t, byte_t>           _attr_sizes;            // # of expected attributes for a certain object
 
-        //map<obj_id_t, timestamp_t>      _obj_transit;           // objects currently in transfer of ownership (from myself to others)
         map<obj_id_t, Message *>        _transfer_msg;          // unprocessed ownership transfer messages
         map<obj_id_t, id_t>             _obj_requested;         // objects & arbitrators where OBJECT_R have been sent
 

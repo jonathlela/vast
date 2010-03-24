@@ -59,7 +59,7 @@ namespace Vast
 // TODO: should check for requested nodes only, otherwise may create too much traffic
 
 #define CHECK_EN_ONLY_                  // a boundary neighbor checks only its ENs as opposed to all AOI neighbors during neighbor discovery                                    
-#define CHECK_REQNODE_ONLY_             // check neighbor discovery only for those who have asked
+#define CHECK_REQUESTING_NODES_ONLY_             // check neighbor discovery only for those who have asked
 
     typedef enum 
     {
@@ -130,10 +130,11 @@ namespace Vast
         // obtain states on which neighbors have changed
         map<id_t, NeighborUpdateStatus>& getUpdateStatus ();
    
-        // process incoming messages
-        void tick ();
+        // process incoming messages & other regular maintain stuff
+        virtual void tick ();
 
-        // returns whether the message was successfully handled
+        // called by tick () to process specific message
+        // returns whether the message was successfully handled        
         // decleared as 'virtual' to allow partial override of its functions
         virtual bool handleMessage (Message &in_msg);
 
@@ -149,6 +150,8 @@ namespace Vast
         vector<Node *>      _neighbors;                 // a list of currently connected neighboring managers
         
         Voronoi            *_Voronoi;                   // a Voronoi diagram for keeping AOI neighbors                
+
+        size_t              _tick_count;                // counter for how many ticks have occurred
 
     private:
 
@@ -226,7 +229,6 @@ namespace Vast
         // internal statistics
         Ratio               _NEIGHBOR_Message;          // stats for NodeMessages received
         map<id_t, int>      _count_drop;                // counter for disconnecting a remote node
-        size_t              _tick_count;                // counter for how many ticks have occurred
     };
 
 } // namespace Vast
