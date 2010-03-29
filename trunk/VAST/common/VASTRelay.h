@@ -169,7 +169,7 @@ namespace Vast
 
         // counter for timeout	
         int         _timeout_ping;      // countdown counter to send query
-        int         _timeout_query;      // timeout for querying the initial relay
+        int         _timeout_query;     // timeout for querying the initial relay
         int         _timeout_join;      // timeout for joining a relay
 
         int         _request_times;     // # of times we've sent out PING requests

@@ -46,6 +46,10 @@ namespace Vast {
         //       actual address for gateway whose IP is "127.0.0.1"
         _addr.setPublic ((unsigned long)addr.get_ip_address (), 
                          (unsigned short)addr.get_port_number ());
+
+        // set the conversion rate between seconds and timestamp unit
+        // for net_ace it's 1000 timestamp units = 1 second
+        _sec2timestamp = 1000;
     }
 
     //
@@ -193,7 +197,7 @@ namespace Vast {
     //
 
 
-    // get current physical timestamp
+    // get current physical timestamp, unit is milliseconds
     timestamp_t
     net_ace::
     getTimestamp ()

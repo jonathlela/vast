@@ -56,10 +56,16 @@ namespace Vast
 
         // answer object request from a neighbor node, 'is_transfer' indicates whether ownership has been transferred 
         // returns # of successful transfer
-        virtual int copyObject (id_t target, vector<id_t> &obj_list, bool is_transfer, bool update_only) = 0;
+        virtual int copyObject (id_t target, vector<id_t> &obj_list, bool update_only) = 0;
 
         // remove an obsolete unowned object
         virtual bool removeObject (id_t obj_id) = 0;
+
+        // objects whose ownership has transferred to a neighbor node
+        virtual bool ownershipTransferred (id_t target, vector<id_t> &obj_list) = 0;
+
+        // notify the claiming of an object as mine
+        virtual bool objectClaimed (id_t obj_id) = 0;
 
         // handle the event of a new VSO node's successful join
         virtual bool peerJoined () = 0;

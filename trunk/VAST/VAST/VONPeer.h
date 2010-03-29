@@ -104,8 +104,8 @@ namespace Vast
         ~VONPeer ();                        
 
         // join & leave the overlay 
-        void        join (Area &aoi, Node *gateway);
-        void        leave (bool notify_neighbors = true);
+        virtual void join (Area &aoi, Node *gateway);
+        virtual void leave (bool notify_neighbors = true);
                         
         // move a subscription area to a new position
         // returns actual position in case the position is already taken

@@ -95,7 +95,7 @@ namespace Vast
             Message msg (VON_BYE, _self.id);
             msg.priority = 0;
              
-            for (unsigned int i = 0; i < _neighbors.size (); i++)
+            for (size_t i = 0; i < _neighbors.size (); i++)
             {
                 if (_neighbors[i]->id != _self.id)
                     msg.addTarget (_neighbors[i]->id);
@@ -105,7 +105,8 @@ namespace Vast
             for (; it != _potential_neighbors.end (); it++)
                 msg.addTarget (it->second.id);
         
-            _net->sendVONMessage (msg, true);
+            if (msg.targets.size () > 0)
+                _net->sendVONMessage (msg, true);
         }
 
         // delete allocated memory                
@@ -945,7 +946,7 @@ namespace Vast
         // TODO: do not create new HELLO message every time? (local-side optimization)
         Message msg (VON_HELLO, _self.id);
         msg.priority = 0;
-        msg.store (_self);                
+        msg.store (_self);            
         msg.store (n);
 
 #ifdef DEBUG_DETAIL

@@ -132,10 +132,16 @@ namespace Vast
 
         // answer a request for objects
         // returns # of successful transfer
-        int copyObject (id_t target, vector<id_t> &obj_list, bool is_transfer, bool update_only);
+        int copyObject (id_t target, vector<id_t> &obj_list, bool update_only);
 
         // remove an obsolete unowned object
         bool removeObject (id_t obj_id);
+
+        // objects whose ownership has transferred to a neighbor node
+        bool ownershipTransferred (id_t target, vector<id_t> &obj_list);
+
+        // notify the claiming of an object as mine
+        bool objectClaimed (id_t obj_id);
 
         // handle the event of a new VSO node's successful join
         bool peerJoined ();
@@ -158,7 +164,7 @@ namespace Vast
 
         // send a full subscription info to a neighboring matcher
         // returns # of successful transfers
-        int transferSubscription (id_t target, vector<id_t> &sub_list, bool notify_client, bool update_only);
+        int transferSubscription (id_t target, vector<id_t> &sub_list, bool update_only);
 
         // update the neighbor list for each subscriber
         void refreshSubscriptionNeighbors ();
@@ -182,7 +188,7 @@ namespace Vast
 
         // TODO: factor these into an independent / generic class?
         // obtain a list of hostIDs for enclosing neighbors
-        bool getEnclosingNeighbors (vector<id_t> &list);
+        //bool getEnclosingNeighbors (vector<id_t> &list);
 
         // whether is particular ID is the gateway node
         inline bool isGateway (id_t id);
@@ -194,10 +200,14 @@ namespace Vast
 
         VSOPeer *           _VSOpeer;       // interface as a participant in a VON
 
-        map<id_t, Node>     _neighbors;     // list of neighboring matchers
+        map<id_t, Node *>   _neighbors;     // list of neighboring matchers
                                                                                                             
         map<id_t, Subscription> _subscriptions; // a list of subscribers managed by this matcher
                                                 // searchable by the hostID of the subscriber
+
+        map<id_t, map<id_t, bool> *> _replicas; // a list of replicas of owned objects at remote neighbors, map from obj_id to host_id map
+
+        map<id_t, id_t>     _closest;           // mapping of subscription to closest alternative matcher
 
         int                 _overload_limit;    // # of subscriptions considered overload
 

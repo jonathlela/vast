@@ -35,7 +35,8 @@ namespace Vast
           _cleanup_counter (0),
           _request_counter (0),
           _recvmsg (NULL), 
-          _tick_persec (0)
+          _tick_persec (0),
+          _sec2timestamp (0)
     {        
         resetTransmissionSize ();
     }        
@@ -311,6 +312,9 @@ namespace Vast
         _recvmsg = nextmsg->msg;
         fromhost = nextmsg->fromhost;
 
+        // update time for the connection
+        _id2time[fromhost] = this->getTimestamp ();
+
         delete nextmsg;
 
         updateTransmissionStat (_recvmsg->from, _recvmsg->msgtype, _recvmsg->size, 2); 
@@ -507,7 +511,7 @@ namespace Vast
         if (_cleanup_counter++ > COUNTER_CONNECTION_CLEANUP)
         {
             _cleanup_counter = 0;
-            //cleanConnections ();
+            cleanConnections ();
         }
 
         // clear pending messages in queue
@@ -580,7 +584,14 @@ namespace Vast
         printf ("VASTnet::setTickPerSecond () as %d\n", ticks);
         _tick_persec = ticks;
     }
-            
+
+    // get how many timestamps (as returned by getTimestamp) is in a second 
+    int 
+    VASTnet::getTimestampPerSecond ()
+    {
+        return (_sec2timestamp == 0 ? _tick_persec : _sec2timestamp);
+    }
+       
     // check if a target is connected, and attempt to connect if not
     bool 
     VASTnet::validateConnection (id_t host_id)
@@ -694,7 +705,14 @@ namespace Vast
     VASTnet::resolveAssignedID (id_t host_id)
     {
         // last 16 bits are assigned ID + ID group (2 bits)
-        return (host_id & (0xFF >> 2));
+        return (host_id & (0xFFFF >> 2));
+    }
+
+    // obtain the port portion of the ID
+    id_t 
+    VASTnet::resolvePort (id_t host_id)
+    {
+        return ((host_id & 0x00000000FFFF0000) >> 16);
     }
 
     // obtain a NodeID
@@ -717,8 +735,11 @@ namespace Vast
             return NET_ID_UNASSIGNED;
 
         else
+        {
             // if we're a relay with public IP
-            return ((id_t)_addr.publicIP.host << 32) | ((id_t)_addr.publicIP.port << 16) | ((id_t)id_group << 14) | _IDcounter[id_group]++;
+            id_t id = ((id_t)_addr.publicIP.host << 32) | ((id_t)_addr.publicIP.port << 16) | ((id_t)id_group << 14) | _IDcounter[id_group]++;
+            return id;
+        }
     }
 
     // get hostID for myself
@@ -900,11 +921,12 @@ namespace Vast
                 _id2time[it->first] = curr_time;
                 continue;                
             }
-            else if ((curr_time - it2->second) <= TIMEOUT_REMOVE_CONNECTION)
+            else if ((curr_time - it2->second) <= (timestamp_t)(TIMEOUT_REMOVE_CONNECTION * this->getTimestampPerSecond ()))
                 continue;
 
             remove_list.push_back (it->first);                
         }
+
         for (size_t i=0; i<remove_list.size (); i++)
         {
             disconnect (remove_list[i]);

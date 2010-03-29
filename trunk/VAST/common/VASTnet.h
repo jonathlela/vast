@@ -39,24 +39,16 @@
 #define GATEWAY_DEFAULT_PORT    (1037)          // default port for gateway
 
 #define NET_ID_UNASSIGNED       (0)             // default ID for yet assigned ID
-//#define NET_ID_GATEWAY_          (1)            // default ID for gateway node
-#define NET_ID_RELAY             (1)             // default ID for gateway node
+#define NET_ID_RELAY            (1)             // default ID for gateway node
 
 #define NET_ID_NEWASSIGNED      ((id_t)(-1))    // ID to signify new ID assignment
 
 // grouping for locally-generated ID
 #define ID_GROUP_VON_VAST       1
-#define ID_GROUP_VON_VASTATE    2
+//#define ID_GROUP_VON_VASTATE    2
 
-// TODO: force using time-step as units?
-
-#ifdef SIMULATION_ONLY
-// # of elapsed timestamps before a connection is removed
-#define TIMEOUT_REMOVE_CONNECTION   (50)
-#else
-// # of milliseconds
-#define TIMEOUT_REMOVE_CONNECTION   (5000)
-#endif
+// # of elapsed seconds before removing a connection
+#define TIMEOUT_REMOVE_CONNECTION   (5)
 
 // # of flush called before a connection cleanup is called (don't want to do it too often)
 #define COUNTER_CONNECTION_CLEANUP  (10)
@@ -170,6 +162,9 @@ namespace Vast {
         // set how many ticks exist in a second (for stat reporting)
         void setTickPerSecond (int ticks);
 
+        // get how many timestamps (as returned by getTimestamp) is in a second 
+        int getTimestampPerSecond ();
+
         // check if a target is connected, and attempt to connect if not
         bool validateConnection (id_t id);
 
@@ -191,6 +186,9 @@ namespace Vast {
 
         // obtain the assigned number from a HostID;
         static id_t resolveAssignedID (id_t host_id);
+
+        // obtain the port portion of the ID
+        static id_t resolvePort (id_t host_id);
 
         // obtain a unique NodeID, given one of the ID groups
         id_t getUniqueID (int id_group = 0);
@@ -314,10 +312,17 @@ namespace Vast {
         // counter for assigning unique ID
         std::map<int, id_t>             _IDcounter;         // counter for assigning IDs by this host
 
+    
+        //
+        // logical / physical time management
+        //
+        int                             _tick_persec;       // how many ticks per second
+        int                             _sec2timestamp;     // ratio converting seconds to timestamp as returned by getTimestamp () 
+
+
         // 
         // stat collection
         //
-        int                             _tick_persec;       // how many ticks per second
 
         // accumulated send/receive size
         size_t _sendsize, _recvsize;

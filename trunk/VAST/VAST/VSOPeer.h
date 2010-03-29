@@ -47,16 +47,16 @@
 #define VSO_TIMEOUT_OVERLOAD_REQUEST    (3)     // seconds to re-send a overload help request
 #define VSO_INSERTION_TRIGGER           (5)     // # of matcher movement requests before an insertion should be requested
 
-#define VSO_AOI_OVERLAP_BUFFER          (10)    // buffer size determining whether an AOI overlaps with a region
+#define VSO_AOI_OVERLAP_BUFFER          (5)    // buffer size determining whether an AOI overlaps with a region
 
 // ownership transfer setting
 //#define COUNTDOWN_REMOVE_AVATAR 20      // # of steps to delete disconnected avatar object
 //#define COUNTDOWN_PROMOTE       20      // # of steps can insert a new Arbitrator in the same area after an Arbitrator inserted
-#define COUNTDOWN_TRANSFER      3       // # of steps before transfering ownership to a neighbor
+#define COUNTDOWN_TRANSFER          (0.3) // # of seconds before transfering ownership to a neighbor
 //#define COUNTDOWN_TAKEOVER      5       // # of steps to wait before ownership takeover
 //#define COUNTDOWN_REMOVE_OBJ    5       // # of steps to wait before removing a non-AOI object at an agent
 
-#define TIMEOUT_EXPIRING_OBJECT     (1)    // seconds to delete an un-ownered object (assuming 25 steps / sec * 10 sec)
+#define TIMEOUT_EXPIRING_OBJECT     (0.5)    // seconds to delete an un-ownered object (assuming 25 steps / sec * 10 sec)
 //#define TIMEOUT_JOINING             (25*3)  // time-steps to re-send a join request
 //#define TIMEOUT_OVERLOAD_REQUEST    (25*1)  // time-steps to re-send a overload help request
 
@@ -170,7 +170,10 @@ namespace Vast
 
         VSOPeer (id_t id, VONNetwork *net, VSOPolicy *policy, length_t aoi_buffer = AOI_DETECTION_BUFFER);        
         ~VSOPeer ();                        
-       
+
+        // perform joining the overlay
+        void join (Area &aoi, Node *gateway);
+
         // returns whether the message was successfully handled
         bool handleMessage (Message &in_msg);
 
@@ -213,6 +216,10 @@ namespace Vast
         // TODO: try to hide this from public?
         void requestObjects (id_t target, vector<id_t> &obj_list);
 
+        // find the closest enclosing neighbor to a given position (other than myself)
+        // returns 0 for no enclosing neighbors
+        id_t getClosestEnclosing (Position &pos);
+
     private:
 
         // change the center position in response to overload signals
@@ -239,6 +246,8 @@ namespace Vast
         // accept and ownership transfer
         void acceptTransfer (VSOOwnerTransfer &transfer);
 
+        // make an object my own
+        void claimOwnership (id_t obj_id, VSOSharedObject &so);
 
         //
         // helper methods
@@ -252,10 +261,6 @@ namespace Vast
 
         // check whether a new node position is legal
         bool isLegalPosition (const Position &pos, bool include_self);
-
-        // find the closest enclosing neighbor to a given position (other than myself)
-        // returns 0 for no enclosing neighbors
-        id_t getClosestEnclosing (Position &pos);
 
         // get a list of neighbors whose regions are covered by the specified AOI
         // optionally to include the closest neighbor
@@ -273,8 +278,7 @@ namespace Vast
         NodeState           _vso_state;         // state of the VSOpeer
 
         Node                _newpos;            // new AOI & position to be updated due to load balancing
-        
-        
+                
         // server data (Gateway node)       
         vector<Node>        _candidates;          // list of potential nodes      
         map<id_t, Node>     _promote_requests;    // requesting nodes' timestamp of promotion and position, index is the promoted node

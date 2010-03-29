@@ -26,6 +26,15 @@ namespace Vast
     {
     }
 
+    // perform joining the overlay
+    void 
+    VSOPeer::join (Area &aoi, Node *gateway)
+    {
+        // NOTE: it's important to set newpos correctly so that self-adjust of center can be correct
+        _newpos.aoi = aoi;
+        VONPeer::join (aoi, gateway);
+    }
+
     bool 
     VSOPeer::handleMessage (Message &in_msg)    
     {
@@ -144,7 +153,8 @@ namespace Vast
                 Position temp_pos = _newpos.aoi.center;
 
                 // move at a speed proportional to the severity of the overload
-                temp_pos += (((neighbor_pos - temp_pos) * VSO_MOVEMENT_FRACTION) * level);
+                //temp_pos += (((neighbor_pos - temp_pos) * VSO_MOVEMENT_FRACTION) * level);
+                temp_pos += ((neighbor_pos - temp_pos) * VSO_MOVEMENT_FRACTION);
 
                 if (isLegalPosition (temp_pos, false))
                     _newpos.aoi.center = temp_pos;        
@@ -206,7 +216,26 @@ namespace Vast
                 }
 
                 // request object transfer from the policy layer
-                _policy->copyObject (in_msg.from, list, false, false);
+                _policy->copyObject (in_msg.from, list, false);
+            }
+            break;
+
+        case VSO_DISCONNECT:
+            {
+                // claim ownership of objects managed by departing peer
+                // by setting the reclaim counter to 0 for all objects managed by departing matcher                  
+                map<id_t, VSOSharedObject>::iterator it = _objects.begin ();
+                        
+                for (; it != _objects.end (); it++)
+                {                    
+                    // record all objects the departing matcher may be managing
+                    if (it->second.closest == in_msg.from)
+                        _reclaim_countdown[it->first] = 0;
+                }
+
+                // then notify VON component to remove the departing peer
+                in_msg.msgtype = VON_DISCONNECT;
+                VONPeer::handleMessage (in_msg);
             }
             break;
 
@@ -338,6 +367,8 @@ namespace Vast
         _newpos = _self;
     }
 
+    // check if neighbors need to be notified of object updates
+    // returns the # of updates sent
     int
     VSOPeer::checkUpdateToNeighbors ()
     {
@@ -354,7 +385,7 @@ namespace Vast
             
             // update which VSOpeer is closest to this object
             so.closest = getClosestEnclosing (so.aoi.center);
-     
+                 
             // check if owned object's AOI overlaps with regions of other VSOPeers
             // if so, then we should send updates to the VSOPeers affected
             if (so.is_owner == true)
@@ -382,7 +413,7 @@ namespace Vast
         map<id_t, vector<id_t> *>::iterator itu = update_list.begin ();
         for (; itu != update_list.end (); itu++)
         {
-            _policy->copyObject (itu->first, *itu->second, false, true);                                
+            _policy->copyObject (itu->first, *itu->second, true);                                
             delete itu->second;
         }
 
@@ -394,7 +425,7 @@ namespace Vast
     VSOPeer::removeObsoleteObjects ()
     {
         timestamp_t now = _net->getTimestamp ();
-        timestamp_t timeout = TIMEOUT_EXPIRING_OBJECT * _net->getTickPerSecond ();
+        timestamp_t timeout = (timestamp_t)(TIMEOUT_EXPIRING_OBJECT * _net->getTickPerSecond ());
 
         vector<id_t> remove_list;
 
@@ -447,7 +478,7 @@ namespace Vast
                 {
                     // update ownership transfer counter
                     if (_transfer_countdown.find (obj_id) == _transfer_countdown.end ())
-                        _transfer_countdown[obj_id] = COUNTDOWN_TRANSFER;
+                        _transfer_countdown[obj_id] = (int)(COUNTDOWN_TRANSFER * _net->getTickPerSecond ());
                     else
                         _transfer_countdown[obj_id]--;
 
@@ -492,28 +523,15 @@ namespace Vast
                     // automatically claim ownership (we assume neighboring nodes will
                     // have consensus over ownership eventually, as topology becomes consistent)
                     if (_reclaim_countdown.find (obj_id) == _reclaim_countdown.end ())
-                        _reclaim_countdown[obj_id] = COUNTDOWN_TRANSFER * 4;
+                        _reclaim_countdown[obj_id] = (int)(COUNTDOWN_TRANSFER * _net->getTickPerSecond ())*5;
                     else
                         _reclaim_countdown[obj_id]--;
                 
                     // we claim ownership if countdown is reached
-                    if (_reclaim_countdown[obj_id] == 0)
-                    {                         
-                        // reclaim only if we're the closest node
-                        if (so.closest == 0)
-                        {
-                            so.is_owner = true;
-                            so.in_transit = 0;
-                            so.last_update = now;                                            
-                        }
-                        // it's not really mine, delete it ?
-                        else
-                        {
-                            //destroyObject (obj_id);
-                        }
-
-                        _reclaim_countdown.erase (obj_id);                       
-                    }                
+                    if (_reclaim_countdown[obj_id] <= 0)
+                    {
+                        claimOwnership (obj_id, so);
+                    }
                 }
 
                 // reset transfer counter, if an object has moved out but moved back again
@@ -523,13 +541,11 @@ namespace Vast
                 }
             }     
 
-            // reclaim in transit objects
-
+            // reclaim in-transit objects taking too long to complete
             if (so.in_transit != 0 && 
-                ((now - so.in_transit) > (COUNTDOWN_TRANSFER * 2)))
+                ((now - so.in_transit) > (COUNTDOWN_TRANSFER * _net->getTickPerSecond () * 3)))
             {
-                so.in_transit = 0;
-                so.is_owner = true;
+                claimOwnership (obj_id, so);
             }
         }
 
@@ -564,7 +580,8 @@ namespace Vast
             // perform actual object transfer first
             // NOTE: important to first send out objects, then transfer ownership
             // TODO: this may be wasteful as the object may already has a copy at the neighbor node
-            _policy->copyObject (it->first, obj_list, true, false);
+            _policy->copyObject (it->first, obj_list, false);
+            _policy->ownershipTransferred (it->first, obj_list);
 
             // TODO: notify other nodes to remove ghost objects?
             // remove closest & send to all other neighbors
@@ -656,6 +673,20 @@ namespace Vast
         // reset reclaim countdown 
         if (_reclaim_countdown.find (transfer.obj_id) != _reclaim_countdown.end ())
             _reclaim_countdown.erase (transfer.obj_id);        
+    }
+
+    // make an object my own
+    void 
+    VSOPeer::claimOwnership (id_t obj_id, VSOSharedObject &so)
+    {
+        so.is_owner = true;
+        so.in_transit = 0;
+        so.last_update = _net->getTimestamp ();
+
+        _reclaim_countdown.erase (obj_id);
+
+        // notify current node about it, so other actions can be taken (e.g., tell a client)
+        _policy->objectClaimed (obj_id);
     }
 
     // send request to a neighbor for a copy of a full object 
@@ -770,10 +801,15 @@ namespace Vast
         // perform per-second tasks
         if (_tick_count % _net->getTickPerSecond () == 0)
         {
-           // move myself towards the center of load (subscriptions)
+           // move towards the center of load (subscriptions)
             Position center;
             if (getLoadCenter (center))
+            {
+                //double dist = (center.distance (_newpos.aoi.center) * VSO_MOVEMENT_FRACTION);
+                //if (dist > 50)
+                //    printf ("here\n");
                 _newpos.aoi.center += ((center - _newpos.aoi.center) * VSO_MOVEMENT_FRACTION);
+            }
         }
 
         // move the VSOPeer's position 

@@ -48,7 +48,8 @@
     
     SimNode::~SimNode ()
     {   
-        vnode->leave ();
+        if (vnode != NULL)
+            vnode->leave ();
         _world->destroyVASTNode (vnode);
         delete _world;
     }

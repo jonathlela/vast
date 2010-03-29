@@ -48,6 +48,7 @@ namespace Vast
         MATCHER_JOIN_R,                 // reply to the joining matcher
         MATCHER_JOINED,                 // notify gateway a matcher has joined successfully
         MATCHER_NOTIFY,                 // current matcher notifying client of new current matcher
+        CLOSEST_NOTIFY,                 // current matcher notifying client of closest alternative matcher
         PUBLISH,                        // publish a message         
         SUBSCRIBE,                      // send subscription
         SUBSCRIBE_R,                    // to reply whether a node has successfully subscribed (VON node joined)        

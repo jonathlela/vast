@@ -21,6 +21,14 @@ namespace Vast
 
     VASTMatcher::~VASTMatcher ()
     {
+        leave ();
+
+        // release memory
+        map<id_t, map<id_t, bool> *>::iterator it = _replicas.begin ();
+        for (; it != _replicas.end (); it++)
+            delete it->second;
+
+        _replicas.clear ();
     }
 
     // join the matcher mesh network with a given location
@@ -203,12 +211,8 @@ namespace Vast
         // subscription request for an area
         case SUBSCRIBE:
             {               
-                // check if the requester has already made a request to subscribe
-                if (_subscriptions.find (in_msg.from) != _subscriptions.end ())
-                {
-                    printf ("VASTMatcher::handleMessage () SUBSCRIBE subscription already made by host: [%lld]\n", in_msg.from);
-                    break;
-                }
+                // NOTE: we allow sending SUBSCRIBE for existing subscription if
+                //       the subscription has updated (for example, the relay has changed)
 
                 Subscription sub;
                 in_msg.extract (sub);
@@ -222,12 +226,16 @@ namespace Vast
                 if (voronoi->contains (_self.id, sub.aoi.center) || 
                     closest == _self.id)
                 {
-
                     // store which host requests for the subscription
                     sub.host_id = in_msg.from;
 
-                    // assign a unique subscription number                    
-                    sub.id = _net->getUniqueID (ID_GROUP_VON_VAST);
+                    // assign a unique subscription number if one doesn't exist, or if the provided one is not known
+                    // otherwise we could re-use a previously assigned subscription ID
+                    // TODO: potentially buggy? (for example, if the matcher that originally assigns the ID, leaves & joins again, to assign another subscription the same ID?)
+                    if (sub.id == NET_ID_UNASSIGNED || _subscriptions.find (sub.id) == _subscriptions.end ()) 
+                        sub.id = _net->getUniqueID (ID_GROUP_VON_VAST);
+                    else
+                        printf ("VASTMatcher SUBSCRIBE re-using subscription ID [%llu] for request from [%lld]\n", sub.id, in_msg.from);
 
                     // by default we own the client subscriptions we create
                     addSubscription (sub, true);
@@ -337,7 +345,7 @@ namespace Vast
                     //       under MESSAGE first
                     sendMessage (in_msg, &failed_targets);
 
-                    // some targets are invalid, remove the subscribers
+                    // some targets are invalid, remove the subs
                     // TODO: perhaps should check / wait? 
                     if (failed_targets.size () > 0)
                     {
@@ -459,11 +467,18 @@ namespace Vast
                 // removing a simple client (subscriber)
                 // NOTE that this will work because MessageQueue will put all associated sub_id for the 
                 //      disconnecting host as 'in_msg.from' when notifying the DISCONNECT event
-                removeSubscription (in_msg.from);
 
-                // if the host is a matcher, notify the VONPeer component
-                in_msg.msgtype = VON_DISCONNECT;
-                _VSOpeer->handleMessage (in_msg);
+                if (_neighbors.find (in_msg.from) == _neighbors.end ())
+                    removeSubscription (in_msg.from);
+                else
+                {
+                    // notify the VONPeer component
+                    in_msg.msgtype = VSO_DISCONNECT;
+                    _VSOpeer->handleMessage (in_msg);
+
+                    // remove a matcher
+                    refreshMatcherList ();
+                }
 
             }
             break;
@@ -499,7 +514,7 @@ namespace Vast
             // check to call additional matchers for load sharing
             checkOverload ();
         
-            // discover for each subscriber other neighbors
+            // determine the AOI neighbors for each subscriber 
             refreshSubscriptionNeighbors ();
                        
             // send neighbor updates to VASTClients        
@@ -528,23 +543,40 @@ namespace Vast
     bool     
     VASTMatcher::addSubscription (Subscription &sub, bool is_owner)
     {      
-        // perhaps we should simply replace it?
-        // avoid redundency
-        if (_subscriptions.find (sub.id) != _subscriptions.end ())
-            return false;
+        bool relay_changed = false;
 
-        // store layer info 
-        // TODO: right now this is a hacked solution, just use whatever available space
-        sub.relay.publicIP.pad = (unsigned short)sub.layer;
+        // store as a shared object (for ownership management) or update if already exists
+        // NOTE: this occurs for a client to re-subscribe due to change in its relay
+        if (_subscriptions.find (sub.id) == _subscriptions.end ())               
+            _VSOpeer->insertSharedObject (sub.id, sub.aoi, is_owner, &_subscriptions[sub.id]);   
+        else
+        {
+            // check if relay has changed
+            if (_subscriptions[sub.id].relay.host_id != sub.relay.host_id)
+                relay_changed = true;
+
+            _VSOpeer->updateSharedObject (sub.id, sub.aoi);           
+        }
 
         // record the subscription
         _subscriptions[sub.id] = sub;
 
-        // also store as a shared object (for ownership management)
-        _VSOpeer->insertSharedObject (sub.id, sub.aoi, is_owner, &_subscriptions[sub.id]);
-
         // notify network layer of the subscriberID -> relay hostID mapping
         notifyMapping (sub.id, &sub.relay);
+
+        // if the subscriber's relay has changed and I'm owner 
+        // need to propagate to all affected 
+        if (is_owner && relay_changed)
+        {
+            // clear the record of the hosts already received full replicas
+            // so next time when sending the subscription update, 
+            // full update (including the relay info) will be sent
+            if (_replicas.find (sub.id) != _replicas.end ())
+            {
+                delete _replicas[sub.id];
+                _replicas.erase (sub.id);
+            }
+        }
 
         return true;
     }
@@ -557,6 +589,14 @@ namespace Vast
 
         _VSOpeer->deleteSharedObject (sub_no);
         _subscriptions.erase (sub_no);
+
+        _closest.erase (sub_no);
+
+        if (_replicas.find (sub_no) != _replicas.end ())
+        {
+            delete _replicas[sub_no];
+            _replicas.erase (sub_no);
+        }
 
         return true;
     }
@@ -588,14 +628,16 @@ namespace Vast
     // send a full subscription info to a neighboring matcher
     // returns # of successful transfers
     int 
-    VASTMatcher::transferSubscription (id_t target, vector<id_t> &sub_list, bool notify_client, bool update_only)
+    VASTMatcher::transferSubscription (id_t target, vector<id_t> &sub_list, bool update_only)
     {
+        // error check, if the neighbor matcher indeed exists
+        if (_neighbors.find (target) == _neighbors.end ())
+            return 0;
+
         listsize_t num_transfer = 0;
      
         Message msg (SUBSCRIBE_TRANSFER);
-        Message notice (MATCHER_NOTIFY);
         msg.priority = 1;                 
-
         msg.addTarget (target);
 
         for (size_t i=0; i < sub_list.size (); i++)
@@ -607,6 +649,7 @@ namespace Vast
             if (it != _subscriptions.end ())
             {
                 Subscription &sub = it->second;
+                
                 // store full subscription or update only
                 if (update_only)
                 {
@@ -615,20 +658,8 @@ namespace Vast
                 }
                 else
                     msg.store (sub);
-                num_transfer++;
-
-                // notify the affected client 
-                if (notify_client == true && 
-                    _neighbors.find (target) != _neighbors.end ())
-                {
-                    notice.clear (MATCHER_NOTIFY);
-                    notice.msggroup = MSG_GROUP_VAST_CLIENT;
-                    notice.priority = 1;
                 
-                    notice.store (_neighbors[target].addr);
-                    notice.addTarget (sub_id);
-                    sendMessage (notice);
-                }
+                num_transfer++;
             }          
         }
 
@@ -706,74 +737,14 @@ namespace Vast
     // check with VON to refresh current neighboring matchers
     void 
     VASTMatcher::refreshMatcherList ()
-    {        
-        vector<id_t> enclosing;
-        if (getEnclosingNeighbors (enclosing) == false)
-            return;
+    {   
+        vector<Node *> &neighbors = _VSOpeer->getNeighbors ();
 
-        // we use the timestamp field in neighbor list to indicate aliveness
-        map<id_t, Node>::iterator it = _neighbors.begin ();
+        _neighbors.clear ();
 
-        for (; it != _neighbors.end (); ++it)        
-            it->second.time = 0;
-       
-        vector<id_t> targets;
-
-        // loop through new list to update my current list
-        size_t i;
-        bool has_changed = false;
-
-        for (i=0; i < enclosing.size (); ++i)
-        {
-            id_t id = enclosing[i];
-            Node *node = _VSOpeer->getNeighbor (id);
-
-            // check if a new neighbor is found
-            if (_neighbors.find (id) == _neighbors.end ())
-            {
-                // add a new neighbor
-                has_changed = true;                
-                _neighbors[id] = *node;
-                _neighbors[id].time = 1;
-
-                // TODO: notify new neighbor of things I own?
-                //targets.clear ();
-                //targets.push_back (id);
-                //notifyOwnership (targets);                
-            }
-            else 
-            {
-                Node &known = _neighbors[id];
-                
-                // update the neighbor's info
-                known.aoi.radius = node->aoi.radius;
-
-                if (known.aoi.center != node->aoi.center)
-                {
-                    known.aoi.center = node->aoi.center;
-                    has_changed = true;
-                }
-
-                known.time = 1;
-            }
-        }
-        
-        // loop through current list of nodes to remove those no longer connected
-        vector<id_t> remove_list;
-        for (it = _neighbors.begin (); it != _neighbors.end (); ++it)
-        {
-            if (it->second.time == 0)
-            {
-                remove_list.push_back (it->first);
-                has_changed = true;
-            }
-        }
-
-        // remove nodes that are no longer enclosing
-        for (i=0; i < remove_list.size (); ++i)                    
-            _neighbors.erase (remove_list[i]);
-
-        // TODO: notify client in change in matcher composition?
+        // convert neighbors into map form (can be lookup)
+        for (size_t i=1; i < neighbors.size (); i++)        
+            _neighbors[neighbors[i]->id] = neighbors[i];       
     }    
 
     // check to call additional matchers for load balancing
@@ -822,21 +793,37 @@ namespace Vast
         for (; it != _subscriptions.end (); it++)
         {
             id_t sub_id  = it->first;
-            Subscription &subscriber = it->second;
+            Subscription &sub = it->second;
                             
-            map<id_t, NeighborUpdateStatus>& update_status = subscriber.getUpdateStatus ();
+            map<id_t, NeighborUpdateStatus>& update_status = sub.getUpdateStatus ();
             
             if (update_status.size () == 0)
                 continue;
 
-            // NOTE: we do not yet erase the update_status
-            if (_VSOpeer->isOwner (subscriber.id) == false)
+            // we only notify objects we own, erase updates for other non-own objects
+            if (_VSOpeer->isOwner (sub.id) == false)
             {
-                //printf ("VASTMatcher::notifyClients () updates exist for non-owned subscription [%llu]\n", subscriber.id);
+                printf ("VASTMatcher::notifyClients () updates exist for non-owned subscription [%llu]\n", sub.id);
                 update_status.clear ();
                 continue;
             }
 
+            id_t closest = _VSOpeer->getClosestEnclosing (sub.aoi.center);
+            
+            // see if we need to notify the client its closest alternative matcher 
+            if (_closest[sub.id] != closest)
+            {
+                _closest[sub.id] = closest;
+    
+                msg.clear (CLOSEST_NOTIFY);
+                msg.priority = 1;
+                msg.msggroup = MSG_GROUP_VAST_CLIENT;
+
+                msg.store (_neighbors[closest]->addr);
+                msg.addTarget (sub.id);
+                sendMessage (msg);
+            }
+        
             msg.clear (NEIGHBOR); 
             msg.msggroup = MSG_GROUP_VAST_CLIENT;
 
@@ -917,16 +904,6 @@ namespace Vast
             update_status.clear ();
 
         } // end for each subscriber      
-
-    }
-
-    // get a list of my enclosing nodes
-    bool 
-    VASTMatcher::getEnclosingNeighbors (vector<id_t> &list)
-    {
-        list = _VSOpeer->getVoronoi ()->get_en (_self.id);
-
-        return true;
     }
 
     // whether the current node can be a spare node for load balancing
@@ -947,9 +924,52 @@ namespace Vast
     // answer object request from a neighbor node
     // returns # of successful transfers
     int 
-    VASTMatcher::copyObject (id_t target, vector<id_t> &obj_list, bool is_transfer, bool update_only)
-    {        
-        return transferSubscription (target, obj_list, is_transfer, update_only);
+    VASTMatcher::copyObject (id_t target, vector<id_t> &obj_list, bool update_only)
+    {  
+        //return transferSubscription (target, obj_list, update_only);
+
+        
+        vector<id_t> full_list;
+        vector<id_t> update_list;
+
+        // if update_only is set, determine if it's 1st time copy (copy full)
+        if (update_only)
+        {
+            for (size_t i=0; i < obj_list.size (); i++)
+            {
+                map<id_t, map<id_t, bool> *>::iterator it = _replicas.find (obj_list[i]);
+                
+                if (it == _replicas.end ())
+                {
+                    _replicas[obj_list[i]] = new map<id_t, bool>;
+                    it = _replicas.find (obj_list[i]);
+                }    
+                
+                map<id_t, bool> &hostmap = *it->second;
+                
+                // record not found, insert record & perform full copy
+                if (hostmap.find (target) == hostmap.end ())
+                {
+                    full_list.push_back (obj_list[i]);
+                    hostmap[target] = true;
+                }
+                else
+                    update_list.push_back (obj_list[i]);
+            }
+        }
+        else
+            full_list = obj_list;
+
+        int num_transfer = 0;
+    
+        // perform the actual copy of objects (full & update only)
+        if (full_list.size () > 0)
+            num_transfer += transferSubscription (target, full_list, false);
+        if (update_list.size () > 0)
+            num_transfer += transferSubscription (target, update_list, true);
+
+        return num_transfer;
+        
     }
 
     // remove an obsolete unowned object
@@ -957,6 +977,50 @@ namespace Vast
     VASTMatcher::removeObject (id_t obj_id)
     {
         return removeSubscription (obj_id);
+    }
+
+    // objects whose ownership has transferred to a neighbor node
+    bool 
+    VASTMatcher::ownershipTransferred (id_t target, vector<id_t> &obj_list)
+    {
+        if (_neighbors.find (target) == _neighbors.end ())
+            return false;
+
+        // notify the clients making those subscriptions about the transfer
+        // so they can switch current matcher
+        Message msg (MATCHER_NOTIFY);
+        
+        msg.msggroup = MSG_GROUP_VAST_CLIENT;
+        msg.priority = 1;
+        
+        msg.store (_neighbors[target]->addr);
+        msg.targets = obj_list;
+
+        sendMessage (msg);
+
+        return true;
+    }
+
+    // notify the claiming of an object as mine
+    bool 
+    VASTMatcher::objectClaimed (id_t sub_id)
+    {
+        map<id_t, Subscription>::iterator it = _subscriptions.find (sub_id);
+        if (it != _subscriptions.end ())
+        {
+            Subscription &sub = it->second;
+
+            // notify the client that I become its matcher
+            Message msg (MATCHER_NOTIFY);
+            msg.msggroup = MSG_GROUP_VAST_CLIENT;
+            msg.priority = 1;
+            
+            msg.store (_self.addr);
+            msg.addTarget (sub.id);
+            sendMessage (msg);
+        }
+
+        return true;
     }
 
     // handle the event of a new VSO node's successful join

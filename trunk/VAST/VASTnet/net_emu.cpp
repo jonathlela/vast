@@ -46,6 +46,10 @@ namespace Vast
         id_t new_id = VASTnet::resolveHostID (&_addr.publicIP);
 
         _bridge.replaceHostID (id, new_id);
+
+        // set the conversion rate between seconds and timestamp unit
+        // for net_emu it's the same as tick_persec
+        _sec2timestamp = 0;
     }
 
     /*

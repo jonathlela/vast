@@ -29,6 +29,8 @@ namespace Vast
         _lastmsg        = NULL;
         _sub.id         = NET_ID_UNASSIGNED;
         _matcher_id     = NET_ID_UNASSIGNED;
+        _closest_id     = NET_ID_UNASSIGNED;
+        _timeout_subscribe = 0;
     }
 
     VASTClient::~VASTClient ()
@@ -49,33 +51,23 @@ namespace Vast
     bool
     VASTClient::join (const IPaddr &gatewayIP)
     {
+        // can only join at ABSENT stage
         if (_state != ABSENT)
             return false;
-                
+
         // convert possible "127.0.0.1" to actual IP address
         IPaddr gateway = gatewayIP;
         _net->validateIPAddress (gateway);
 
-        Addr addr (VASTnet::resolveHostID (&gateway), &gateway);
-        //((MessageQueue *)_msgqueue)->setGateway (addr);
+        // record gateway (for later re-joining in case of matcher fail)
+        _gateway = Addr (VASTnet::resolveHostID (&gateway), &gateway);
      
         char GW_str[80];
         gateway.getString (GW_str);
         printf ("[%llu] VASTClient::join () gateway is: %s\n", _self.id, GW_str);
 
         // gateway is the initial matcher
-        _matcher_id = addr.host_id;
-
-        // TODO: define _self's role
-        /*
-        //_self.aoi.center = pos;
-               
-        // if I'm the gateway, consider already joined
-        if (isGateway (_self.id))
-            _state = JOINED;
-        else
-            _state = JOINING;
-        */
+        _matcher_id = _gateway.host_id; 
 
         // specifying the gateway to contact is considered joined
         _state = JOINED;
@@ -87,7 +79,8 @@ namespace Vast
     void        
     VASTClient::leave ()
     {
-        if (_state != JOINED)
+        // we can leave at any stages other than ABSENT
+        if (_state == ABSENT)
             return;
 
         // send a LEAVE message to my relay
@@ -105,12 +98,12 @@ namespace Vast
     bool
     VASTClient::subscribe (Area &area, layer_t layer)
     {
-        if (_state != JOINED)
+        if (_state != JOINED || _relay->getRelayID () == NET_ID_UNASSIGNED)
             return false;
 
         // record my subscription, not yet successfully subscribed  
-        // NOTE: current we assume we subscribe only one at a time
-        _sub.id     = (id_t)(-1);   // indiate we're subscribing
+        // NOTE: current we assume we subscribe only one at a time        
+        //_sub.id     = NET_ID_UNASSIGNED;
         _sub.aoi    = area;
         _sub.layer  = layer;
         _sub.active = false;
@@ -124,6 +117,8 @@ namespace Vast
         msg.addTarget (_matcher_id);
 
         sendMessage (msg); 
+
+        printf ("VASTClient::subscribe () [%llu] sends SUBSCRIBE request to [%llu]\n", _self.id, _matcher_id);
 
         return true;
     }
@@ -154,7 +149,7 @@ namespace Vast
         msg.store (layer);
         
         // send to relay for default processing       
-        msg.addTarget (_matcher_id);
+        msg.addTarget (_matcher_id);        
         sendMessage (msg);
 
         return true;
@@ -203,7 +198,10 @@ namespace Vast
                 prev_aoi = aoi;                
             }
 
+            // for movement we send to current and closest matcher
             msg.addTarget (_matcher_id);
+            if (_closest_id != NET_ID_UNASSIGNED)
+                msg.addTarget (_closest_id);
 
             if (update_only == false)
             {
@@ -416,8 +414,6 @@ namespace Vast
     {
         _self.id        = _net->getHostID ();
         _self.addr      = _net->getHostAddress ();
-
-        //_relay_id       = _relay->getRelayID ();
     }
 
     // handler for various incoming messages
@@ -446,7 +442,7 @@ namespace Vast
         case SUBSCRIBE_R:
             {
                 // check if there are pending requests
-                if (_sub.id != (id_t)(-1))
+                if (_sub.active == true)
                 {
                     printf ("VASTClient::handleMessage () SUBSCRIBE_REPLY received, but no prior pending subscription found\n");
                     break;
@@ -459,13 +455,13 @@ namespace Vast
 
                 printf ("VASTClient: [%llu] subscribe success [%llu]\n", _self.id, sub_no);
 
-
                 _sub.id = sub_no;
                 _sub.active = true;
-
+                
                 // store to 'self' so it can be accessed externally
+                // NOTE that self.id is host_id
                 // TODO: may need to remove for cleanness?
-                _self.id  = _sub.id;
+                //_self.id  = _sub.id;
                 _self.aoi = _sub.aoi;
                                       
                 // notify network so incoming messages can be processed by this host
@@ -482,19 +478,46 @@ namespace Vast
 
         // notification from existing matcher about a new current matcher
         case MATCHER_NOTIFY:
-            {
+            {     
+                // TODO: security check? 
+                // right now no check is being done because MATCHER_NOTIFY can come
+                // from either the previous existing matcher, or a new matcher that
+                // takes on the client
+                
+                // we only accept notify from current matcher
+                //if (in_msg.from == _matcher_id)
+                //{
+                    Addr new_matcher;
+                    in_msg.extract (new_matcher);
+               
+                    // accept transfer only if new matcher differs from known one
+                    if (new_matcher.host_id != _matcher_id)
+                    {
+                        _closest_id = _matcher_id;
+                        _matcher_id = new_matcher.host_id;
+
+                        notifyMapping (_matcher_id, &new_matcher);
+                    }
+                //}
+            }
+            break;
+
+        // notification from existing matcher about a new current matcher
+        case CLOSEST_NOTIFY:
+            {     
                 // we only accept notify from current matcher
                 if (in_msg.from == _matcher_id)
                 {
-                    Addr new_matcher;
-                    in_msg.extract (new_matcher);
-
-                    _matcher_id = new_matcher.host_id;
-                    notifyMapping (_matcher_id, &new_matcher);
+                    Addr matcher;
+                    in_msg.extract (matcher);
+                    
+                    _closest_id = matcher.host_id;
+          
+                    notifyMapping (_closest_id, &matcher);
                 }
             }
             break;
-           
+
         // notification from VASTClient about currently known AOI neighbors
         case NEIGHBOR:
             {
@@ -609,21 +632,32 @@ namespace Vast
         case DISCONNECT:
             {           
                 // if we're disconnected from our matcher
-                // clear up neighbors due to current subscriptions 
-                // as we'll need to re-subscribe with the new matcher
-                // TODO: more efficient method?
+                // simply switch to backup matcher
                 if (in_msg.from == _matcher_id)
                 {
-                    for (size_t i=0; i < _neighbors.size (); i++)
-                        delete _neighbors[i];
-                    _neighbors.clear ();
+                    printf ("VASTClient::handleMessage () DISCONNECT by my matcher, switching to backup matcher [%llu]\n", _closest_id);
 
-                    // TODO: find new matchers
+                    _matcher_id = _closest_id;
+                    _closest_id = 0;
+
+                    // if we know no alternative matcher, need to re-join
+                    if (_matcher_id == NET_ID_UNASSIGNED)
+                        _state = ABSENT;
+
+                    // reset active flag so we need to re-subscribe (to re-affirm with matcher)
+                    _sub.active = false;
                 }
                 // if the relay fails
                 else if (in_msg.from == _relay->getRelayID ())
                 {
-                    // TODO: deal with relay failure
+                    printf ("VASTClient::handleMessage () DISCONNECT by my relay, wait until new relay is found\n");
+
+                    // NOTE: VASTRelay will automatically find a new relay to connect
+                    //       we just need to periodically check back if the new relay is found
+                    //       in postHandling ()
+
+                    // turn subscription off so we can re-notify the matcher of a new relay                   
+                    _sub.active = false;
                 }
             }
             break;
@@ -641,9 +675,29 @@ namespace Vast
     void 
     VASTClient::postHandling ()
     {
+        // attempt to re-join if matcher becomes invalid
+        if (_matcher_id == NET_ID_UNASSIGNED)
+        {
+            // if gateway exists, then attempt to join
+            if (_gateway.host_id != 0)
+            {
+                join (_gateway.publicIP);        
+            }
+        }
+        // if we have subscribed before, but now inactive, attempt to re-subscribe
+        else if (_sub.id != NET_ID_UNASSIGNED && _sub.active == false)
+        {
+            if (_timeout_subscribe-- <= 0)
+            {
+                // set timeout to re-try, necessary because it might take time 
+                // to find a new relay for sending the subscription
+                _timeout_subscribe = TIMEOUT_SUBSCRIBE * _net->getTickPerSecond ();
 
+                // re-attempt to subscribe 
+                subscribe (_sub.aoi, _sub.layer);
+            }
+        }
     }
-
 
     // store a message to the local queue to be retrieved by receive ()
     void 

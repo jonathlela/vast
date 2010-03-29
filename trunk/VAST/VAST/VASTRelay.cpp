@@ -811,9 +811,6 @@ namespace Vast
         msg.addTarget (relay->id);
         sendMessage (msg);
         
-        //_state = JOINING;
-        //_timeout_join = TIMEOUT_JOIN;
-
         /* TODO: move to VASTClient
         // invalidate all current subscriptions (necessary during relay re-join after relay failure)
         map<id_t, Subscription>::iterator it = _subscriptions.begin ();

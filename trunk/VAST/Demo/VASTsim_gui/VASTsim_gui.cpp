@@ -192,7 +192,7 @@ VOID Render (HWND hWnd)
         // draw node id
         if (show_node_id)
         {
-            sprintf (str, "%d", VASTnet::resolveAssignedID (self->id));
+            sprintf (str, "%d", (int)VASTnet::resolvePort (self->id)-GATEWAY_DEFAULT_PORT+1);
             TextOut (hdc, x-5, y-25, str, strlen(str));
         }
 
@@ -243,7 +243,7 @@ VOID Render (HWND hWnd)
                 // draw node id
                 if (show_node_id)
                 {
-                    sprintf (str, "%d", VASTnet::resolveAssignedID (nodes[j]->id));
+                    sprintf (str, "%d", (int)VASTnet::resolvePort (nodes[j]->addr.host_id)-GATEWAY_DEFAULT_PORT+1);
                     TextOut (hdc, x-5, y-25, str, strlen(str));
                 }
             }
@@ -299,7 +299,7 @@ VOID Render (HWND hWnd)
         sprintf (str2, "[END]");
 
     //sprintf( str, "step: %d (%d, %d) node: %d/%d [%d, %d] aoi: %d AN: %d %s %s %s char: [%d, %d]", g_steps, g_cursor.x-g_origin.x, g_cursor.y-g_origin.y, g_id, g_nodes_active, selected_x, selected_y, g_aoi, size_AN, str2, (follow_mode ? "[follow]" : ""), (step_mode ? "[stepped]" : ""), wvalue, lvalue);
-    sprintf (str, "step: %d (%d, %d) node: %d/%d [%d, %d] aoi: %d AN: %d %s %s %s missing: %d", g_steps, g_cursor.x-g_origin.x, g_cursor.y-g_origin.y, (int)VASTnet::resolveAssignedID (g_id), g_nodes_active, selected_x, selected_y, g_aoi, size_AN, str2, (follow_mode ? "[follow]" : ""), (step_mode ? "[stepped]" : ""), missing_count);
+    sprintf (str, "step: %d (%d, %d) node: %d/%d [%d, %d] aoi: %d AN: %d %s %s %s missing: %d", g_steps, g_cursor.x-g_origin.x, g_cursor.y-g_origin.y, (int)VASTnet::resolvePort (g_id)-GATEWAY_DEFAULT_PORT+1, g_nodes_active, selected_x, selected_y, g_aoi, size_AN, str2, (follow_mode ? "[follow]" : ""), (step_mode ? "[stepped]" : ""), missing_count);
     TextOut (hdc, 10-g_origin.x, 10-g_origin.y, str, strlen(str) );    
     
     // EndPaint balances off the BeginPaint call.

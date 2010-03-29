@@ -35,9 +35,7 @@
 #include "VASTRelay.h"
 #include <vector>
 
-
-const int TIMEOUT_QUERY = 30;        // number of "ticks" before resending join request
-const int TIMEOUT_JOIN  = 30;        // number of "ticks" before resending join request
+const int TIMEOUT_SUBSCRIBE = 5;        // # of seconds before re-attempting to subscribe 
 
 using namespace std;
 
@@ -67,13 +65,8 @@ namespace Vast
         // send int the relay_id of which we can notify potential publisher
         VASTClient (VASTRelay *relay);
         ~VASTClient ();
-        
-		/**
-			join the overlay 
 
-			@param  pos     physical coordinate of the joining client node
-		*/
-        // specify a joining position (physical coordinate?)
+        // join the overlay (so we can perform subscription)
         bool        join (const IPaddr &gateway);
 
         // quit the overlay
@@ -101,11 +94,11 @@ namespace Vast
         vector<Node *>& getPhysicalNeighbors ();
 
         // obtain a list of logically closest hosts (a subset of relay-level nodes returned by list ())
-        vector<Node *>& getLogicalNeighbors ();        
+        vector<Node *>& getLogicalNeighbors ();   
 
         // get a message from the network queue
         Message *   receive ();
-    
+
         // get current statistics about this node (a NULL-terminated string)
         char * getStat (bool clear = false);
         
@@ -161,14 +154,16 @@ namespace Vast
         vector<Node *>      _neighbors;     // list of current AOI neighbors
         vector<Node *>      _physicals;     // list of physical neighbors
         vector<Node *>      _logicals;      // list of logical neighbors
-
-        //id_t                _relay_id;    // the relay I currently use (could be myself)
+        
         id_t                _matcher_id;    // hostID for interest matcher
+        id_t                _closest_id;    // hostID for the closest neighbor matcher
         VASTRelay          *_relay;         // pointer to VASTRelay (to obtain relayID)        
 
         Subscription        _sub;           // my subscription 
-        //map<id_t, Subscription> _subscriptions;  // list of subscriptions 
 
+        int                 _timeout_subscribe; // timeout for re-attempt to subscribe
+
+        Addr                _gateway;       // info about the gateway server
         
         // storage for incoming messages        
         vector<Message *>   _msglist;   // record for incoming messages
