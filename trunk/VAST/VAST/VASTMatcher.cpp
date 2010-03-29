@@ -210,6 +210,7 @@ namespace Vast
 
         // subscription request for an area
         case SUBSCRIBE:
+            if (isJoined () && _VSOpeer->isJoined ())
             {               
                 // NOTE: we allow sending SUBSCRIBE for existing subscription if
                 //       the subscription has updated (for example, the relay has changed)
@@ -269,6 +270,7 @@ namespace Vast
         // move an existing subscription area to a new place
         case MOVE:
         case MOVE_F:
+            if (isJoined () && _VSOpeer->isJoined ())
             {                
                 // extract subscripton id first
                 id_t sub_id;
@@ -300,6 +302,7 @@ namespace Vast
             break;
 
         case PUBLISH:
+            if (isJoined () && _VSOpeer->isJoined ())
             {
                 in_msg.msgtype = (app_msgtype << VAST_MSGTYPE_RESERVED) | MESSAGE;
 
@@ -383,6 +386,7 @@ namespace Vast
 
         // process messages sent by clients to particular targets
         case SEND:
+            if (isJoined () && _VSOpeer->isJoined ())
             {
                 // extract targets 
                 listsize_t n;
@@ -407,6 +411,7 @@ namespace Vast
 
         // transfer of subscription
         case SUBSCRIBE_TRANSFER:
+            if (isJoined ())
             {
                 // extract # of subscriptions
                 listsize_t n;

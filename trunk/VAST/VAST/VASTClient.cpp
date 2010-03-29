@@ -453,7 +453,7 @@ namespace Vast
                 in_msg.extract (sub_no);
                 in_msg.extract (matcher_addr);
 
-                printf ("VASTClient: [%llu] subscribe success [%llu]\n", _self.id, sub_no);
+                printf ("\n\n[%llu] VASTClient\n[%llu] Subscription ID obtained\n\n", _self.id, sub_no);
 
                 _sub.id = sub_no;
                 _sub.active = true;

@@ -48,7 +48,7 @@
 //#define ID_GROUP_VON_VASTATE    2
 
 // # of elapsed seconds before removing a connection
-#define TIMEOUT_REMOVE_CONNECTION   (5)
+#define TIMEOUT_REMOVE_CONNECTION   (10)
 
 // # of flush called before a connection cleanup is called (don't want to do it too often)
 #define COUNTER_CONNECTION_CLEANUP  (10)

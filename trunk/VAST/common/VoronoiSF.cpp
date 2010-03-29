@@ -294,6 +294,10 @@ closest_to (const Position &pt)
 {
     int n = _sites.size ();
 
+    // error checking
+    if (n == 0)
+        return 0;
+
     id_t closest = _sites[0].first;
     double min = pt.distance (_sites[0].second);
     double d;

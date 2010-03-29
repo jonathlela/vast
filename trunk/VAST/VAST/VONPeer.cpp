@@ -566,7 +566,10 @@ namespace Vast
     VONPeer::sendKeepAlive ()
     {
         if (isTimelyNeighbor (_self.id, MAX_TIMELY_PERIOD/2) == false)
+        {
+            printf ("[%llu] sendKeepAlive ()\n", _self.id);
             move (_self.aoi);
+        }
     }
 
     // notify new neighbors with HELLO messages
@@ -1040,14 +1043,15 @@ namespace Vast
     }
 
     // whether a neighbor has stayed alive with regular updates
-    // period is in # of ticks
+    // input period is in # of seconds
     inline bool 
     VONPeer::isTimelyNeighbor (id_t id, int period)
     {
-        period *= _net->getTickPerSecond ();
-        
-        //return ((_tick_count - _id2node[id].addr.lastAccessed) < period);
-        return true;                
+        timestamp_t timeout = period * _net->getTickPerSecond ();   
+        //printf ("tick: %u last_acces: %u timeout: %u\n", _tick_count, _id2node[id].addr.lastAccessed, timeout);
+        return ((_tick_count - _id2node[id].addr.lastAccessed) < timeout);
+
+        //return true;                
     }
 
     // check if a node is self

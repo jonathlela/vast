@@ -46,8 +46,8 @@ using namespace std;
 namespace Vast
 {
 
-#define MAX_DROP_COUNT      (2)     // # of seconds to disconnect a non-overlapped neighbor
-#define MAX_TIMELY_PERIOD   (60)    // # of seconds to be considered as still active
+#define MAX_DROP_COUNT      (2)         // # of seconds to disconnect a non-overlapped neighbor
+#define MAX_TIMELY_PERIOD   (10)        // # of seconds to be considered as still active
     
 // NOTE: a way to estimate the proper buffer:
 //       average speed * 3 hops (from neighbor detection to discovery) * 2 (nodes heading towards directly)
@@ -66,8 +66,6 @@ namespace Vast
         NEIGHBOR_OVERLAPPED = 1,
         NEIGHBOR_ENCLOSED
     } NeighborStates;
-
-
 
     // WARNING: VON messages currently should not exceed VON_MAX_MSG defined in Config.h
     //          otherwise there may be ID collisons with other handlers that use VONpeer
@@ -88,8 +86,6 @@ namespace Vast
 
         // NOTE: to add new messag types, must modify starting number for VSO_Message as well
     } VON_Message;
-
-
 
     // 
     // This class joins a node as "VONPeer", which allows the user client
@@ -151,7 +147,7 @@ namespace Vast
         
         Voronoi            *_Voronoi;                   // a Voronoi diagram for keeping AOI neighbors                
 
-        size_t              _tick_count;                // counter for how many ticks have occurred
+        timestamp_t         _tick_count;                // counter for how many ticks have occurred
 
     private:
 

@@ -927,15 +927,23 @@ namespace Vast
             remove_list.push_back (it->first);                
         }
 
-        for (size_t i=0; i<remove_list.size (); i++)
+        if (remove_list.size () > 0)
         {
-            disconnect (remove_list[i]);
-            
-            // remove address
-            // NOTE: disconnect would not remove id to address mapping as they could still be useful
-            //_id2addr.erase (remove_list[i]);
-            
-            // TODO: at somepoint should clean up mappings
+            printf ("VASTnet::cleanConnections () removing timeout connections: ");
+        
+            for (size_t i=0; i<remove_list.size (); i++)
+            {
+                printf ("[%llu] ", remove_list[i]);
+                disconnect (remove_list[i]);
+                
+                // remove address
+                // NOTE: disconnect would not remove id to address mapping as they could still be useful
+                //_id2addr.erase (remove_list[i]);
+                
+                // TODO: at somepoint should clean up id2host mappings
+            }
+        
+            printf ("\n");
         }
     }
 

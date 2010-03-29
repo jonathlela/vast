@@ -319,8 +319,11 @@ namespace Vast
                         it->second->handleMessage (*recvmsg);                        
                     }
 
+                    // NOTE: id2host mapping has to be kept, so that future re-connect may work (client to a matcher, for example)
+                    //       without having to re-notify the address mapping again
+
                     // remove id to host mapping
-                    _id2host.erase (from_list[i]);
+                    //_id2host.erase (from_list[i]);
                 }
             }
 
