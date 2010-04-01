@@ -282,7 +282,7 @@ namespace Vast {
         // lookup address
         if (_id2addr.find (target) == _id2addr.end ())
         {
-            printf ("net_ace::connect (): cannot find address for target: %ld\n", target);
+            printf ("net_ace::connect (): cannot find address for target: %llu\n", target);
             return (-1);           
         }
         Addr &addr = _id2addr[target];
@@ -449,6 +449,7 @@ namespace Vast {
         // store the connection stream
         _conn_mutex.acquire ();
         _id2conn[id] = stream;
+        _id2time[id] = this->getTimestamp ();
         _conn_mutex.release ();
 
         // store address mapping for remote node (but only if it's a new node)

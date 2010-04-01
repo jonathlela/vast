@@ -435,6 +435,8 @@ namespace Vast
                 msg.addTarget (in_msg.from);
                 sendMessage (msg);
 
+                printf ("\n[%llu] VASTRelay accepts join request from [%llu]\n\n", _self.id, in_msg.from); 
+
                 // also send the joiner some of my known relays
                 sendRelays (in_msg.from);
             }
@@ -550,11 +552,12 @@ namespace Vast
     {
 		// send periodic query to locate & update physical coordinate here
         // also to ensure aliveness of relays
+        timestamp_t now = _net->getTimestamp ();
 
-        if (_timeout_ping-- <= 0)
+        if (now >= _timeout_ping)
         {
             // reset re-try countdown
-            _timeout_ping = TIMEOUT_COORD_QUERY * _net->getTickPerSecond ();
+            _timeout_ping = now + (TIMEOUT_COORD_QUERY * _net->getTimestampPerSecond ());
 
             // obtain some relays from network layer if no known relays
             if (_relays.size () == 0)
@@ -617,10 +620,10 @@ namespace Vast
                 _state = JOINING;
 
             // query the closest relay to join
-            else if (_timeout_query-- <= 0)
+            else if (now >= _timeout_query)
             {                          
                 // set a timeout of re-querying
-                _timeout_query = TIMEOUT_RELAY_QUERY * _net->getTickPerSecond ();
+                _timeout_query = now + (TIMEOUT_RELAY_QUERY * _net->getTimestampPerSecond ());
         
                 printf ("VASTRelay::postHandling () sending query to find closest relay\n");
 
@@ -645,7 +648,7 @@ namespace Vast
         }
         else if (_state == JOINING)
         {
-            if (_timeout_join-- <= 0)
+            if (now >= _timeout_join)
             {                       
                 // TODO: should we remove unresponding relay, or simply re-attempt?
                 //       should we avoid making same requests to unresponding relay?
@@ -809,17 +812,10 @@ namespace Vast
         msg.store (_self);
         msg.store ((char *)&as_relay, sizeof (bool));
         msg.addTarget (relay->id);
-        sendMessage (msg);
-        
-        /* TODO: move to VASTClient
-        // invalidate all current subscriptions (necessary during relay re-join after relay failure)
-        map<id_t, Subscription>::iterator it = _subscriptions.begin ();
-        for (; it != _subscriptions.end (); it++)
-            it->second.active = false;
-        */
+        sendMessage (msg);       
 
         // reset countdown
-        _timeout_join = TIMEOUT_RELAY_JOIN * _net->getTickPerSecond ();
+        _timeout_join = _net->getTimestamp () + (TIMEOUT_RELAY_JOIN * _net->getTimestampPerSecond ());
 
         return true;
     }

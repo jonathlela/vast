@@ -30,6 +30,7 @@ namespace Vast
         _sub.id         = NET_ID_UNASSIGNED;
         _matcher_id     = NET_ID_UNASSIGNED;
         _closest_id     = NET_ID_UNASSIGNED;
+        _next_periodic     = 0;
         _timeout_subscribe = 0;
     }
 
@@ -207,7 +208,26 @@ namespace Vast
             {
                 // MOVE can be delivered unreliably
                 //msg.reliable = false;
-                sendMessage (msg);
+
+                vector<id_t> failed;
+                sendMessage (msg, &failed);
+
+                if (failed.size () > 0)
+                {
+                    // handle potential matcher & closest matcher fail
+                    // for failed matcher we re-initiate connection, for failed closest
+                    // we simply erase it
+                    for (size_t i=0; i < failed.size (); i++)
+                    {
+                        if (failed[i] == _matcher_id)
+                            handleMatcherDisconnect ();
+                        else if (failed[i] == _closest_id)
+                        {
+                            printf ("[%llu] VASTClient::move () cannot contact my backup matcher [%llu], remove it\n", _closest_id);
+                            _closest_id = 0;
+                        }
+                    }
+                }
             }
 
             // update into 'self'
@@ -233,7 +253,7 @@ namespace Vast
 #endif
 
         // store targets
-        listsize_t n = (unsigned char)msg.targets.size ();
+        listsize_t n = (listsize_t)msg.targets.size ();
         for (listsize_t i=0; i < n; i++)
             msg.store (msg.targets[i]);
         
@@ -523,8 +543,7 @@ namespace Vast
             {
                 // loop through each response 
                 listsize_t size;
-                in_msg.extract (size, true);
-                vector<id_t> remove_list;           // list of nodes to be deleted
+                in_msg.extract (size, true);                
 
                 id_t                    neighbor_id;
                 NeighborUpdateStatus    status;
@@ -532,7 +551,9 @@ namespace Vast
                 Area                    aoi;
                 //timestamp_t             time;
 
-                for (int i=0; i < (int)size; i++)
+                timestamp_t now = _net->getTimestamp ();
+
+                for (size_t i=0; i < size; i++)
                 {
                     in_msg.extract (neighbor_id);
                     in_msg.extract ((char *)&status, sizeof (NeighborUpdateStatus));
@@ -543,28 +564,20 @@ namespace Vast
                         {
                             in_msg.extract (node);
 
-                            // check for redundency first
-                            vector<Node *>::iterator it = _neighbors.begin ();
-                            for (; it != _neighbors.end (); it++)
-                            {
-                                // redundency found, simply update
-                                if ((*it)->id == node.id)
-                                {                               
-                                    (*it)->update (node);                                    
-                                    break;
-                                }
-                            }
-                            
-                            // if indeed it's a new neighbor
-                            if (it == _neighbors.end ())
-                                _neighbors.push_back (new Node (node));
+                            addNeighbor (node, now);
                             
                             recordLatency (MOVE, node.time);
                         }
                         break;
 
                     case DELETED:
-                        remove_list.push_back (neighbor_id);
+                        removeNeighbor (neighbor_id);
+                        break;
+
+                    case UNCHANGED:
+                        // we only renew the last timestamp
+                        //printf ("updating time for [%llu] as %u\n", neighbor_id, now);
+                        _last_update[neighbor_id] = now;
                         break;
 
                     case UPDATED:
@@ -585,6 +598,8 @@ namespace Vast
 #ifdef VAST_RECORD_LATENCY
                                     (*it)->time = time;
 #endif
+
+                                    _last_update[neighbor_id] = now;
                                     
                                     break;
                                 }
@@ -593,21 +608,6 @@ namespace Vast
                         break;
                     }
                     
-                }
-
-                // remove neighbors
-                for (size_t i=0; i < remove_list.size (); i++)
-                {
-                    vector<Node *>::iterator it = _neighbors.begin ();
-                    for (; it != _neighbors.end (); it++)
-                    {
-                        if ((*it)->id == remove_list[i])
-                        {
-                            delete (*it);
-                            _neighbors.erase (it);
-                            break;
-                        }
-                    }
                 }
             }
             break;
@@ -636,16 +636,7 @@ namespace Vast
                 if (in_msg.from == _matcher_id)
                 {
                     printf ("VASTClient::handleMessage () DISCONNECT by my matcher, switching to backup matcher [%llu]\n", _closest_id);
-
-                    _matcher_id = _closest_id;
-                    _closest_id = 0;
-
-                    // if we know no alternative matcher, need to re-join
-                    if (_matcher_id == NET_ID_UNASSIGNED)
-                        _state = ABSENT;
-
-                    // reset active flag so we need to re-subscribe (to re-affirm with matcher)
-                    _sub.active = false;
+                    handleMatcherDisconnect ();
                 }
                 // if the relay fails
                 else if (in_msg.from == _relay->getRelayID ())
@@ -663,7 +654,6 @@ namespace Vast
             break;
         
         default:            
-
             break;
         }
         
@@ -674,7 +664,10 @@ namespace Vast
     //  (i.e., check for reply from requests sent)
     void 
     VASTClient::postHandling ()
-    {
+    {        
+        // get current timestamp
+        timestamp_t now = _net->getTimestamp ();
+
         // attempt to re-join if matcher becomes invalid
         if (_matcher_id == NET_ID_UNASSIGNED)
         {
@@ -686,16 +679,24 @@ namespace Vast
         }
         // if we have subscribed before, but now inactive, attempt to re-subscribe
         else if (_sub.id != NET_ID_UNASSIGNED && _sub.active == false)
-        {
-            if (_timeout_subscribe-- <= 0)
+        {            
+            if (now >= _timeout_subscribe)
             {
                 // set timeout to re-try, necessary because it might take time 
                 // to find a new relay for sending the subscription
-                _timeout_subscribe = TIMEOUT_SUBSCRIBE * _net->getTickPerSecond ();
+                _timeout_subscribe = now + (TIMEOUT_SUBSCRIBE * _net->getTimestampPerSecond ());
 
                 // re-attempt to subscribe 
                 subscribe (_sub.aoi, _sub.layer);
             }
+        }
+
+        // perform per-second tasks
+        if (now >= _next_periodic)
+        {
+            _next_periodic = now + _net->getTimestampPerSecond ();
+        
+            removeGhosts ();
         }
     }
 
@@ -704,6 +705,117 @@ namespace Vast
     VASTClient::storeMessage (Message &msg)
     {
         _msglist.push_back (new Message (msg));
+    }
+
+    //
+    // neighbor handling methods
+    //
+
+    bool 
+    VASTClient::addNeighbor (Node &node, timestamp_t now)
+    {
+        // check for redundency first
+        vector<Node *>::iterator it = _neighbors.begin ();
+        for (; it != _neighbors.end (); it++)
+        {
+            // redundency found, simply update
+            if ((*it)->id == node.id)
+            {                               
+                (*it)->update (node);                                    
+                break;
+            }
+        }
+        
+        // if indeed it's a new neighbor
+        if (it == _neighbors.end ())
+            _neighbors.push_back (new Node (node));
+
+        _last_update[node.id] = now;
+
+        return true;
+    }
+
+    bool 
+    VASTClient::removeNeighbor (id_t id)
+    {
+        // remove neighbors
+        vector<Node *>::iterator it = _neighbors.begin ();
+        for (; it != _neighbors.end (); it++)
+        {
+            if ((*it)->id == id)
+            {
+                _last_update.erase (id);
+                delete (*it);
+                _neighbors.erase (it);                            
+                return true;
+            }
+        }        
+
+        return false;
+    }
+
+    //
+    // fault tolerance
+    //
+
+    // deal with matcher disconnection or non-update
+    void 
+    VASTClient::handleMatcherDisconnect ()
+    {
+        printf ("VASTClient::handleMatcherDisconnect () switching from [%llu] to [%llu]\n", _matcher_id, _closest_id);
+
+        _matcher_id = _closest_id;
+        _closest_id = 0;
+
+        // if we know no alternative matcher, need to re-join
+        if (_matcher_id == NET_ID_UNASSIGNED)
+            _state = ABSENT;
+
+        // reset active flag so we need to re-subscribe (to re-affirm with matcher)
+        _sub.active = false;
+    }
+
+    /*
+    // re-update our position every once in a while
+    void 
+    VASTClient::sendKeepAlive ()
+    {
+        
+    }
+    */
+
+    // remove ghost subscribers (those no longer updating)
+    void 
+    VASTClient::removeGhosts ()
+    {
+        // check if there are ghost objects to be removed
+        timestamp_t timeout = TIMEOUT_REMOVE_GHOST * _net->getTimestampPerSecond ();
+        timestamp_t now = _net->getTimestamp ();
+
+        vector<id_t> remove_list;
+        size_t i;
+
+        for (i=0; i < _neighbors.size (); i++)
+        {
+            id_t id = _neighbors[i]->id;
+
+            // check & record obsolete object
+            if (now - _last_update[id] >= timeout)
+                remove_list.push_back (id);
+        }
+
+        for (i=0; i < remove_list.size (); i++)
+        {
+            // if myself is not being updated, then I might have lost connection to my matcher
+            // need to re-connect to matcher
+            if (remove_list[i] == _sub.id)
+            {
+                printf ("VASTClient::removeGhosts () no updates received for myself for over %d seconds\n", TIMEOUT_REMOVE_GHOST);
+                handleMatcherDisconnect ();
+            }
+            else
+                removeNeighbor (remove_list[i]);
+        }
     }
 
     // make one latency record

@@ -43,7 +43,7 @@ namespace Vast
         _Voronoi    = new VoronoiSF ();
 
         // initialize internal counter for ticks elapsed
-        _tick_count = 0;
+        //_tick_count = 0;
     }
     
     VONPeer::~VONPeer ()
@@ -292,7 +292,7 @@ namespace Vast
     void 
     VONPeer::tick ()
     {
-        _tick_count++;
+        //_tick_count++;
 
         // process incoming messages
         // NOTE: the alternative is to call handleMessage directly when there's incoming messages (current approach)
@@ -565,7 +565,7 @@ namespace Vast
     void 
     VONPeer::sendKeepAlive ()
     {
-        if (isTimelyNeighbor (_self.id, MAX_TIMELY_PERIOD/2) == false)
+        if (isJoined () && isTimelyNeighbor (_self.id, MAX_TIMELY_PERIOD/2) == false)
         {
             printf ("[%llu] sendKeepAlive ()\n", _self.id);
             move (_self.aoi);
@@ -771,6 +771,9 @@ namespace Vast
     {                  
         vector<id_t> delete_list;
 
+        timestamp_t now = _net->getTimestamp ();
+        timestamp_t grace_period = now + (MAX_DROP_SECONDS * _net->getTimestampPerSecond ());
+
         id_t id;
         // go over each neighbor and do an overlap check
         for (map<id_t, Node>::iterator it = _id2node.begin(); it != _id2node.end(); ++it)
@@ -786,15 +789,16 @@ namespace Vast
                 (isRelevantNeighbor (_self, _id2node[id], (length_t)(_aoi_buffer*NONOVERLAP_MULTIPLIER)) && 
                  isTimelyNeighbor (id)))
             {
-                _count_drop[id] = 0;
+                _time_drop[id] = grace_period;
                 continue;
             }
-            else               
-                _count_drop[id]++;
-                                        
-            // if count has exceed maximum count, then prepare to delete
-            if (_count_drop[id] > MAX_DROP_COUNT * _net->getTickPerSecond ())
+   
+            // if current time exceeds grace period, then prepare to delete
+            if (now >= _time_drop[id]) 
+            {
                 delete_list.push_back (id);
+                _time_drop.erase (id);
+            }
         }
         
         size_t n_deleted = delete_list.size ();
@@ -826,13 +830,14 @@ namespace Vast
         _net->notifyAddressMapping (node.id, node.addr);
         
         // update last access time
-        node.addr.lastAccessed = _tick_count;
+        //node.addr.lastAccessed = _tick_count;
+        node.addr.lastAccessed = _net->getTimestamp ();
 
         _Voronoi->insert (node.id, node.aoi.center);        
         _id2node[node.id] = node;
         _neighbors.push_back (&_id2node[node.id]);
         _neighbor_states[node.id] = new map<id_t, int>;
-        _count_drop[node.id] = 0;
+        _time_drop[node.id] = 0;
         
         _updateStatus[node.id] = INSERTED;
 
@@ -868,7 +873,7 @@ namespace Vast
         _id2node.erase (id);        
         delete _neighbor_states[id];
         _neighbor_states.erase (id);    
-        _count_drop.erase (id);
+        _time_drop.erase (id);
                 
         _updateStatus[id] = DELETED;
 
@@ -894,10 +899,11 @@ namespace Vast
 
         // NOTE: should not reset drop counter here, as it might make irrelevant neighbor 
         //       difficult to get disconnected
-        //_count_drop[node.id] = 0;
+        //_time_drop[node.id] = 0;
 
         // update last access time
-        node.addr.lastAccessed = _tick_count;
+        //node.addr.lastAccessed = _tick_count;
+        node.addr.lastAccessed = _net->getTimestamp ();
 
         // prevent only send updates for newly inserted nodes
         if (_updateStatus.find (node.id) == _updateStatus.end () || _updateStatus[node.id] != INSERTED)
@@ -1047,9 +1053,15 @@ namespace Vast
     inline bool 
     VONPeer::isTimelyNeighbor (id_t id, int period)
     {
-        timestamp_t timeout = period * _net->getTickPerSecond ();   
+        return true;
+/*
+        if (isNeighbor (id) == false)
+            return false;
+
+        timestamp_t timeout = period * _net->getTimestampPerSecond ();   
         //printf ("tick: %u last_acces: %u timeout: %u\n", _tick_count, _id2node[id].addr.lastAccessed, timeout);
         return ((_tick_count - _id2node[id].addr.lastAccessed) < timeout);
+*/
 
         //return true;                
     }

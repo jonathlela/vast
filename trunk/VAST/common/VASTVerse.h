@@ -126,6 +126,9 @@ namespace Vast
         // returns NULL if matcher does not exist on this node
         Voronoi *getMatcherVoronoi ();
 
+        // obtain the number of active connections at this node
+        int getConnectionSize ();
+
         // obtain the tranmission size by message type, default is to return all types
         size_t  getSendSize (const msgtype_t msgtype = 0);
         size_t  getReceiveSize (const msgtype_t msgtype = 0);

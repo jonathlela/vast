@@ -14,9 +14,10 @@ namespace Vast
             :MessageHandler (MSG_GROUP_VAST_MATCHER), 
              _state (ABSENT),
              _VSOpeer (NULL),
-             _overload_limit (overload_limit),
-             _tick (0)
+             _overload_limit (overload_limit)
+             //_tick (0)
     {
+        _next_periodic = 0;
     }
 
     VASTMatcher::~VASTMatcher ()
@@ -172,10 +173,10 @@ namespace Vast
     }
 
     // get the # of ticks in each second;
-    int 
-    VASTMatcher::getTickPerSecond ()
+    timestamp_t 
+    VASTMatcher::getTimestampPerSecond ()
     {
-        return _net->getTickPerSecond ();
+        return _net->getTimestampPerSecond ();
     }
 
     // perform initialization tasks for this handler (optional)
@@ -236,7 +237,7 @@ namespace Vast
                     if (sub.id == NET_ID_UNASSIGNED || _subscriptions.find (sub.id) == _subscriptions.end ()) 
                         sub.id = _net->getUniqueID (ID_GROUP_VON_VAST);
                     else
-                        printf ("VASTMatcher SUBSCRIBE re-using subscription ID [%llu] for request from [%lld]\n", sub.id, in_msg.from);
+                        printf ("VASTMatcher [%llu] re-SUBSCRIBE using ID [%llu]\n", in_msg.from, sub.id);
 
                     // by default we own the client subscriptions we create
                     addSubscription (sub, true);
@@ -468,23 +469,26 @@ namespace Vast
                 // NOTE: the disconnecting host may be either a regular client
                 //       or a matcher host. In the latter case, we should also
                 //       notify the VONpeer component of its departure
-
-                // removing a simple client (subscriber)
+                
                 // NOTE that this will work because MessageQueue will put all associated sub_id for the 
                 //      disconnecting host as 'in_msg.from' when notifying the DISCONNECT event
 
-                if (_neighbors.find (in_msg.from) == _neighbors.end ())
-                    removeSubscription (in_msg.from);
-                else
-                {
-                    // notify the VONPeer component
-                    in_msg.msgtype = VSO_DISCONNECT;
-                    _VSOpeer->handleMessage (in_msg);
+                //if (_neighbors.find (in_msg.from) == _neighbors.end ())
+                //    removeSubscription (in_msg.from);
+                
+                // removing a simple client (subscriber)
+                subscriberDisconnected (in_msg.from);       
 
-                    // remove a matcher
-                    refreshMatcherList ();
-                }
+                // NOTE: it's possible the disconnecting host has both client & matcher components
+                // so we still need to do the following processing
 
+                // notify the VONPeer component
+                in_msg.msgtype = VSO_DISCONNECT;
+                _VSOpeer->handleMessage (in_msg);
+
+                // remove a matcher
+                refreshMatcherList ();
+                
             }
             break;
 
@@ -521,22 +525,26 @@ namespace Vast
         
             // determine the AOI neighbors for each subscriber 
             refreshSubscriptionNeighbors ();
-                       
+                
             // send neighbor updates to VASTClients        
             notifyClients ();
         
             // TODO: adjust client_limit based on resource (bandwidth) availability
         
             // perform per-second tasks
-            if (++_tick == _net->getTickPerSecond ())
+            timestamp_t now = _net->getTimestamp ();
+            if (now >= _next_periodic)
             {
-                _tick = 0;
+                _next_periodic = now + _net->getTimestampPerSecond ();
         
                 // report loading to neighbors
                 //reportLoading ();
         
                 // report stat collected to gateway
                 //reportStat ();
+
+                // auto-send updates for owned subscriptions
+                sendKeepAlive ();
             }
         }
 
@@ -565,6 +573,7 @@ namespace Vast
 
         // record the subscription
         _subscriptions[sub.id] = sub;
+        _subscriptions[sub.id].dirty = true;
 
         // notify network layer of the subscriberID -> relay hostID mapping
         notifyMapping (sub.id, &sub.relay);
@@ -624,6 +633,7 @@ namespace Vast
             sub.aoi.height = new_aoi.height;
 
         sub.time = sendtime;
+        sub.dirty = true;
 
         _VSOpeer->updateSharedObject (sub_no, sub.aoi);
 
@@ -737,7 +747,35 @@ namespace Vast
             sub1.clearInvisibleNeighbors ();
 
         }        
-    }   
+    } 
+
+    // check if a disconnecting host contains subscribers
+    bool 
+    VASTMatcher::subscriberDisconnected (id_t host_id)
+    {
+        map<id_t, Subscription>::iterator it = _subscriptions.begin ();
+
+        vector<id_t> remove_list;
+
+        // loop through all known subscriptions, and remove the subscription that matches
+        for (; it != _subscriptions.end (); it++)
+        {
+            Subscription &sub = it->second;
+
+            if (sub.host_id == host_id)
+                remove_list.push_back (sub.id);
+        }
+
+        if (remove_list.size () > 0)
+        {
+            for (size_t i=0; i < remove_list.size (); i++)
+                removeSubscription (remove_list[i]);
+
+            return true;
+        }
+
+        return false;
+    }
 
     // check with VON to refresh current neighboring matchers
     void 
@@ -782,6 +820,25 @@ namespace Vast
             _VSOpeer->notifyLoading (0);
     }
 
+    // re-send updates of our owned objects so they won't be deleted
+    void 
+    VASTMatcher::sendKeepAlive ()
+    {
+        // go through each owned subscription and refresh it
+        map<id_t, Subscription>::iterator it = _subscriptions.begin (); 
+        for (; it != _subscriptions.end (); it++)
+        {
+            Subscription &sub = it->second;
+
+            if (_VSOpeer->isOwner (sub.id))
+            {
+                //Area aoi = sub.aoi;
+                //aoi.center.x++;
+                updateSubscription (sub.id, sub.aoi, sub.time);
+            }
+        }
+    }
+
     // tell clients updates of their neighbors (changes in other nodes subscribing at same layer)
     void
     VASTMatcher::notifyClients ()
@@ -808,15 +865,15 @@ namespace Vast
             // we only notify objects we own, erase updates for other non-own objects
             if (_VSOpeer->isOwner (sub.id) == false)
             {
-                printf ("VASTMatcher::notifyClients () updates exist for non-owned subscription [%llu]\n", sub.id);
+                //printf ("VASTMatcher::notifyClients () updates exist for non-owned subscription [%llu]\n", sub.id);
                 update_status.clear ();
                 continue;
             }
 
             id_t closest = _VSOpeer->getClosestEnclosing (sub.aoi.center);
-            
+                        
             // see if we need to notify the client its closest alternative matcher 
-            if (_closest[sub.id] != closest)
+            if (closest != 0 && _closest[sub.id] != closest)
             {
                 _closest[sub.id] = closest;
     
@@ -843,7 +900,7 @@ namespace Vast
 
                 // NOTE: we do not update nodes that have not changed
                 // TODO: but send periodic keep-alive?
-                if (status == UNCHANGED)
+                if (status == UNCHANGED && sub.dirty == false)
                     continue;
                 
                 listsize++;
@@ -907,6 +964,10 @@ namespace Vast
 
             // at the end we clear the status record for next time-step
             update_status.clear ();
+            
+            // clear dirty flag 
+            // (IMPORTANT, as this will prevent UNCHANGED status be continously sent)
+            sub.dirty = false;
 
         } // end for each subscriber      
     }
@@ -1022,6 +1083,9 @@ namespace Vast
             
             msg.store (_self.addr);
             msg.addTarget (sub.id);
+
+            // notify mapping so that the MATCHER_NOTIFY can be properly delivered
+            notifyMapping (sub.id, &sub.relay);
             sendMessage (msg);
         }
 

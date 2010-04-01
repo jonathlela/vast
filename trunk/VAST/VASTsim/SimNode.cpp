@@ -183,7 +183,8 @@
         if (aoi < _min_aoi)
             _min_aoi = aoi;
         
-        int CN = vnode->list ().size ();
+        //int CN = vnode->list ().size ();
+        int CN = _world->getConnectionSize ();
 		
         _total_CN += CN;
         if (_max_CN < CN)
@@ -253,7 +254,7 @@
 
     float SimNode::avg_aoi ()
     {
-        return (float)_total_aoi / (float)_steps_recorded;
+        return (_steps_recorded == 0 ? 0 : (float)_total_aoi / (float)_steps_recorded);
     }
 
     int 
@@ -265,19 +266,20 @@
     float 
     SimNode::avg_CN ()
     {
-        return (float)_total_CN / (float)_steps_recorded;
+
+        return (_steps_recorded == 0 ? 0 : (float)_total_CN / (float)_steps_recorded);
     }
 
     float 
     SimNode::avg_send ()
     {
-        return (float)_total_send / (float)_seconds_recorded;
+        return (_seconds_recorded == 0 ? 0 : (float)_total_send / (float)_seconds_recorded);
     }
 
     float 
     SimNode::avg_recv ()
     {
-        return (float)_total_recv / (float)_seconds_recorded;
+        return (_seconds_recorded == 0 ? 0 : (float)_total_recv / (float)_seconds_recorded);
     }    
 
 	// distance to a point

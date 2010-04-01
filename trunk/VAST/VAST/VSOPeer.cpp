@@ -10,13 +10,15 @@ namespace Vast
     // default constructor
     VSOPeer::VSOPeer (id_t id, VONNetwork *net, VSOPolicy *policy, length_t aoi_buffer)
         :VONPeer (id, net, aoi_buffer), 
-         _policy (policy), 
-         _load_counter (0), 
+         _policy (policy),          
          _overload_count (0)
     {
         _newpos = _self;
 
         notifyCandidacy ();
+
+        _next_periodic = 0;
+        _overload_timeout = _underload_timeout = 0;
 
         _vso_state = JOINING;
     }
@@ -230,7 +232,7 @@ namespace Vast
                 {                    
                     // record all objects the departing matcher may be managing
                     if (it->second.closest == in_msg.from)
-                        _reclaim_countdown[it->first] = 0;
+                        _reclaim_timeout[it->first] = 0;
                 }
 
                 // then notify VON component to remove the departing peer
@@ -251,28 +253,34 @@ namespace Vast
     // note that this will be called continously until the situation improves
     void
     VSOPeer::notifyLoading (float level)
-    {                               
+    {                         
+        timestamp_t now = _net->getTimestamp ();
+
         // first adjust the current load level record
         if (level == 0)
         {
             // normal loading
-            _load_counter = 0;
+            _overload_timeout = 0;
+            _underload_timeout = 0;
             return;
         }
         else if (level < 0)
         {
-            // underload       
-            _load_counter--;
+            // underload      
+            if (_underload_timeout == 0)
+                _underload_timeout = now + (VSO_TIMEOUT_OVERLOAD_REQUEST * _net->getTimestampPerSecond ());
+            _overload_timeout = 0;
         }
         else
         {   
             // overload
-            _load_counter++;
+            _underload_timeout = 0;
+            if (_overload_timeout == 0)
+                _overload_timeout = now + (VSO_TIMEOUT_OVERLOAD_REQUEST * _net->getTimestampPerSecond ());
         }
 
-        // if overload continus, we try to do something
-        // TODO: 
-        if (_load_counter > VSO_TIMEOUT_OVERLOAD_REQUEST * _net->getTickPerSecond ())
+        // if overload continues, we try to do something
+        if (_overload_timeout != 0 && (now >= _overload_timeout))
         {    
             // reset # of detected overloads
             if (_overload_count < 0)
@@ -315,10 +323,10 @@ namespace Vast
                 _overload_count = 0;
             }
 
-            _load_counter = 0;
+            _overload_timeout = 0;
         }
         // underload event
-        else if (_load_counter < -(VSO_TIMEOUT_OVERLOAD_REQUEST * _net->getTickPerSecond ()))
+        else if (_underload_timeout != 0 && (now >= _underload_timeout))
         {            
             // reset
             if (_overload_count > 0)
@@ -332,19 +340,19 @@ namespace Vast
             }
 
             // if we're not gateway then can depart
-            else if (_self.id != _policy->getGatewayID ())
+            else if (isGateway (_self.id) == false)
             {                
                 // depart as node if loading is below threshold                
                 leave ();
 
-                notifyCandidacy ();               
+                notifyCandidacy ();
                 _overload_count = 0;
             }
                     
-            _load_counter = 0;
+            _underload_timeout = 0;
         }
         // normal loading, reset # of OVERLOAD_M requests
-        else if (_load_counter == 0)
+        else if (_overload_timeout == 0 && _underload_timeout == 0)
             _overload_count = 0;        
     }
 
@@ -369,6 +377,7 @@ namespace Vast
 
     // check if neighbors need to be notified of object updates
     // returns the # of updates sent
+    // TODO: should we check whether the object states have changed?
     int
     VSOPeer::checkUpdateToNeighbors ()
     {
@@ -407,7 +416,7 @@ namespace Vast
                     }
                 }
             }
-        }       
+        }
 
         // for each neighbor, send the objects it needs to know
         map<id_t, vector<id_t> *>::iterator itu = update_list.begin ();
@@ -421,34 +430,52 @@ namespace Vast
     }
 
     // remove obsolete objects (those unowned objects no longer being updated)
+    // and send keepalive for owned objects
     void 
-    VSOPeer::removeObsoleteObjects ()
+    VSOPeer::refreshObjects ()
     {
         timestamp_t now = _net->getTimestamp ();
-        timestamp_t timeout = (timestamp_t)(TIMEOUT_EXPIRING_OBJECT * _net->getTickPerSecond ());
+        timestamp_t remove_timeout = (timestamp_t)(VSO_TIMEOUT_AUTO_REMOVE * _net->getTimestampPerSecond ());
+        //timestamp_t alive_timeout  = (timestamp_t)(VSO_TIMEOUT_AUTO_REMOVE / 3 * _net->getTimestampPerSecond ());
 
-        vector<id_t> remove_list;
+        vector<id_t> remove_list;        
 
         map<id_t, VSOSharedObject>::iterator it = _objects.begin ();
         for (; it != _objects.end (); it++)
         {
             VSOSharedObject &so = it->second;
 
-            // if object is not owned by me and has not been updated for a while, 
-            // remove it
-            if (so.is_owner == false && (now - so.last_update > timeout))
-                remove_list.push_back (it->first);
+            // if object is not owned by me and is not updated for a while, remove it
+            if (so.is_owner == false)
+            {
+                if (now - so.last_update >= remove_timeout)
+                    remove_list.push_back (it->first);
+            }
+            /*
+            else
+            {
+                // if the object has not been updated in a while, auto-update it
+                // this will ensure other neighbors to keep object replicas
+                if (now - so.last_update >= alive_timeout)
+                    updateSharedObject (it->first, so.aoi);
+            }
+            */
         }
 
-        // remove each obsolete object
-        for (size_t i=0; i < remove_list.size (); i++)
+        if (remove_list.size () > 0)
         {
-            // deleteSharedObject should be called automatically
-            //deleteSharedObject (remove_list[i]);
-            _policy->removeObject (remove_list[i]);
+            printf ("VSOPeer::refreshObjects () removing objects: \n");
+
+            // remove each obsolete object
+            for (size_t i=0; i < remove_list.size (); i++)
+            {
+                printf ("[%llu]\n", remove_list[i]);
+
+                // deleteSharedObject should be called automatically
+                _policy->removeObject (remove_list[i]);
+            }
         }
     }
-
 
     // see if any of my objects should transfer ownership
     // or if i should claim ownership to any new objects (if neighboring nodes fail)
@@ -463,7 +490,7 @@ namespace Vast
         //
 
         // a list of ownership transfer info, grouped by transfer target (closest node)
-        map<id_t, vector<VSOOwnerTransfer> *> list;
+        map<id_t, vector<VSOOwnerTransfer> *> transfer_list;
         
         for (map<id_t, VSOSharedObject>::iterator it = _objects.begin (); it != _objects.end (); ++it)
         {
@@ -476,14 +503,12 @@ namespace Vast
             {
                 if (so.is_owner == true)
                 {
-                    // update ownership transfer counter
-                    if (_transfer_countdown.find (obj_id) == _transfer_countdown.end ())
-                        _transfer_countdown[obj_id] = (int)(COUNTDOWN_TRANSFER * _net->getTickPerSecond ());
-                    else
-                        _transfer_countdown[obj_id]--;
+                    // set the timeout time for ownership transfer
+                    if (_transfer_timeout.find (obj_id) == _transfer_timeout.end ())
+                        _transfer_timeout[obj_id] = now + (timestamp_t)(VSO_TIMEOUT_TRANSFER * _net->getTimestampPerSecond ());
 
-                    // if counter's up, then begin transfer to nearest node
-                    if (_transfer_countdown[obj_id] == 0)
+                    // if timeout exceeds, then begin transfer to nearest node
+                    else if (now >= _transfer_timeout[obj_id])
                     {
                         id_t closest = _Voronoi->closest_to (so.aoi.center);
                         
@@ -492,25 +517,25 @@ namespace Vast
                             // record the transfer
                             VSOOwnerTransfer transfer (obj_id, closest, _self.id);
 
-                            if (list.find (closest) == list.end ())
-                                list[closest] = new vector<VSOOwnerTransfer>;
+                            if (transfer_list.find (closest) == transfer_list.end ())
+                                transfer_list[closest] = new vector<VSOOwnerTransfer>;
 
-                            list[closest]->push_back (transfer);
+                            transfer_list[closest]->push_back (transfer);
                                                           
                             // we release ownership for now (but will still be able to process events via in-transit records)
                             // this is important as we can only transfer ownership to one neighbor at a time
     
                             so.is_owner = false;
-                            so.in_transit = now; 
+                            so.in_transit = now + (timestamp_t)(VSO_TIMEOUT_TRANSFER * _net->getTimestampPerSecond () * 3); 
 
-                            _transfer_countdown.erase (obj_id);
+                            _transfer_timeout.erase (obj_id);
                         }                        
                     }
                 }
 
                 // if object is no longer in my region, remove reclaim counter
-                else if (_reclaim_countdown.find (obj_id) != _reclaim_countdown.end ())
-                    _reclaim_countdown.erase (obj_id);
+                else if (_reclaim_timeout.find (obj_id) != _reclaim_timeout.end ())
+                    _reclaim_timeout.erase (obj_id);
             }
                         
             // the object is in my region but I'm not owner, 
@@ -522,28 +547,25 @@ namespace Vast
                     // initiate a countdown, and if the countdown is reached, 
                     // automatically claim ownership (we assume neighboring nodes will
                     // have consensus over ownership eventually, as topology becomes consistent)
-                    if (_reclaim_countdown.find (obj_id) == _reclaim_countdown.end ())
-                        _reclaim_countdown[obj_id] = (int)(COUNTDOWN_TRANSFER * _net->getTickPerSecond ())*5;
-                    else
-                        _reclaim_countdown[obj_id]--;
+                    if (_reclaim_timeout.find (obj_id) == _reclaim_timeout.end ())
+                        _reclaim_timeout[obj_id] = now + (timestamp_t)(VSO_TIMEOUT_TRANSFER * _net->getTimestampPerSecond () * 5);
                 
                     // we claim ownership if countdown is reached
-                    if (_reclaim_countdown[obj_id] <= 0)
+                    if (now >= _reclaim_timeout[obj_id])
                     {
                         claimOwnership (obj_id, so);
                     }
                 }
 
-                // reset transfer counter, if an object has moved out but moved back again
-                else if (_transfer_countdown.find (obj_id) != _transfer_countdown.end ())
+                // reset transfer timeout, if an object has moved out but moved back again
+                else if (_transfer_timeout.find (obj_id) != _transfer_timeout.end ())
                 {
-                    _transfer_countdown.erase (obj_id);
+                    _transfer_timeout.erase (obj_id);
                 }
             }     
 
             // reclaim in-transit objects taking too long to complete
-            if (so.in_transit != 0 && 
-                ((now - so.in_transit) > (COUNTDOWN_TRANSFER * _net->getTickPerSecond () * 3)))
+            if (so.in_transit != 0 && (now >= so.in_transit))
             {
                 claimOwnership (obj_id, so);
             }
@@ -555,10 +577,10 @@ namespace Vast
         // perform the actual transfer from list
         Message msg (VSO_TRANSFER);
         
-        map<id_t, vector<VSOOwnerTransfer> *>::iterator it = list.begin ();
+        map<id_t, vector<VSOOwnerTransfer> *>::iterator it = transfer_list.begin ();
 
         int num_transfer = 0;
-        for (; it != list.end (); it++)
+        for (; it != transfer_list.end (); it++)
         {
             msg.clear (VSO_TRANSFER);
             msg.priority = 1;
@@ -573,6 +595,7 @@ namespace Vast
             for (listsize_t i=0; i < n; i++)
             {
                 msg.store (transfers[i]);
+
                 obj_list.push_back (transfers[i].obj_id);
                 num_transfer++;               
             }
@@ -580,6 +603,8 @@ namespace Vast
             // perform actual object transfer first
             // NOTE: important to first send out objects, then transfer ownership
             // TODO: this may be wasteful as the object may already has a copy at the neighbor node
+            //       some tests show that copy object in full before ownership transfer helps to improve overall consistency at
+            //       slight additional bandwidth
             _policy->copyObject (it->first, obj_list, false);
             _policy->ownershipTransferred (it->first, obj_list);
 
@@ -671,19 +696,21 @@ namespace Vast
         }
         
         // reset reclaim countdown 
-        if (_reclaim_countdown.find (transfer.obj_id) != _reclaim_countdown.end ())
-            _reclaim_countdown.erase (transfer.obj_id);        
+        if (_reclaim_timeout.find (transfer.obj_id) != _reclaim_timeout.end ())
+            _reclaim_timeout.erase (transfer.obj_id);        
     }
 
     // make an object my own
     void 
     VSOPeer::claimOwnership (id_t obj_id, VSOSharedObject &so)
     {
+        printf ("[%llu] VSOPeer::claimOwnership () for object [%llu]\n", _self.id, obj_id);
+
         so.is_owner = true;
         so.in_transit = 0;
         so.last_update = _net->getTimestamp ();
 
-        _reclaim_countdown.erase (obj_id);
+        _reclaim_timeout.erase (obj_id);
 
         // notify current node about it, so other actions can be taken (e.g., tell a client)
         _policy->objectClaimed (obj_id);
@@ -798,18 +825,24 @@ namespace Vast
             _net->sendVONMessage (msg);
         }
 
-        // perform per-second tasks
-        if (_tick_count % _net->getTickPerSecond () == 0)
+        timestamp_t now = _net->getTimestamp ();
+
+        // perform per-second tasks        
+        if (now >= _next_periodic)
         {
-           // move towards the center of load (subscriptions)
+            // reset timer
+            _next_periodic = now + _net->getTimestampPerSecond ();
+
+            // move towards the center of load (subscriptions)
             Position center;
             if (getLoadCenter (center))
             {
-                //double dist = (center.distance (_newpos.aoi.center) * VSO_MOVEMENT_FRACTION);
-                //if (dist > 50)
-                //    printf ("here\n");
                 _newpos.aoi.center += ((center - _newpos.aoi.center) * VSO_MOVEMENT_FRACTION);
             }
+
+            // remove obsolete objects (those unowned objects no longer being updated)
+            // and send keep alive for owned objects
+            refreshObjects ();
         }
 
         // move the VSOPeer's position 
@@ -821,9 +854,6 @@ namespace Vast
         // check if we need to send object updates to neighboring regions
         // NOTE: must run *after* ownership transfer check, so only owned objects are checked
         checkUpdateToNeighbors ();
-
-        // remove obsolete objects (those unowned objects no longer being updated)
-        removeObsoleteObjects ();
     }
 
     // add a particular shared object into object pool for ownership management
@@ -982,18 +1012,6 @@ namespace Vast
     bool 
     VSOPeer::isLegalPosition (const Position &pos, bool include_self)
     {        
-        /*
-        // check for redundency
-        for (size_t i=0; i < _legal_pos.size (); i++)
-            if (_legal_pos[i] == pos)
-                return false;    
-        
-
-        // check if position is out of map
-        if (pos.x < 0.0 || pos.y < 0.0 || pos.x >= _para.world_width || pos.y >= _para.world_height)
-            return false;
-        */
-
         // loop through all enclosing nodes
         // make sure we are somewhat far from it
         

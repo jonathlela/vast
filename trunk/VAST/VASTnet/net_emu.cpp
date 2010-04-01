@@ -107,14 +107,14 @@ namespace Vast
             return 0;           
         }
 
-        // create a dummy connection record
-        _id2conn[target] = 0;
-
         // notify remote node of the connection
         net_emu *receiver = (net_emu *)_bridge.getNetworkInterface (target);
 
         if (receiver == NULL)
             return (-1);
+
+        // create a dummy connection record
+        register_conn (target, NULL);
 
         // notify remote host of connection
         //receiver->remoteConnect (_id, _id2addr[_id]);        
@@ -134,17 +134,14 @@ namespace Vast
 #ifdef DEBUG_DETAIL
         printf ("[%lu] disconnection success\n", target);
 #endif
-        
-        // update the connection relationship
-        _id2conn.erase (target);
-        //_id2addr.erase (target);
-        _id2time.erase (target);
 
         // do a remote disconnect
         net_emu *receiver = (net_emu *)_bridge.getNetworkInterface (target);
         
         if (receiver == NULL)
             return -1;
+
+        unregister_conn (target);
 
         receiver->remoteDisconnect (_id);   
         return 0;
@@ -256,6 +253,7 @@ namespace Vast
         
        // make a record of connection
        _id2conn[id] = stream;
+       _id2time[id] = getTimestamp ();
 
        return id;        
     }
@@ -269,8 +267,9 @@ namespace Vast
         // error connection doesn't exist
         if (it == _id2conn.end ())
             return NET_ID_UNASSIGNED;
-       
+      
         _id2conn.erase (it);
+        _id2time.erase (id);
 
         return id;
     }

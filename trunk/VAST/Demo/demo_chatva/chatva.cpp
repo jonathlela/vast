@@ -153,14 +153,15 @@ VOID Render (HWND hWnd)
         //int size = nodes.size ();
         int   x = (int)nodes[j]->aoi.center.x;
         int   y = (int)nodes[j]->aoi.center.y;
-        id_t id = nodes[j]->id;
+        //id_t id = nodes[j]->id;
+        id_t id = nodes[j]->addr.host_id;
 
         // draw small circle
         SelectObject (hdc, GetStockObject(GRAY_BRUSH));
         Ellipse (hdc, x-(NODE_RADIUS/2), y-(NODE_RADIUS/2), x+(NODE_RADIUS/2), y+(NODE_RADIUS/2));
 
         // draw node id
-        sprintf (str, "%d", (int)VASTnet::resolveAssignedID (id));
+        sprintf (str, "%d", (int)VASTnet::resolvePort (id) - GATEWAY_DEFAULT_PORT + 1);
         TextOut (hdc, x-5, y-25, str, strlen(str));
     }
 
@@ -196,7 +197,7 @@ VOID Render (HWND hWnd)
     sprintf (str, "step: %d (%d, %d) node: %d [%d, %d] %s aoi: %d CN: %d %s char: %d gw: %s", 
              g_steps/(UPDATE_INTERVAL/TIMER_INTERVAL), 
              g_cursor.x-g_origin.x, g_cursor.y-g_origin.y, 
-             (int)VASTnet::resolveAssignedID (self->id), (int)g_aoi.center.x, (int)g_aoi.center.y, 
+             (int)VASTnet::resolvePort (self->id)-GATEWAY_DEFAULT_PORT+1, (int)g_aoi.center.x, (int)g_aoi.center.y, 
              join_state,
              g_aoi.radius, 
              n, (follow_mode ? "[follow]" : ""), 

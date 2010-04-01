@@ -128,7 +128,7 @@ namespace Vast
 #endif        
 
         net->addEntries (entries);
-        net->setTickPerSecond (para.step_persec);
+        net->setTimestampPerSecond (para.step_persec);
 
 		// set the bandwidth limitation after the net is created
 		if (para.model == VAST_NET_EMULATED_BL)
@@ -552,6 +552,17 @@ namespace Vast
             return handlers->matcher->getVoronoi ();
 
         return NULL;
+    }
+
+    // obtain the number of active connections at this node
+    int 
+    VASTVerse::getConnectionSize ()
+    {
+        VASTPointer *handlers = (VASTPointer *)_pointers;
+        if (handlers->net != NULL)
+            return (int)handlers->net->getConnections ().size ();
+
+        return 0;
     }
 
     // obtain the tranmission size by message type, default is to return all types

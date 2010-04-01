@@ -47,19 +47,11 @@
 #define VSO_TIMEOUT_OVERLOAD_REQUEST    (3)     // seconds to re-send a overload help request
 #define VSO_INSERTION_TRIGGER           (5)     // # of matcher movement requests before an insertion should be requested
 
-#define VSO_AOI_OVERLAP_BUFFER          (5)    // buffer size determining whether an AOI overlaps with a region
+#define VSO_AOI_OVERLAP_BUFFER          (5)     // buffer size determining whether an AOI overlaps with a region
 
 // ownership transfer setting
-//#define COUNTDOWN_REMOVE_AVATAR 20      // # of steps to delete disconnected avatar object
-//#define COUNTDOWN_PROMOTE       20      // # of steps can insert a new Arbitrator in the same area after an Arbitrator inserted
-#define COUNTDOWN_TRANSFER          (0.3) // # of seconds before transfering ownership to a neighbor
-//#define COUNTDOWN_TAKEOVER      5       // # of steps to wait before ownership takeover
-//#define COUNTDOWN_REMOVE_OBJ    5       // # of steps to wait before removing a non-AOI object at an agent
-
-#define TIMEOUT_EXPIRING_OBJECT     (0.5)    // seconds to delete an un-ownered object (assuming 25 steps / sec * 10 sec)
-//#define TIMEOUT_JOINING             (25*3)  // time-steps to re-send a join request
-//#define TIMEOUT_OVERLOAD_REQUEST    (25*1)  // time-steps to re-send a overload help request
-
+#define VSO_TIMEOUT_TRANSFER            (0.3)   // # of seconds before transfering ownership to a neighbor
+#define VSO_TIMEOUT_AUTO_REMOVE         (3.0)   // # of seconds to delete an un-owned object if it's not being updated
 
 using namespace std;
 
@@ -96,7 +88,7 @@ namespace Vast
             last_update = 0;
             closest     = 0;
         };
-    
+
         void *      obj;            // pointer to the object itself
         Area        aoi;            // area of interest of the object (will determine how far the object should spread)
         bool        is_owner;       // whether it is owned by the local host
@@ -230,7 +222,8 @@ namespace Vast
         int checkUpdateToNeighbors ();
 
         // remove obsolete objects (those unowned objects no longer being updated)
-        void removeObsoleteObjects ();        
+        // and send keepalive for owned objects
+        void refreshObjects ();        
 
         //
         // ownership transfer methods
@@ -285,15 +278,19 @@ namespace Vast
         
         // ownership related
         map<id_t, VSOSharedObject>  _objects;               // list of objects I manage
-        map<id_t, int>              _transfer_countdown;    // countdown to transfer ownership
-        map<id_t, int>              _reclaim_countdown;     // countdown to reclaim ownership to unowned objects
+        map<id_t, timestamp_t>      _transfer_timeout;        // onset time to transfer ownership
+        map<id_t, timestamp_t>      _reclaim_timeout;         // onset time to reclaim ownership to unowned objects
         
         map<id_t, VSOOwnerTransfer> _transfer;              // pending ownership transfers
         map<id_t, id_t>             _obj_requested;         // objects request & the target being asked
 
-        // counters for current node
-        int                 _load_counter;      // counter for # of timesteps overloaded (positive) or underloaded (negative)
-        int                 _overload_count;    // counter for # of times a OVERLOAD_M request is sent
+        // counters & time record 
+        int                 _overload_count;        // counter for # of times a OVERLOAD_M request is sent
+
+        timestamp_t         _overload_timeout;    // overload time       
+        timestamp_t         _underload_timeout;   // underload time   
+
+        timestamp_t         _next_periodic;     // last timestamp executing periodic task
     };
 
 } // namespace Vast

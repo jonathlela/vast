@@ -32,10 +32,9 @@ namespace Vast
           _active (false), 
           _binded (false),
           _is_public (true), 
-          _cleanup_counter (0),
-          _request_counter (0),
-          _recvmsg (NULL), 
-          _tick_persec (0),
+          _timeout_cleanup (0),
+          _timeout_IDrequest (0),
+          _recvmsg (NULL),           
           _sec2timestamp (0)
     {        
         resetTransmissionSize ();
@@ -145,6 +144,8 @@ namespace Vast
         if (_binded == false)
             return false;
 
+        timestamp_t now = this->getTimestamp ();
+
         // if HostID is not yet obtained, and our network is up
         if (_id == NET_ID_UNASSIGNED)
         {
@@ -158,8 +159,10 @@ namespace Vast
             }
 
             // otherwise, start to contact entry points to obtain ID
-            else if (_request_counter == 0)
+            else if (now >= _timeout_IDrequest)
             {
+                _timeout_IDrequest = now + (TIMEOUT_ID_REQUEST * this->getTimestampPerSecond ());
+
                 // randomly pick an entry point
                 int i = (rand () % _entries.size ());
 
@@ -203,11 +206,7 @@ namespace Vast
                 validateConnection (target);
                 send (target, msg, sizeof (size_t) + total_size);
                 */
-
-                _request_counter = COUNTER_ID_REQUEST * this->getTickPerSecond ();
             }
-            else
-                _request_counter--;
         }
 
         return (_id != NET_ID_UNASSIGNED);
@@ -465,7 +464,7 @@ namespace Vast
 
         size_t flush_size = 0;     // number of total bytes sent this time
 
-        timestamp_t time = getTimestamp ();
+        timestamp_t now = getTimestamp ();
 
         // check if there are any pending TCP queues
         std::map<id_t, VASTBuffer *>::iterator it;
@@ -486,7 +485,7 @@ namespace Vast
                         
                 // update the last accessed time for this connection 
                 // note UDP connections aren't updated as there is no connection to remove
-                _id2time[target] = time;
+                _id2time[target] = now;
             }
 
             // clear the buffer whether the message is sent or not
@@ -508,9 +507,9 @@ namespace Vast
         }
 
         // call cleanup every once in a while
-        if (_cleanup_counter++ > COUNTER_CONNECTION_CLEANUP)
+        if (now > _timeout_cleanup)
         {
-            _cleanup_counter = 0;
+            _timeout_cleanup = now + (TIMEOUT_CONNECTION_CLEANUP * this->getTimestampPerSecond ());
             cleanConnections ();
         }
 
@@ -570,26 +569,30 @@ namespace Vast
         return _is_public;
     }
 
+    /*
     // get how many ticks exist in a second (for stat reporting)
     int 
     VASTnet::getTickPerSecond ()
     {
         return _tick_persec;
     }
+    */
 
     // set how many ticks exist in a second (for stat reporting)
     void 
-    VASTnet::setTickPerSecond (int ticks)
+    VASTnet::setTimestampPerSecond (int timestamps)
     {
-        printf ("VASTnet::setTickPerSecond () as %d\n", ticks);
-        _tick_persec = ticks;
+        if (_sec2timestamp == 0)
+            _sec2timestamp = timestamps;
+
+        printf ("VASTnet::setTimestampPerSecond () as %d\n", _sec2timestamp);
     }
 
     // get how many timestamps (as returned by getTimestamp) is in a second 
-    int 
+    timestamp_t
     VASTnet::getTimestampPerSecond ()
     {
-        return (_sec2timestamp == 0 ? _tick_persec : _sec2timestamp);
+        return _sec2timestamp;
     }
        
     // check if a target is connected, and attempt to connect if not
@@ -605,6 +608,7 @@ namespace Vast
             return false;
         
         sendHandshake (host_id);
+
         return true;        
     }
 
@@ -905,23 +909,15 @@ namespace Vast
     void 
     VASTnet::cleanConnections ()
     {
-        timestamp_t curr_time = getTimestamp ();
+        timestamp_t now = getTimestamp ();
         std::vector<Vast::id_t> remove_list;
 
-        map<id_t, timestamp_t>::iterator it2;
+        timestamp_t timeout = (TIMEOUT_REMOVE_CONNECTION * this->getTimestampPerSecond ());
 
         // go through existing connections and remove inactive ones
         for (map<id_t, void *>::iterator it = _id2conn.begin (); it != _id2conn.end (); it++)
         {
-            it2 = _id2time.find (it->first);
-
-            if (it2 == _id2time.end ())
-            {
-                // starts to record time value, as this connection could be initiated by remote host
-                _id2time[it->first] = curr_time;
-                continue;                
-            }
-            else if ((curr_time - it2->second) <= (timestamp_t)(TIMEOUT_REMOVE_CONNECTION * this->getTimestampPerSecond ()))
+            if ((now - _id2time[it->first]) < timeout)
                 continue;
 
             remove_list.push_back (it->first);                
@@ -931,7 +927,7 @@ namespace Vast
         {
             printf ("VASTnet::cleanConnections () removing timeout connections: ");
         
-            for (size_t i=0; i<remove_list.size (); i++)
+            for (size_t i=0; i < remove_list.size (); i++)
             {
                 printf ("[%llu] ", remove_list[i]);
                 disconnect (remove_list[i]);

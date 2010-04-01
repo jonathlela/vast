@@ -46,7 +46,7 @@ using namespace std;
 namespace Vast
 {
 
-#define MAX_DROP_COUNT      (2)         // # of seconds to disconnect a non-overlapped neighbor
+#define MAX_DROP_SECONDS      (2)         // # of seconds to disconnect a non-overlapped neighbor
 #define MAX_TIMELY_PERIOD   (10)        // # of seconds to be considered as still active
     
 // NOTE: a way to estimate the proper buffer:
@@ -147,7 +147,7 @@ namespace Vast
         
         Voronoi            *_Voronoi;                   // a Voronoi diagram for keeping AOI neighbors                
 
-        timestamp_t         _tick_count;                // counter for how many ticks have occurred
+        //timestamp_t         _tick_count;                // counter for how many ticks have occurred
 
     private:
 
@@ -224,7 +224,7 @@ namespace Vast
 
         // internal statistics
         Ratio               _NEIGHBOR_Message;          // stats for NodeMessages received
-        map<id_t, int>      _count_drop;                // counter for disconnecting a remote node
+        map<id_t, timestamp_t> _time_drop;              // timestamp record for disconnecting a remote node
     };
 
 } // namespace Vast

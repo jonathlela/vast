@@ -60,6 +60,9 @@ namespace Vast
         _id2host[nodeID] = addr->host_id;
         _net->storeMapping (*addr);
 
+        if (_net->getHostID () == 9151314447179776001 && nodeID == 9151314447179857924)
+            printf ("stop");
+
         return true;
     }
 
@@ -294,6 +297,7 @@ namespace Vast
             {                
                 vector<id_t> from_list;
 
+                /*
                 // translate from's handler from hostID to nodeID
                 map<id_t, id_t>::iterator its = _id2host.begin ();
                 for (;its != _id2host.end (); its++)
@@ -301,6 +305,7 @@ namespace Vast
                     if (its->second == fromhost)
                         from_list.push_back (its->first);
                 }
+                */
 
                 // if no mapping can be found, use the original host ID
                 if (from_list.size () == 0)

@@ -40,6 +40,7 @@
 #include "Voronoi.h"
 #include "VSOPeer.h"
 
+#define TIMEOUT_SUBSCRIPTION_KEEPALIVE         (1.0)   // # of seconds to send updates for my subscriptions
 
 using namespace std;
 
@@ -115,14 +116,11 @@ namespace Vast
         timestamp_t getTimestamp ();
 
         // get the # of ticks in each second;
-        int getTickPerSecond ();
+        timestamp_t getTimestampPerSecond ();
 
         //
         // VSOPolicy
         //
-
-        // obtain the center of loads
-        //bool getLoadCenter (Position &center); 
 
         // whether the current node can be a spare node for load balancing
         bool isCandidate ();
@@ -169,6 +167,9 @@ namespace Vast
         // update the neighbor list for each subscriber
         void refreshSubscriptionNeighbors ();
 
+        // check if a disconnecting host contains subscribers
+        bool subscriberDisconnected (id_t host_id);
+
         //
         // Matcher maintain functions
         //
@@ -179,6 +180,9 @@ namespace Vast
         // check to call additional matchers for load sharing
         void checkOverload ();
         
+        // re-send updates of our owned objects so they won't be deleted
+        void sendKeepAlive ();
+
         // tell clients updates of their neighbors (changes in other nodes subscribing at same layer)
         void notifyClients (); 
 
@@ -210,8 +214,8 @@ namespace Vast
         map<id_t, id_t>     _closest;           // mapping of subscription to closest alternative matcher
 
         int                 _overload_limit;    // # of subscriptions considered overload
-
-        int                 _tick;          // number of logical steps
+        
+        timestamp_t         _next_periodic; 
         
         //
         // stat collection

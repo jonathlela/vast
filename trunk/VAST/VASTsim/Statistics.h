@@ -325,13 +325,22 @@ public:
             }
         }
 
+        float avg; // temp holder for average value
+
+        int aoi_zero_count = 0;
+        int CN_zero_count = 0;
+
         // collect stat from all simnodes
         for (i=0; i<num_nodes; ++i)
         {
             // aoi
             if (_simnodes[i]->min_aoi () < min_aoi)
                 min_aoi = _simnodes[i]->min_aoi ();
-            total_aoi += _simnodes[i]->avg_aoi ();
+            avg = _simnodes[i]->avg_aoi ();
+            if (avg == 0)
+                aoi_zero_count++;
+            else
+                total_aoi += avg;
 
             // transmission
             total_send += (size_t)_simnodes[i]->avg_send ();
@@ -346,7 +355,12 @@ public:
 			// CN
             if (_simnodes[i]->max_CN () > max_CN)
                 max_CN = _simnodes[i]->max_CN ();
-            total_CN += _simnodes[i]->avg_CN ();
+            
+            avg = _simnodes[i]->avg_CN ();
+            if (avg == 0)
+                CN_zero_count++;
+            else
+                total_CN += avg;
 
 #ifdef RECORD_LATENCY
             // latency
@@ -406,10 +420,10 @@ public:
         fprintf (_fp, "%3.3f %-3d  ", (double)_total_drift / (double)_drift_nodes, (int)_max_drift);
 
         // AOI
-        fprintf (_fp, "%3.2f %-3d  ", (double)total_aoi / (double)num_nodes, (int)min_aoi);
+        fprintf (_fp, "%3.2f %-3d  ", (double)total_aoi / (double)(num_nodes - aoi_zero_count), (int)min_aoi);
 
         // CN
-        fprintf (_fp, "%3.3f %-3d  ", (double)total_CN/(double)num_nodes, max_CN);
+        fprintf (_fp, "%3.3f %-3d  ", (double)total_CN/(double)(num_nodes - CN_zero_count), max_CN);
 
         // AN
         fprintf (_fp, "%3.3f %-3u  ", (double)_total_AN_visible/(double)num_samples, _max_AN);

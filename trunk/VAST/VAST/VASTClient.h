@@ -35,7 +35,11 @@
 #include "VASTRelay.h"
 #include <vector>
 
-const int TIMEOUT_SUBSCRIBE = 5;        // # of seconds before re-attempting to subscribe 
+// NOTE: remove ghost should be at least twice as much as keepalive
+
+const int TIMEOUT_SUBSCRIBE    = (5);        // # of seconds before re-attempting to subscribe 
+const int TIMEOUT_REMOVE_GHOST = (5);        // # of seconds before removing ghost objects at clients
+//const int TIMEOUT_KEEP_ALIVE   = (2);        // # of seconds before re-sending our own position
 
 using namespace std;
 
@@ -145,6 +149,26 @@ namespace Vast
         // store a message to the local queue to be retrieved by receive ()
         void storeMessage (Message &msg);
 
+        //
+        // neighbor handling methods
+        //
+
+        bool addNeighbor (Node &neighbor, timestamp_t now);
+        bool removeNeighbor (id_t id);
+
+        //
+        // fault tolerance mechanism
+        //
+
+        // deal with matcher disconnection or non-update
+        void handleMatcherDisconnect ();
+
+        // re-update our position every once in a while
+        //void sendKeepAlive ();
+
+        // remove ghost subscribers (those no longer updating)
+        void removeGhosts ();
+
         // make one latency record
         void recordLatency (msgtype_t msgtype, timestamp_t sendtime);
 
@@ -161,7 +185,10 @@ namespace Vast
 
         Subscription        _sub;           // my subscription 
 
-        int                 _timeout_subscribe; // timeout for re-attempt to subscribe
+        // timeouts
+        timestamp_t         _next_periodic;     // next timestamp to perform tasks
+        timestamp_t         _timeout_subscribe; // timeout for re-attempt to subscribe
+        map<id_t, timestamp_t> _last_update;    // last update time for a particular neighbor
 
         Addr                _gateway;       // info about the gateway server
         

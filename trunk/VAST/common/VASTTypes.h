@@ -882,6 +882,7 @@ public:
         id = 0;   
         layer = 0;        
         active = false;    
+        dirty = false;
         in_region = false; 
         time = 0;
         aoi.clear ();
@@ -1005,6 +1006,7 @@ public:
     id_t        id;             // subscriptionID (different subscriptions may have same hostID)
     layer_t     layer;          // layer number for the subscription    
     bool        active;         // whether the subscription is successful
+    bool        dirty;          // whether the subscription has been updated
     bool        in_region;      // whether the subscriber lies within the current managed region
     timestamp_t time;           // last update time for this subscriber
     Area        aoi;            // aoi of the subscription (including a center position)

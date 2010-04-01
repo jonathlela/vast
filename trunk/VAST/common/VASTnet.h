@@ -48,13 +48,13 @@
 //#define ID_GROUP_VON_VASTATE    2
 
 // # of elapsed seconds before removing a connection
-#define TIMEOUT_REMOVE_CONNECTION   (10)
+#define TIMEOUT_REMOVE_CONNECTION   (2)
 
-// # of flush called before a connection cleanup is called (don't want to do it too often)
-#define COUNTER_CONNECTION_CLEANUP  (10)
+// # of seconds before a connection cleanup is called (don't want to do it too often)
+#define TIMEOUT_CONNECTION_CLEANUP  (1)
 
-// # of isJoined () called before an ID request is sent
-#define COUNTER_ID_REQUEST          (10)
+// # of seconds before an ID request is sent
+#define TIMEOUT_ID_REQUEST          (5)
 
 namespace Vast {
 
@@ -157,13 +157,13 @@ namespace Vast {
         bool isPublic ();
 
         // get how many ticks exist in a second (for stat reporting)
-        int getTickPerSecond ();
+        //int getTickPerSecond ();
 
         // set how many ticks exist in a second (for stat reporting)
-        void setTickPerSecond (int ticks);
+        void setTimestampPerSecond (int ticks);
 
         // get how many timestamps (as returned by getTimestamp) is in a second 
-        int getTimestampPerSecond ();
+        timestamp_t getTimestampPerSecond ();
 
         // check if a target is connected, and attempt to connect if not
         bool validateConnection (id_t id);
@@ -296,11 +296,10 @@ namespace Vast {
         // used to determine connection cleanup / removals
         // TODO: combine the connection/address/time mapping?
         std::map<id_t, timestamp_t>     _id2time;
-
-        int                             _cleanup_counter;   // # of ticks before cleanupConnections is called
-
-        // counter for re-sending ID requests
-        int                             _request_counter;
+        
+        // timeouts
+        timestamp_t                     _timeout_IDrequest;     // timeout for sending ID request
+        timestamp_t                     _timeout_cleanup;   // # of ticks before cleanupConnections is called
 
         // buffer for incoming/outgoing messages
         // TODO: combine the TCP & UDP buffers?
@@ -316,8 +315,8 @@ namespace Vast {
         //
         // logical / physical time management
         //
-        int                             _tick_persec;       // how many ticks per second
-        int                             _sec2timestamp;     // ratio converting seconds to timestamp as returned by getTimestamp () 
+        //int                             _tick_persec;       // how many ticks per second
+        timestamp_t                       _sec2timestamp;     // ratio converting seconds to timestamp as returned by getTimestamp () 
 
 
         // 
