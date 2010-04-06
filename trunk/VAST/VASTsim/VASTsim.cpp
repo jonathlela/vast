@@ -35,12 +35,12 @@ using namespace std;        // vector
 using namespace Vast;       // vast
 
 SimPara             g_para;
-VASTPara_Net        g_netpara;
+VASTPara_Net        g_vastnetpara;
 statistics          g_stat;
 vector<SimNode *>   g_nodes;            // pointer to all simulation nodes
 vector<bool>        g_as_relay;
 MovementGenerator   g_move_model;
-Addr                g_gateway;          // address to gateway node
+Addr                g_gateway_addr;          // address to gateway node
 SectionedFile      *g_pos_record = NULL;
 
 //map<int, VAST *>    g_peermap;          // map from node index to the peer's relay id
@@ -166,11 +166,11 @@ int InitPara (VAST_NetModel model, VASTPara_Net &netpara, SimPara &simpara, cons
     }        
         
     // if physical coordinate is not supplied, VAST will need to obtain it itself
-    //g_netpara.phys_coord = g_aoi.center;    
+    //g_vastnetpara.phys_coord = g_aoi.center;    
 
     // translate gateway string to Addr object
     string str (GWstr);
-    g_gateway = *VASTVerse::translateAddress (str);
+    g_gateway_addr = *VASTVerse::translateAddress (str);
 
     // create VAST node factory (with default physical coordinate)          
 
@@ -178,7 +178,7 @@ int InitPara (VAST_NetModel model, VASTPara_Net &netpara, SimPara &simpara, cons
     // NOTE: the very first node does not know other existing relays
     if (is_gateway == false)
     {
-        entries.push_back (g_gateway.publicIP);
+        entries.push_back (g_gateway_addr.publicIP);
     }
 
     // return values, if needed
@@ -189,7 +189,7 @@ int InitPara (VAST_NetModel model, VASTPara_Net &netpara, SimPara &simpara, cons
         *p_aoi = aoi;
 
     if (p_gateway != NULL)
-        *p_gateway = g_gateway;
+        *p_gateway = g_gateway_addr;
 
     if (p_entries != NULL)
         *p_entries = entries;
@@ -252,17 +252,17 @@ bool ReadPara (SimPara &para)
 int InitSim (SimPara &para, VASTPara_Net &netpara)
 {
     g_para = para;
-    g_netpara = netpara;
+    g_vastnetpara = netpara;
 
     // note there's no need to assign the gateway ID as it'll be found automatically
-    g_netpara.model        = (VAST_NetModel)para.NET_MODEL;
-    g_netpara.port         = GATEWAY_DEFAULT_PORT;    
-    g_netpara.client_limit = para.PEER_LIMIT;
-    g_netpara.relay_limit  = para.RELAY_LIMIT;        
-    g_netpara.conn_limit   = para.CONNECT_LIMIT;
-    g_netpara.recv_quota   = para.DOWNLOAD_LIMIT;
-    g_netpara.send_quota   = para.UPLOAD_LIMIT;
-    g_netpara.step_persec  = para.STEPS_PERSEC;
+    g_vastnetpara.model        = (VAST_NetModel)para.NET_MODEL;
+    g_vastnetpara.port         = GATEWAY_DEFAULT_PORT;    
+    g_vastnetpara.client_limit = para.PEER_LIMIT;
+    g_vastnetpara.relay_limit  = para.RELAY_LIMIT;        
+    g_vastnetpara.conn_limit   = para.CONNECT_LIMIT;
+    g_vastnetpara.recv_quota   = para.DOWNLOAD_LIMIT;
+    g_vastnetpara.send_quota   = para.UPLOAD_LIMIT;
+    g_vastnetpara.step_persec  = para.STEPS_PERSEC;
 
     // create / open position log file
     char filename[80];
@@ -318,8 +318,8 @@ int CreateNode (bool wait_till_ready)
     // obtain current node index
     size_t i = g_nodes.size ();        
 
-    g_netpara.is_relay = g_as_relay[i];
-    SimNode *n = new SimNode (i+1, &g_move_model, g_gateway, g_para, g_netpara);
+    g_vastnetpara.is_relay = g_as_relay[i];
+    SimNode *n = new SimNode (i+1, &g_move_model, g_gateway_addr, g_para, g_vastnetpara);
     g_nodes.push_back (n);
 
     // NOTE: it's important to advance the logical time here, because nodes would 

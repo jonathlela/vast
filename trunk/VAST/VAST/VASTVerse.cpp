@@ -403,7 +403,7 @@ namespace Vast
                 printf ("if this hangs, check if physical coordinate is obtained correctly\n");
 
                 bool hasPhysCoord = !(_netpara.phys_coord.x == 0 && _netpara.phys_coord.y == 0);
-                handlers->relay = new VASTRelay (_netpara.client_limit, _netpara.relay_limit, hasPhysCoord ? &_netpara.phys_coord : NULL);
+                handlers->relay = new VASTRelay (_netpara.is_relay, _netpara.client_limit, _netpara.relay_limit, hasPhysCoord ? &_netpara.phys_coord : NULL);
 
                 handlers->msgqueue->registerHandler (handlers->relay);
             }

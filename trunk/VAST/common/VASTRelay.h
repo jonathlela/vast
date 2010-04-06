@@ -81,7 +81,7 @@ namespace Vast
 
         // constructor for physical topology class, 
         // may supply an artifical physical coordinate
-        VASTRelay (size_t client_limit = 0, size_t relay_limit = 0, Position *phys_coord = NULL);
+        VASTRelay (bool as_relay, size_t client_limit = 0, size_t relay_limit = 0, Position *phys_coord = NULL);
 
         ~VASTRelay ();
         
@@ -165,6 +165,7 @@ namespace Vast
         Position    _temp_coord;        // still in-progress coordinate
         float       _error;             // error estimate for the local node
 
+        bool        _as_relay;          // whether I will act as a relay
         NodeState   _state;             // current state
 
         // counter for timeout	

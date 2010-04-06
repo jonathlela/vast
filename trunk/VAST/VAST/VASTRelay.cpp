@@ -11,15 +11,15 @@ namespace Vast
 {   
 
     // constructor for physical topology class, may supply an artifical physical coordinate
-    VASTRelay::VASTRelay (size_t client_limit, size_t relay_limit, Position *phys_coord)
+    VASTRelay::VASTRelay (bool as_relay, size_t client_limit, size_t relay_limit, Position *phys_coord)
             :MessageHandler (MSG_GROUP_VAST_RELAY), 
              _curr_relay (NULL),
+             _as_relay (as_relay),
              _state (ABSENT),
              _timeout_ping (0),
              _timeout_query (0),
              _timeout_join (0)
     {                     
-
         _client_limit = client_limit;     // if 0 means unlimited
         _relay_limit  = relay_limit;      // if 0 means unlimited
 
