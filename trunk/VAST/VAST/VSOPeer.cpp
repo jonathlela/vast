@@ -8,8 +8,11 @@ namespace Vast
 {   
 
     // default constructor
+    // NOTE that the VONPeer we create, the strict AOI flag is set to 'false',
+    //      so that if the VSOPeer's AOI overlaps slightly with a neighbor's region, 
+    //      the neighbor will be considered as AOI neighbor
     VSOPeer::VSOPeer (id_t id, VONNetwork *net, VSOPolicy *policy, length_t aoi_buffer)
-        :VONPeer (id, net, aoi_buffer), 
+        :VONPeer (id, net, aoi_buffer, true), 
          _policy (policy),          
          _overload_count (0)
     {
@@ -364,6 +367,9 @@ namespace Vast
         if (_newpos.aoi.center == _self.aoi.center)
             return;
 
+        // check if AOI should be enlarged / reduced
+        adjustPeerRadius ();
+
         // performe actual movement
         this->move (_newpos.aoi);
 
@@ -373,6 +379,42 @@ namespace Vast
 
         // update other info (such as AOI) for the new position
         _newpos = _self;
+    }
+
+    // enlarge or reduce the AOI radius to cover all objects's interest scope
+    void 
+    VSOPeer::adjustPeerRadius ()
+    {
+        // go through all owned objects and find the radius that
+        // covers them all
+        map<id_t, VSOSharedObject>::iterator it = _objects.begin ();
+        double dist = 0;
+        double longest = 0;
+
+        Position &center = _newpos.aoi.center;
+
+        for (; it != _objects.end (); it++)
+        {
+            VSOSharedObject &so = it->second;
+
+            // for either own or in-tranit objects
+            if (so.is_owner || so.in_transit != 0)
+            {
+                // if the object's AOI is circular, we take distance + AOI radius
+                if (so.aoi.height == 0)
+                    dist = center.distance (so.aoi.center) + so.aoi.radius;
+                // otherwise for rectangular AOI, we use the longest dimension (width or height)
+                else
+                    dist = center.distance (so.aoi.center) + (so.aoi.radius > so.aoi.height ? so.aoi.radius : so.aoi.height);
+            
+                if (dist > longest)
+                    longest = dist;           
+            }
+        }
+
+        // reflect the new AOI, with some buffer
+        _newpos.aoi.radius = (length_t)(longest + VSO_PEER_AOI_BUFFER);
+        printf ("[%llu] VSOPeer::adjustPeerRadius () to (%.2f, %.2f) r: %u\n", _self.id, _newpos.aoi.center.x, _newpos.aoi.center.y, _newpos.aoi.radius);
     }
 
     // check if neighbors need to be notified of object updates
@@ -796,12 +838,14 @@ namespace Vast
         return true;       
     }
 
+    /*
     // check if a particular point is within our region
     bool 
     VSOPeer::inRegion (Position &pos)
     {
         return true;
     }
+    */
 
     // process incoming messages & other regular maintain stuff
     void 
@@ -974,7 +1018,7 @@ namespace Vast
         return it->second.is_owner;
     }
 
-    // get the center of all current agents I maintain
+    // get the center of all current objects I maintain
     bool
     VSOPeer::getLoadCenter (Position &center)
     {
@@ -1082,7 +1126,7 @@ namespace Vast
             // NOTE we use the accurate mode of overlap test, so that 
             //      AOI indeed needs to overlap at least partially with the region
             if ((closest != 0 && id == closest) || 
-                _Voronoi->overlaps (id, aoi.center, aoi.radius + VSO_AOI_OVERLAP_BUFFER, true))
+                _Voronoi->overlaps (id, aoi.center, aoi.radius + VSO_AOI_BUFFER_OVERLAP, true))
                 list.push_back (id);          
         }
         

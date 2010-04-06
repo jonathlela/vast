@@ -196,6 +196,10 @@
 				RelativePath=".\Statistics.h"
 				>
 			</File>
+			<File
+				RelativePath=".\VASTsim.h"
+				>
+			</File>
 		</Filter>
 		<Filter
 			Name="Resource Files"

@@ -486,30 +486,6 @@ namespace Vast
                     // set the sender as my relay
                     else
                         setJoined (in_msg.from);
-
-                    /* TODO: Move to VASTClient
-                    // re-subscribe current subscriptions
-                    else if (_subscriptions.size () > 0)
-                    {
-                        // send out subscription request
-                        Message msg (SUBSCRIBE);
-                        msg.priority = 1;
-
-                        map<id_t, Subscription>::iterator it = _subscriptions.begin ();
-                        for (; it != _subscriptions.end (); it++)
-                        {
-                            Subscription &sub = it->second;
-
-                            msg.clear (SUBSCRIBE);
-                            msg.store (sub.sub_id);
-                            msg.store (sub.aoi);
-                            msg.store (sub.layer);
-                            msg.addTarget (_relay_id);
-                                    
-                            sendMessage (msg);
-                        }
-                    }
-                    */
                 }
             }
             break;

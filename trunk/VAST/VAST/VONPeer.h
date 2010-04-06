@@ -96,7 +96,10 @@ namespace Vast
 
     public:
 
-        VONPeer (id_t id, VONNetwork *net, length_t aoi_buffer = AOI_DETECTION_BUFFER);        
+        // constructor for a VON peer 
+        //  'aoi_buffer' specifies how much additional distance does the AOI covers
+        //  'strict_aoi' indicates whether the neighbor's position must be within AOI to be considered an AOI neighbor
+        VONPeer (id_t id, VONNetwork *net, length_t aoi_buffer = AOI_DETECTION_BUFFER, bool strict_aoi = true);        
         ~VONPeer ();                        
 
         // join & leave the overlay 
@@ -221,6 +224,7 @@ namespace Vast
                                                         //  1: inserted, 2: deleted, 3: updated
 
         length_t            _aoi_buffer;                // additional buffersize for checking relevant AOI neighbors
+        bool                _strict_aoi;                // whether a neighbor's position must be within the AOI to be considered as an AOI neighbor
 
         // internal statistics
         Ratio               _NEIGHBOR_Message;          // stats for NodeMessages received

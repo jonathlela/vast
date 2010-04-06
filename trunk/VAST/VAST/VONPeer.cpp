@@ -22,10 +22,11 @@ namespace Vast
         "VON_NODE"
     };
 
-    VONPeer::VONPeer (id_t id, VONNetwork *net, length_t aoi_buffer)
+    VONPeer::VONPeer (id_t id, VONNetwork *net, length_t aoi_buffer, bool strict_aoi)
     {
         _net = net;
         _aoi_buffer = aoi_buffer;
+        _strict_aoi = strict_aoi;
 
         // initialize self info except AOI
         _self.id    = id;            
@@ -1036,7 +1037,7 @@ namespace Vast
     inline bool 
     VONPeer::isAOINeighbor (id_t id, Node &neighbor, length_t buffer)
     {
-        return _Voronoi->overlaps (id, neighbor.aoi.center, neighbor.aoi.radius + buffer);
+        return _Voronoi->overlaps (id, neighbor.aoi.center, neighbor.aoi.radius + buffer, (_strict_aoi == false));
     }
 
     // whether a neighbor is either 1) AOI neighbor or 2) an enclosing neighbor

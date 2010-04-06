@@ -318,7 +318,8 @@ int CreateNode (bool wait_till_ready)
     // obtain current node index
     size_t i = g_nodes.size ();        
 
-    SimNode *n = new SimNode (i+1, &g_move_model, g_gateway, g_para, g_netpara, g_as_relay[i]);
+    g_netpara.is_relay = g_as_relay[i];
+    SimNode *n = new SimNode (i+1, &g_move_model, g_gateway, g_para, g_netpara);
     g_nodes.push_back (n);
 
     // NOTE: it's important to advance the logical time here, because nodes would 
@@ -539,8 +540,6 @@ int ShutSim ()
 
     g_stat.print_stat ();
 
-   // g_peermap.clear ();
-   // g_peerid.clear ();
     g_as_relay.clear ();
 
     int n = g_nodes.size ();

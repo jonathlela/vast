@@ -47,7 +47,10 @@
 #define VSO_TIMEOUT_OVERLOAD_REQUEST    (3)     // seconds to re-send a overload help request
 #define VSO_INSERTION_TRIGGER           (5)     // # of matcher movement requests before an insertion should be requested
 
-#define VSO_AOI_OVERLAP_BUFFER          (5)     // buffer size determining whether an AOI overlaps with a region
+#define VSO_AOI_BUFFER_OVERLAP          (5)     // buffer size determining whether an AOI overlaps with a region
+
+#define VSO_PEER_AOI_BUFFER        (5)    // buffer for a VSOPeer's AOI (which needs to cover all AOI of the objects it manages)
+
 
 // ownership transfer setting
 #define VSO_TIMEOUT_TRANSFER            (0.3)   // # of seconds before transfering ownership to a neighbor
@@ -177,7 +180,7 @@ namespace Vast
         bool notifyCandidacy ();
 
         // check if a particular point is within our region
-        bool inRegion (Position &pos);
+        //bool inRegion (Position &pos);
 
         // process incoming messages & other regular maintain stuff
         void tick ();
@@ -214,8 +217,19 @@ namespace Vast
 
     private:
 
+        // 
+        // AOI management methods
+        // 
+
         // change the center position in response to overload signals
         void movePeerPosition ();
+
+        // enlarge or reduce the AOI radius to cover all objects's interest scope
+        void adjustPeerRadius ();
+
+        //
+        // object management methods
+        //
 
         // check if neighbors need to be notified of object updates
         // returns the # of updates sent
@@ -249,7 +263,7 @@ namespace Vast
         // get a new node that can be inserted
         bool findCandidate (float level, Node &new_node);
 
-        // get the center of all current agents I maintain
+        // get the center of all current objects I maintain
         bool getLoadCenter (Position &center);
 
         // check whether a new node position is legal
@@ -259,7 +273,7 @@ namespace Vast
         // optionally to include the closest neighbor
         bool getOverlappedNeighbors (Area &aoi, vector<id_t> &neighbors, id_t closest = 0);
 
-        // helper function to identify if a node's gateway
+        // helper function to identify if a node is gateway
         inline bool isGateway (id_t id)
         {
             return (_policy->getGatewayID () == id);

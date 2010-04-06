@@ -9,8 +9,8 @@
 #include "SimNode.h"
 
     
-    SimNode::SimNode (int id, MovementGenerator *move_model, Addr &gateway, SimPara &para, VASTPara_Net &netpara, bool as_relay)
-        :_move_model (move_model), _gateway (gateway), _para (para), _netpara (netpara), _as_relay (as_relay)
+    SimNode::SimNode (int id, MovementGenerator *move_model, Addr &gateway, SimPara &para, VASTPara_Net &netpara) //, bool as_relay)
+        :_move_model (move_model), _gateway (gateway), _para (para), _netpara (netpara) //, _as_relay (as_relay)
     {                     
         _self.id = NET_ID_UNASSIGNED;
         _nodeindex = id;

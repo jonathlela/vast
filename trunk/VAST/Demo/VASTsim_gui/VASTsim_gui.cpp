@@ -109,13 +109,13 @@ VOID Render (HWND hWnd)
 
     Node *self = NULL;
 
-    // auto adjust selected node as gateway if not found
+    // auto adjust selected node as 1st node if selected node's not found
     if (g_nodes.find (g_selected) == g_nodes.end ())
         g_selected = 0;
 
+    // reset origin for follow mode
     if (follow_mode)
-    {        
-        //vector<Node *>&nodes = *g_nodes[g_selected];
+    {                
         self = GetNode (g_selected);
         g_origin.x = (long)(-(self->aoi.center.x - 400));
         g_origin.y = (long)(-(self->aoi.center.y - 300));
@@ -298,12 +298,11 @@ VOID Render (HWND hWnd)
     else
         sprintf (str2, "[END]");
 
-    //sprintf( str, "step: %d (%d, %d) node: %d/%d [%d, %d] aoi: %d AN: %d %s %s %s char: [%d, %d]", g_steps, g_cursor.x-g_origin.x, g_cursor.y-g_origin.y, g_id, g_nodes_active, selected_x, selected_y, g_aoi, size_AN, str2, (follow_mode ? "[follow]" : ""), (step_mode ? "[stepped]" : ""), wvalue, lvalue);
     sprintf (str, "step: %d (%d, %d) node: %d/%d [%d, %d] aoi: %d AN: %d %s %s %s missing: %d", g_steps, g_cursor.x-g_origin.x, g_cursor.y-g_origin.y, (int)VASTnet::resolvePort (g_id)-GATEWAY_DEFAULT_PORT+1, g_nodes_active, selected_x, selected_y, g_aoi, size_AN, str2, (follow_mode ? "[follow]" : ""), (step_mode ? "[stepped]" : ""), missing_count);
     TextOut (hdc, 10-g_origin.x, 10-g_origin.y, str, strlen(str) );    
     
     // EndPaint balances off the BeginPaint call.
-    EndPaint(hWnd,&ps);
+    EndPaint (hWnd, &ps);
 }
 
 VOID MoveOnce (HWND hWnd)

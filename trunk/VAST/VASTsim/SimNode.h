@@ -41,7 +41,7 @@ class SimNode
 {
 public:
     
-    SimNode (int id, MovementGenerator *move_model, Addr &gateway, SimPara &para, VASTPara_Net &netpara, bool as_relay);
+    SimNode (int id, MovementGenerator *move_model, Addr &gateway, SimPara &para, VASTPara_Net &netpara); //, bool as_relay);
     
     ~SimNode ();
 
