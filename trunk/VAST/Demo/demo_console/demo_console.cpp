@@ -77,7 +77,7 @@ FILE	   *g_neighbor_log = NULL;	   // logfile for node neighbors
     // VAST-specific variables
     VASTVerse *     g_world = NULL;
     VAST *          g_self  = NULL;    
-    id_t            g_sub_no = 0;        // subscription # for my client (peer)
+    Vast::id_t      g_sub_no = 0;        // subscription # for my client (peer)
   
 #else
     
@@ -236,7 +236,7 @@ void checkJoin ()
 #endif
 }
 
-void PrintNeighbors (long long curr_msec, id_t selfID)
+void PrintNeighbors (long long curr_msec, Vast::id_t selfID)
 {
     // record neighbor position to log if joined
     if (g_state == JOINED)
@@ -539,7 +539,7 @@ int main (int argc, char *argv[])
 
         // obtain pointer to self
         Node *self = NULL;
-        id_t id = 0;
+        Vast::id_t id = 0;
 
 #ifdef VAST_ONLY
         if (g_self != NULL)

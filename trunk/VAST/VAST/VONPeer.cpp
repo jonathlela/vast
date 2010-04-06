@@ -491,7 +491,7 @@ namespace Vast
                     }
                     else
                     {
-                        printf ("VONPeer::handleMessage () MOVE_x received from unknown neighbor %ld\n", in_msg.from);
+                        printf ("VONPeer::handleMessage () MOVE_x received from unknown neighbor %llu\n", in_msg.from);
                         break;                      
                     }
                 }

@@ -948,6 +948,8 @@ namespace Vast
                     msg.store (node.time);
 #endif
                     break;
+                case UNCHANGED:
+                    break;
                 }
             }
 

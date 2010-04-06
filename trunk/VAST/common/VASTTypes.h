@@ -550,7 +550,7 @@ public:
 
     void getString (char *p)
     {
-        sprintf (p, "%d.%d.%d.%d:%u\0", (int)((host>>24) & 0xff), (int)((host>>16) & 0xff), (int)((host>>8) & 0xff), (int)(host & 0xff), port);
+        sprintf (p, "%d.%d.%d.%d:%u", (int)((host>>24) & 0xff), (int)((host>>16) & 0xff), (int)((host>>8) & 0xff), (int)(host & 0xff), port);
     }
 
     void parseIP (const std::string & instr)

@@ -340,6 +340,12 @@ namespace Vast
                 _state = JOINED;
             }
             break;
+        // to avoid warnings
+        case JOINING_3:
+        case QUERYING:
+        case JOINED:
+            break;
+      
         }
 
         if (_state == JOINED)

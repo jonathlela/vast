@@ -410,7 +410,7 @@ int NextStep ()
                     index = 1;
 
                 Vast::id_t peer_id = g_nodes[index]->getPeerID ();
-                printf ("failing [%ld]..\n", peer_id);
+                printf ("failing [%llu]..\n", peer_id);
                 g_nodes[index]->fail ();
             }
             break;

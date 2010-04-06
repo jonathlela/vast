@@ -3,7 +3,7 @@ demo_console = ../../bin/demo_console
 
 .PHONY: all noace
 
-LIBS_COMMON = -lvastcommon -lvastate -lvastatesim -lvast -lvastnet -lvastcommon 
+LIBS_COMMON = -lvastcommon -lvastsim -lvast -lvastnet  
 #-lz -ldl -lpthread
 LIBS_ACE    = -lACE 
 LIBS_THREAD = -lpthread
@@ -13,9 +13,9 @@ ACE_PATH	= ../../../ACE_wrappers
 
 CFLAGS      = -Wall -static 
 
-INC_PATHS   = -I../../common -I../../VASTATEsim -I$(ACE_PATH) 
+INC_PATHS   = -I../../common -I../../VASTsim -I$(ACE_PATH) 
 
-LIB_PATHS   = -L../../lib -L../../Dependencies/lib/Release -L$(ACE_PATH)/lib
+LIB_PATHS   = -L../../lib -L../../Dependencies/lib/Release -L$(ACE_PATH)/lib -L$(ACE_PATH)/build/ace
 
 LIBS = $(LIBS_COMMON)  $(LIBS_ACE) $(LIBS_THREAD) $(LIBS_DL)
 

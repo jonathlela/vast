@@ -9,7 +9,7 @@ ACE_ROOT = ../../ACE_wrappers/
 
 CFLAGS = -static -c -Wall -I../common -I../VASTnet  -I../../ACE_wrappers
 
-sources = IDGenerator.cpp Relay.cpp Topology.cpp VASTVerse.cpp VONPeer.cpp
+sources = VASTClient.cpp  VASTMatcher.cpp  VASTRelay.cpp  VASTVerse.cpp  VONPeer.cpp  VSOPeer.cpp
  
 objects = $(subst .cpp,.o,$(sources))
 

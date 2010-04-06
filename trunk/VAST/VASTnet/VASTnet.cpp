@@ -32,8 +32,8 @@ namespace Vast
           _active (false), 
           _binded (false),
           _is_public (true), 
-          _timeout_cleanup (0),
           _timeout_IDrequest (0),
+          _timeout_cleanup (0),
           _recvmsg (NULL),           
           _sec2timestamp (0)
     {        
@@ -333,7 +333,7 @@ namespace Vast
         
         if (msg->deserialize (p, header.msg_size) == 0)
         {
-            printf ("VASTnet::processRawMessage () deserialize message fail, from [%ld], size: %u\n", remote_id, header.msg_size);
+            printf ("VASTnet::processRawMessage () deserialize message fail, from [%llu], size: %lu\n", remote_id, header.msg_size);
             delete msg;
             return NET_ID_UNASSIGNED;
         }
@@ -585,7 +585,7 @@ namespace Vast
         if (_sec2timestamp == 0)
             _sec2timestamp = timestamps;
 
-        printf ("VASTnet::setTimestampPerSecond () as %d\n", _sec2timestamp);
+        printf ("VASTnet::setTimestampPerSecond () as %d\n", (int)_sec2timestamp);
     }
 
     // get how many timestamps (as returned by getTimestamp) is in a second 
@@ -624,7 +624,7 @@ namespace Vast
             if (_id2addr.find (it->first) == _id2addr.end ())
             {
                 // a potential bug (connection should have address)
-                printf ("VASTnet: getConnections (): Can't find IP record of id [%lu]\n", it->first);
+                printf ("VASTnet: getConnections (): Can't find IP record of id [%llu]\n", it->first);
                 continue;
             }
 

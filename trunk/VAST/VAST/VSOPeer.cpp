@@ -414,7 +414,7 @@ namespace Vast
 
         // reflect the new AOI, with some buffer
         _newpos.aoi.radius = (length_t)(longest + VSO_PEER_AOI_BUFFER);
-        printf ("[%llu] VSOPeer::adjustPeerRadius () to (%.2f, %.2f) r: %u\n", _self.id, _newpos.aoi.center.x, _newpos.aoi.center.y, _newpos.aoi.radius);
+        printf ("[%llu] VSOPeer::adjustPeerRadius () to (%.2f, %.2f) r: %u\n", _self.id, _newpos.aoi.center.x, _newpos.aoi.center.y, (unsigned)_newpos.aoi.radius);
     }
 
     // check if neighbors need to be notified of object updates

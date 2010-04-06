@@ -502,7 +502,7 @@ public:
             if (node->vnode == NULL)
                 continue;
 
-            id_t id = node->get_id ();
+            Vast::id_t id = node->get_id ();
             char *str = node->vnode->getStat ();
             size_t send = node->accumulated_send ();
             size_t recv = node->accumulated_recv ();

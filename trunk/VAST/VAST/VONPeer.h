@@ -100,7 +100,7 @@ namespace Vast
         //  'aoi_buffer' specifies how much additional distance does the AOI covers
         //  'strict_aoi' indicates whether the neighbor's position must be within AOI to be considered an AOI neighbor
         VONPeer (id_t id, VONNetwork *net, length_t aoi_buffer = AOI_DETECTION_BUFFER, bool strict_aoi = true);        
-        ~VONPeer ();                        
+        virtual ~VONPeer ();                        
 
         // join & leave the overlay 
         virtual void join (Area &aoi, Node *gateway);

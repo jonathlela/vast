@@ -15,8 +15,8 @@ namespace Vast
             :MessageHandler (MSG_GROUP_VAST_RELAY), 
              _curr_relay (NULL),
              _state (ABSENT),
-             _timeout_query (0),
              _timeout_ping (0),
+             _timeout_query (0),
              _timeout_join (0)
     {                     
 
@@ -232,7 +232,7 @@ namespace Vast
                 float rtt = (float)(current - querytime);
                 if (rtt == 0)
                 {
-                    printf ("[%ld] processing PONG: RTT = 0 error, removing neighbor [%ld] currtime: %lu querytime: %lu\n", _self.id, in_msg.from, current, querytime);
+                    printf ("[%llu] processing PONG: RTT = 0 error, removing neighbor [%llu] currtime: %lu querytime: %lu\n", _self.id, in_msg.from, current, querytime);
                     removeRelay (in_msg.from);
                     //_relays.erase (in_msg.from);
                     break;

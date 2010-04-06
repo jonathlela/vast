@@ -223,7 +223,7 @@ namespace Vast
                             handleMatcherDisconnect ();
                         else if (failed[i] == _closest_id)
                         {
-                            printf ("[%llu] VASTClient::move () cannot contact my backup matcher [%llu], remove it\n", _closest_id);
+                            printf ("[%llu] VASTClient::move () cannot contact my backup matcher [%llu], remove it\n", _self.id, _closest_id);
                             _closest_id = 0;
                         }
                     }

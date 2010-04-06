@@ -294,7 +294,7 @@ namespace Vast
             if (_sendqueue.find (r_id) != _sendqueue.end () && 
                 _sendqueue[r_id] != NULL)
             {
-                printf ("[%lu][net_emu_bl] error of removing sendqueue\n", _id);
+                printf ("[%llu][net_emu_bl] error of removing sendqueue\n", _id);
                 while (_sendqueue[r_id]->msg != NULL && _sendqueue[r_id]->next != NULL)
                 {
                     netmsg * tmsg;
