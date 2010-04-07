@@ -365,25 +365,6 @@ int NextStep ()
     int i;   
 
     int n = g_nodes.size ();
-
-    /*
-    // TODO: may not need to do this every time
-    // build up node # -> peer mapping (or rather, the VAST interface of its relay)
-    for (i=0; i < n; ++i)
-    {
-        Vast::id_t peer_id = g_nodes[i]->getPeerID ();
-        g_peerid[i] = peer_id;
-
-        // find which relay has it
-        int j;
-        for (j=0; j < n; j++)
-            if (g_nodes[j]->isJoined () && g_nodes[j]->vnode->getVoronoi (peer_id) != NULL)
-            {
-                g_peermap[i] = g_nodes[j]->vnode;
-                break;
-            }
-    }
-    */
     
     // each node makes a move or checks for joining
     for (i=0; i < n; ++i)

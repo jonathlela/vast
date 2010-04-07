@@ -127,7 +127,7 @@
     {
         if (state == NORMAL)
         {
-            vnode->leave ();
+            //vnode->leave ();
             _world->pause ();
             state = FAILED;
         }

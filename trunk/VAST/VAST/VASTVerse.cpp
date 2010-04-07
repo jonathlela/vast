@@ -529,7 +529,7 @@ namespace Vast
         VASTPointer *handlers = (VASTPointer *)_pointers;
         if (handlers->net != NULL)
         {
-            handlers->net->flush ();
+            //handlers->net->flush ();
             handlers->net->stop ();			
         }
     }

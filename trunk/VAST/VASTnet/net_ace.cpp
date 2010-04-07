@@ -390,7 +390,8 @@ namespace Vast {
     net_ace::receive ()
     {
         // if no time is left in current timeslot, then return immediately
-        if (TimeMonitor::instance ()->available () == 0)
+        //if (TimeMonitor::instance ()->available () == 0)
+        if (TimeMonitor::getInstance ().available () == 0)
         {
             //printf ("no time available\n");
             return NULL;

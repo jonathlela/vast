@@ -195,11 +195,18 @@ public:
     }
 };
 
-
+//
+// A helper class that allows the registeration and query of time budget left
+// based on actual time detected by ACE
+// 
+// it uses the Singleton Design Pattern as described in:
+// http://en.wikipedia.org/wiki/Singleton_pattern#C.2B.2B
+//
 class EXPORT TimeMonitor 
 {
 public:
     TimeMonitor ();
+    ~TimeMonitor () {}
 
     // set how much time is left (in millisecond)
     void setBudget (int time_budget);
@@ -210,9 +217,11 @@ public:
     int available ();
 
     // return a global instance of TimeMonitor
-    static TimeMonitor *instance ();
+    static TimeMonitor &getInstance ();
 
 private:
+    static TimeMonitor _instance;   // static instance of the class
+
     long long          _budget;     // time left in current budget
     long long          _start;      // start time of setting the budget
     bool               _first;      // budget has just been set

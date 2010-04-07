@@ -179,10 +179,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\Vivaldi.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\VoronoiSF.cpp"
 				>
 			</File>
@@ -226,10 +222,6 @@
 			</File>
 			<File
 				RelativePath=".\VASTUtil.h"
-				>
-			</File>
-			<File
-				RelativePath=".\Vivaldi.h"
 				>
 			</File>
 			<File

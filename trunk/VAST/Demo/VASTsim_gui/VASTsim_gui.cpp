@@ -124,17 +124,18 @@ VOID Render (HWND hWnd)
     // set proper origin
     SetViewportOrgEx (hdc, g_origin.x, g_origin.y, NULL);
 
+    // buffer for printing messages
     char str[160];
 
     int size_AN = 0;
-
     int selected_x = 0 , selected_y =0;
 
-    HPEN hPenRed = CreatePen(PS_SOLID, 2, RGB(255, 0, 0));
-    HPEN hPenBlue = CreatePen(PS_SOLID, 2, RGB(0, 0, 255));
-    //HPEN hPenGreen = CreatePen(PS_SOLID, 2, RGB(0, 255, 0));
+    HPEN hPenRed    = CreatePen(PS_SOLID, 2, RGB(255, 0, 0));
+    HPEN hPenBlue   = CreatePen(PS_SOLID, 2, RGB(0, 0, 255));
+    HPEN hPenGreen  = CreatePen(PS_SOLID, 2, RGB(0, 255, 0));
     HPEN hPenOld;
 
+    // reset # of active (not failed) nodes
     g_nodes_active = 0;
     
     int missing_count = 0;
@@ -154,6 +155,7 @@ VOID Render (HWND hWnd)
         vector<Node *>&nodes = *g_nodes[i];
         vector<id_t> *en_list = g_ENs[i];
 
+        /*
         // TODO: BUG: this is to prevent program crash under FO model, need to check out
         //            this shouldn't be 0 after initializion is completed
         if (nodes.size () == 0)
@@ -161,6 +163,7 @@ VOID Render (HWND hWnd)
             missing_count++;
             continue;
         }
+        */
 
         int     x = (int)self->aoi.center.x;
         int     y = (int)self->aoi.center.y;
@@ -217,8 +220,7 @@ VOID Render (HWND hWnd)
             // draw AOI
             //SelectObject( hdc, GetStockObject(HOLLOW_BRUSH) );
             Ellipse (hdc, x-aoi, y-aoi, x+aoi, y+aoi);
-            //Ellipse( hdc, x-aoi_buf, y-aoi_buf, x+aoi_buf, y+aoi_buf );
-            
+
             // draw neighbor dots
             for (j=0; j<(int)nodes.size (); j++)
             {
@@ -360,19 +362,19 @@ LRESULT WINAPI MsgProc (HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         case WM_DESTROY:
             ShutSim ();
             PostQuitMessage (0);
-            return 0;
+            break;
 
         case WM_PAINT:
             Render (hWnd);
-            //ValidateRect( hWnd, NULL );
-            return 0;
+            ValidateRect (hWnd, NULL);
+            break;
 
         case WM_TIMER:
             if (paused == false && !finished)
                 MoveOnce (hWnd);
             if (step_mode == true)
                 paused = true;
-            return 0;
+            break;
        
         case WM_CHAR:
             last_char = (char)wParam;
@@ -472,7 +474,7 @@ LRESULT WINAPI MsgProc (HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
                 r.bottom = 100;                 
                 InvalidateRect (hWnd, &r, TRUE);
             }
-            return 0;
+            break;
 
         case WM_MOUSEMOVE:
             {
@@ -483,7 +485,7 @@ LRESULT WINAPI MsgProc (HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
                 r.bottom = 100;                 
                 InvalidateRect (hWnd, &r, TRUE);
             }
-            return 0;
+            break;
 
         // select current active
         case WM_LBUTTONDOWN:
@@ -509,7 +511,7 @@ LRESULT WINAPI MsgProc (HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
                     }
                 }
             }
-            return 0;
+            break;
 
         // toggle nodes showing their AOI
         case WM_RBUTTONDOWN:
@@ -531,10 +533,13 @@ LRESULT WINAPI MsgProc (HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
                     }
                 }
             }
-            return 0;            
+            break;
+
+        default:
+            return DefWindowProc (hWnd, msg, wParam, lParam);
     }
 
-    return DefWindowProc( hWnd, msg, wParam, lParam );
+    return 0;
 }
 
 

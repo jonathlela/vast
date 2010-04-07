@@ -110,8 +110,9 @@ public:
         // loop through all nodes
         for (size_t j=0; j<n; ++j)
         {
-            // skip self-check or failed node
+            // skip self-check or failed / not yet joined node
             if (i == j || _simnodes[j]->isFailed ())
+            //if (i == j || _simnodes[j]->isJoined () == false)
                 continue;
 
             // visible neighbors
@@ -174,7 +175,10 @@ public:
         {
             // skip all failed nodes
             if (_simnodes[i]->isFailed ())
+            //if (_simnodes[i]->isJoined () == false)
                 continue;
+            else if (_simnodes[i]->isJoined () == false)
+                printf ("not joined\n");
 
             // find actual AOI neighbor (from a global view)
             calc_consistency (i, AN_actual, AN_visible, total_drift, max_drift, drift_nodes);
@@ -238,7 +242,8 @@ public:
             print_snapshot ();
 
         // record 1st 100% TC point
-        if (_steps_stablized == 0 && inconsistent_nodes == 0)
+        if (_steps_stablized == 0 && 
+            (int)n == _para.NODE_SIZE && inconsistent_nodes == 0)
         {
             _steps_stablized = _steps;
             _AN_actual_first_interval = _total_AN_actual;

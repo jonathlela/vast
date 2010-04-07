@@ -31,14 +31,15 @@
 namespace Vast
 {  
 
-TimeMonitor gTimeMonitor;
+//TimeMonitor gTimeMonitor;
+TimeMonitor TimeMonitor::_instance;
 
 TimeMonitor::TimeMonitor ()
 {
     ACE::init ();
     _budget = 0;
 
-    ACE_Time_Value time = ACE_OS::gettimeofday();
+    ACE_Time_Value time = ACE_OS::gettimeofday ();
     _start = (long long)time.sec () * 1000000 + time.usec ();
 }
 
@@ -92,10 +93,13 @@ TimeMonitor::available ()
 }
 
 // return a global instance of TimeMonitor
-TimeMonitor *
-TimeMonitor::instance ()
+//TimeMonitor *
+//TimeMonitor::instance ()
+TimeMonitor&
+TimeMonitor::getInstance ()
 {
-    return &gTimeMonitor;
+    //return &gTimeMonitor;
+    return TimeMonitor::_instance;
 }
 
 

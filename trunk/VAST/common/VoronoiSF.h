@@ -39,7 +39,7 @@ class VoronoiSF : public Voronoi
 
 public:
     VoronoiSF ()
-        :invalidated(false)
+        :invalidated (false)
     {
     }
 
