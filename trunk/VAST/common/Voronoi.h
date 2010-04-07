@@ -37,13 +37,8 @@ namespace Vast {
     class EXPORT Voronoi
     {
     public:
-        Voronoi ()
-        {
-        }
-
-        virtual ~Voronoi ()
-        {
-        }
+        Voronoi () {}
+        ~Voronoi () {}
 
         // insert a new site, the first inserted is myself
         virtual void insert (id_t id, const Position &coord) = 0;

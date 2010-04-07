@@ -23,6 +23,17 @@
 namespace Vast
 {
 
+VoronoiSF::
+VoronoiSF ()
+    :invalidated (false)
+{
+}
+
+VoronoiSF::
+~VoronoiSF ()
+{
+}
+
 // insert a new site, the first inserted is myself
 void 
 VoronoiSF::

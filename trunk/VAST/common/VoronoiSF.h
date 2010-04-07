@@ -38,14 +38,8 @@ class VoronoiSF : public Voronoi
 {
 
 public:
-    VoronoiSF ()
-        :invalidated (false)
-    {
-    }
-
-    ~VoronoiSF ()
-    {
-    }
+    VoronoiSF ();
+    ~VoronoiSF ();
 
     // insert a new site, the first inserted is myself
     void insert (id_t id, const Position &coord);

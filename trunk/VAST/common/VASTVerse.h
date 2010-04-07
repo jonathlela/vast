@@ -149,8 +149,8 @@ namespace Vast
         bool     destroyClient (VAST *node);
 
         // obtain & destory a Voronoi object
-        Voronoi *createVoronoi ();
-        bool     destroyVoronoi (Voronoi *v);
+        //Voronoi *createVoronoi ();
+        //bool     destroyVoronoi (Voronoi *v);
 
         NodeState           _state;
         VASTPara_Net        _netpara;

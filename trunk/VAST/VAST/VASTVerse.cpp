@@ -475,6 +475,7 @@ namespace Vast
         return result;
     }
 
+    /*
     Voronoi *
     VASTVerse::createVoronoi ()
     {
@@ -490,6 +491,7 @@ namespace Vast
         delete (VoronoiSF *)v;
         return true;
     }
+    */
 
     // advance one time-step 
 	int
