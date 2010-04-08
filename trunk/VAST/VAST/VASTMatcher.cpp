@@ -30,6 +30,11 @@ namespace Vast
             delete it->second;
 
         _replicas.clear ();
+
+        for (size_t i=0; i < _queue.size (); i++)
+            delete _queue[i];
+        
+        _queue.clear ();
     }
 
     // join the matcher mesh network with a given location
@@ -195,6 +200,37 @@ namespace Vast
         if (_state == ABSENT)
             return false;
 
+        // check if the message is directed towards the VSOpeer
+        if (in_msg.msgtype < VON_MAX_MSG)
+        {
+            _VSOpeer->handleMessage (in_msg);
+            return true;
+        }
+
+        // if VSOPeer is not yet joined, save messages for later processing except DISCONNECT
+        if (isJoined () == false || _VSOpeer->isJoined () == false)
+        {
+            if (in_msg.msgtype != DISCONNECT)
+            {
+                _queue.push_back (new Message (in_msg));
+                return true;
+            }
+        }
+        else
+        {
+            // if we've joined, check if there are pending messages to be processed
+            if (_queue.size () > 0)
+            {
+                for (size_t i=0; i < _queue.size (); i++)
+                {
+                    sendMessage (*_queue[i]);
+                    delete _queue[i];
+                }
+
+                _queue.clear ();
+            }
+        }
+
         // store the app-specific message type if exists
         msgtype_t app_msgtype = APP_MSGTYPE(in_msg.msgtype);
         in_msg.msgtype = VAST_MSGTYPE(in_msg.msgtype);
@@ -211,7 +247,6 @@ namespace Vast
 
         // subscription request for an area
         case SUBSCRIBE:
-            if (isJoined () && _VSOpeer->isJoined ())
             {               
                 // NOTE: we allow sending SUBSCRIBE for existing subscription if
                 //       the subscription has updated (for example, the relay has changed)
@@ -271,7 +306,6 @@ namespace Vast
         // move an existing subscription area to a new place
         case MOVE:
         case MOVE_F:
-            if (isJoined () && _VSOpeer->isJoined ())
             {                
                 // extract subscripton id first
                 id_t sub_id;
@@ -303,7 +337,6 @@ namespace Vast
             break;
 
         case PUBLISH:
-            if (isJoined () && _VSOpeer->isJoined ())
             {
                 in_msg.msgtype = (app_msgtype << VAST_MSGTYPE_RESERVED) | MESSAGE;
 
@@ -387,7 +420,6 @@ namespace Vast
 
         // process messages sent by clients to particular targets
         case SEND:
-            if (isJoined () && _VSOpeer->isJoined ())
             {
                 // extract targets 
                 listsize_t n;
@@ -412,7 +444,6 @@ namespace Vast
 
         // transfer of subscription
         case SUBSCRIBE_TRANSFER:
-            if (isJoined ())
             {
                 // extract # of subscriptions
                 listsize_t n;
@@ -492,12 +523,9 @@ namespace Vast
             }
             break;
 
-        // assume that this is a message for VONPeer
         default:            
             {
-                // check if the message is directed towards the VONpeer
-                if (in_msg.msgtype < VON_MAX_MSG)
-                    _VSOpeer->handleMessage (in_msg);
+                printf ("[%llu] VASTMatcher unrecongized msgtype: %d\n", _self.id, in_msg.msgtype);
             }
             break;
         }

@@ -52,9 +52,9 @@ namespace Vast
     bool
     VASTClient::join (const IPaddr &gatewayIP)
     {
-        // can only join at ABSENT stage
-        if (_state != ABSENT)
-            return false;
+        // NOTE: we can join or re-join at any stage 
+        //if (_state == JOINED)
+        //    return false;
 
         // convert possible "127.0.0.1" to actual IP address
         IPaddr gateway = gatewayIP;
@@ -90,6 +90,10 @@ namespace Vast
         msg.msggroup = MSG_GROUP_VAST_MATCHER;
         msg.addTarget (_matcher_id);
         sendMessage (msg);
+
+        // important to set it to 0, so that auto-subscribe check would not happen 
+        // in postHandling ()
+        _timeout_subscribe = 0;
          
         _state = ABSENT;
     }
@@ -99,6 +103,11 @@ namespace Vast
     bool
     VASTClient::subscribe (Area &area, layer_t layer)
     {
+        // set timeout to re-try, necessary because it might take time 
+        // to find a new relay for sending the subscription
+        _timeout_subscribe = _net->getTimestamp () + (TIMEOUT_SUBSCRIBE * _net->getTimestampPerSecond ());
+
+        // if matcher or relay is yet known, wait first
         if (_state != JOINED || _relay->getRelayID () == NET_ID_UNASSIGNED)
             return false;
 
@@ -117,7 +126,7 @@ namespace Vast
         msg.store (_sub);
         msg.addTarget (_matcher_id);
 
-        sendMessage (msg); 
+        sendMessage (msg);
 
         printf ("VASTClient::subscribe () [%llu] sends SUBSCRIBE request to [%llu]\n", _self.id, _matcher_id);
 
@@ -382,7 +391,7 @@ namespace Vast
     VASTClient::getSubscriptionID ()
     {
         if (_sub.active == false)
-            return 0;
+            return NET_ID_UNASSIGNED;
         else
             return _sub.id; 
     }
@@ -664,7 +673,11 @@ namespace Vast
     //  (i.e., check for reply from requests sent)
     void 
     VASTClient::postHandling ()
-    {        
+    {   
+        // if we've intenionally left, then no actions are needed
+        if (_state == ABSENT)
+            return;
+
         // get current timestamp
         timestamp_t now = _net->getTimestamp ();
 
@@ -678,15 +691,11 @@ namespace Vast
             }
         }
         // if we have subscribed before, but now inactive, attempt to re-subscribe
-        else if (_sub.id != NET_ID_UNASSIGNED && _sub.active == false)
-        {            
-            if (now >= _timeout_subscribe)
+        else if (_sub.active == false)
+        {
+            if (_timeout_subscribe != 0 && now >= _timeout_subscribe)
             {
-                // set timeout to re-try, necessary because it might take time 
-                // to find a new relay for sending the subscription
-                _timeout_subscribe = now + (TIMEOUT_SUBSCRIBE * _net->getTimestampPerSecond ());
-
-                // re-attempt to subscribe 
+                // attempt to subscribe, NOTE timeout will be set within subscribe () 
                 subscribe (_sub.aoi, _sub.layer);
             }
         }
@@ -768,8 +777,8 @@ namespace Vast
         _closest_id = 0;
 
         // if we know no alternative matcher, need to re-join
-        if (_matcher_id == NET_ID_UNASSIGNED)
-            _state = ABSENT;
+        //if (_matcher_id == NET_ID_UNASSIGNED)
+        //    _state = ABSENT;
 
         // reset active flag so we need to re-subscribe (to re-affirm with matcher)
         _sub.active = false;
@@ -788,6 +797,9 @@ namespace Vast
     void 
     VASTClient::removeGhosts ()
     {
+        if (_sub.active == false)
+            return;
+
         // check if there are ghost objects to be removed
         timestamp_t timeout = TIMEOUT_REMOVE_GHOST * _net->getTimestampPerSecond ();
         timestamp_t now = _net->getTimestamp ();

@@ -429,7 +429,9 @@ int NextStep ()
     
     // each node processes messages received so far
     for (i=0; i < n; ++i)
+    {
         g_nodes[i]->processmsg ();    
+    }
 
     // each node calculates stats
     for (i=0; i < n; ++i)
@@ -451,13 +453,6 @@ int NextStep ()
 
 Node *GetNode (int index)
 {
-    /*
-    // NOTE: this has the effect of not displaying any node that's not actively joined
-    if (g_peermap.find (index) == g_peermap.end () || g_peermap[index]->isJoined () == false)
-        return NULL;
-
-    return g_peermap[index]->getPeer (g_peerid[index]);
-    */
     if ((unsigned)index >= g_nodes.size () || g_nodes[index]->vnode == NULL)
         return NULL;
 

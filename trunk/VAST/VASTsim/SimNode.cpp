@@ -153,15 +153,17 @@
     }
     
     void SimNode::processmsg ()
-    {        
+    {    
         // check if we have properly joined the overlay and subscribed
         if (state == WAITING)
         {            
             if ((vnode = _world->getVASTNode ()) != NULL)
             {
-                _sub_no = vnode->getSubscriptionID ();
-                _self.id = _sub_no;
-                state = NORMAL;
+                if ((_sub_no = vnode->getSubscriptionID ()) != NET_ID_UNASSIGNED)
+                {
+                    _self.id = _sub_no;
+                    state = NORMAL;
+                }
             }
         }
 

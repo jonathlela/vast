@@ -204,7 +204,7 @@ namespace Vast
 
         VSOPeer *           _VSOpeer;       // interface as a participant in a VON
 
-        map<id_t, Node *>   _neighbors;     // list of neighboring matchers
+        map<id_t, Node *>   _neighbors;     // list of neighboring matchers, NOTE: pointers refer to data in VSOPeer, so do not need to be released upon destruction
                                                                                                             
         map<id_t, Subscription> _subscriptions; // a list of subscribers managed by this matcher
                                                 // searchable by the hostID of the subscriber
@@ -215,7 +215,10 @@ namespace Vast
 
         int                 _overload_limit;    // # of subscriptions considered overload
         
-        timestamp_t         _next_periodic; 
+        timestamp_t         _next_periodic;     // record for next time stamp to process periodic (per-second) tasks
+
+        vector<Message *>   _queue;             // messages received but cannot yet processed before VSOpeer is joined
+
         
         //
         // stat collection

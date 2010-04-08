@@ -318,34 +318,27 @@ namespace Vast
         Subscription &info = _vastinfo[0];
 
         // create the VAST node
-        switch (_state)
+        if (_state == ABSENT)
         {
-        case ABSENT:
             if ((createClient (info.relay.publicIP)) != NULL)
             {                            
                 _state = JOINING;
             }
-            break;
-    
-        case JOINING:
+        }
+        else if (_state == JOINING)
+        {
             if (handlers->client->isJoined ())
             {
                 handlers->client->subscribe (info.aoi, info.layer);
                 _state = JOINING_2;
             }
-            break;
-        case JOINING_2:
+        }
+        else if (_state == JOINING_2)
+        {
             if (handlers->client->getSubscriptionID () != NET_ID_UNASSIGNED)
             {
                 _state = JOINED;
             }
-            break;
-        // to avoid warnings
-        case JOINING_3:
-        case QUERYING:
-        case JOINED:
-            break;
-      
         }
 
         if (_state == JOINED)
