@@ -200,40 +200,40 @@ namespace Vast
         if (_state == ABSENT)
             return false;
 
-        // check if the message is directed towards the VSOpeer
-        if (in_msg.msgtype < VON_MAX_MSG)
-        {
-            _VSOpeer->handleMessage (in_msg);
-            return true;
-        }
+        // store the app-specific message type if exists
+        msgtype_t app_msgtype = APP_MSGTYPE(in_msg.msgtype);
+        in_msg.msgtype = VAST_MSGTYPE(in_msg.msgtype);
 
-        // if VSOPeer is not yet joined, save messages for later processing except DISCONNECT
-        if (isJoined () == false || _VSOpeer->isJoined () == false)
+        // we need to check if VSOpeer has joined for all messages except
+        // DISCONNECT & MESSAGE (as this is a forward-only message that does not involve VSOpeer)
+        if (in_msg.msgtype != DISCONNECT && in_msg.msgtype != MESSAGE)
         {
-            if (in_msg.msgtype != DISCONNECT)
+            // check if the message is directed towards the VSOpeer
+            if (in_msg.msgtype < VON_MAX_MSG)
+            {
+                _VSOpeer->handleMessage (in_msg);
+                return true;
+            }
+        
+            // if VSOPeer is not yet joined, save messages for later processing except DISCONNECT
+            if (isJoined () == false || _VSOpeer->isJoined () == false)
             {
                 _queue.push_back (new Message (in_msg));
                 return true;
             }
-        }
-        else
-        {
+            
             // if we've joined, check if there are pending messages to be processed
             if (_queue.size () > 0)
-            {
+            {                
                 for (size_t i=0; i < _queue.size (); i++)
                 {
                     sendMessage (*_queue[i]);
                     delete _queue[i];
                 }
-
+        
                 _queue.clear ();
-            }
+            }        
         }
-
-        // store the app-specific message type if exists
-        msgtype_t app_msgtype = APP_MSGTYPE(in_msg.msgtype);
-        in_msg.msgtype = VAST_MSGTYPE(in_msg.msgtype);
 
 #ifdef DEBUG_DETAIL
         if (in_msg.msgtype < VON_MAX_MSG)
@@ -382,16 +382,7 @@ namespace Vast
                     //       under MESSAGE first
                     sendMessage (in_msg, &failed_targets);
 
-                    // some targets are invalid, remove the subs
-                    // TODO: perhaps should check / wait? 
-                    if (failed_targets.size () > 0)
-                    {
-                        printf ("VASTMatcher::handleMessage PUBLISH warning: not all publish targets are valid\n");
-                       
-                        // remove failed targets
-                        for (size_t i=0; i < failed_targets.size (); i++)
-                            removeSubscription (failed_targets[i]);
-                    }
+                    processFailedTargets (failed_targets);
                 }
 #ifdef DEBUG_DETAIL
                 else
@@ -877,7 +868,8 @@ namespace Vast
         msg.priority = 1;
         msg.msggroup = MSG_GROUP_VAST_CLIENT;
 
-        Node node;      // neighbor info
+        Node node;              // neighbor info
+        vector<id_t> failed;    // clients whose message cannot be sent
 
         map<id_t, Subscription>::iterator it = _subscriptions.begin (); 
         for (; it != _subscriptions.end (); it++)
@@ -988,8 +980,11 @@ namespace Vast
                 msg.store (listsize);
                 
                 //id_t target = _peer2host[peer_id];
-                msg.addTarget (sub_id);            
-                sendMessage (msg);
+                msg.addTarget (sub_id); 
+        
+                // check if send was successful
+                if (sendMessage (msg) == 0)
+                    failed.push_back (sub_id);
             }
 
             // at the end we clear the status record for next time-step
@@ -1000,6 +995,25 @@ namespace Vast
             sub.dirty = false;
 
         } // end for each subscriber      
+
+        processFailedTargets (failed);                
+
+    }
+
+    // deal with unsuccessful send targets
+    void 
+    VASTMatcher::processFailedTargets (vector<id_t> &list)
+    {
+        // some targets are invalid, remove the subs
+        // TODO: perhaps should check / wait? 
+        if (list.size () > 0)
+        {
+            printf ("VASTMatcher::processFailedTargets () removing failed send targets\n");
+           
+            // remove failed targets
+            for (size_t i=0; i < list.size (); i++)
+                removeSubscription (list[i]);
+        }
     }
 
     // whether the current node can be a spare node for load balancing

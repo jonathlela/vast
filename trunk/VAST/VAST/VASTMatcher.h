@@ -190,9 +190,8 @@ namespace Vast
         // helper functions
         //
 
-        // TODO: factor these into an independent / generic class?
-        // obtain a list of hostIDs for enclosing neighbors
-        //bool getEnclosingNeighbors (vector<id_t> &list);
+        // deal with unsuccessful send targets
+        void processFailedTargets (vector<id_t> &list);
 
         // whether is particular ID is the gateway node
         inline bool isGateway (id_t id);

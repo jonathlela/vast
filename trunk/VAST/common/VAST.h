@@ -81,6 +81,12 @@ namespace Vast
 		//
 		// main VAST methods
 		//
+        // NOTE: there are two timeout values that need to be paid attention when
+        //       debugging, as they would disconnect a client and cause 
+        //       re-subscription.
+        //
+        //          TIMEOUT_REMOVE_GHOST        in VASTClient.h
+        //          TIMEOUT_REMOVE_CONNECTION   in VASTnet.h
 
         VAST ()
             :MessageHandler (MSG_GROUP_VAST_CLIENT)
@@ -89,12 +95,6 @@ namespace Vast
          
         //virtual ~VAST () = 0;
         
-        /**
-		join the overlay 
-
-		@param  gateway     address of gateway server
-        */
-
         // join by specify the gateway to contact
         virtual bool        join (const IPaddr &gateway) = 0;
 
