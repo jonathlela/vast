@@ -55,8 +55,8 @@ namespace Vast
         VASTMatcher (int overload_limit);
         ~VASTMatcher ();
         
-        // join the Matcher overlay at a logical location for a given world
-        bool    join (const Position &pos);
+        // join the Matcher overlay for a given world (gateway)
+        bool    join (const IPaddr &gatewayIP);
 
         // leave the Matcher overlay
         bool    leave ();
@@ -67,9 +67,6 @@ namespace Vast
         // whether the current node is joined (find & connect to closest relay)
         bool    isJoined ();
                
-        // set the gateway node for this world
-        bool    setGateway (const IPaddr &gatewayIP);
-
         // whether I'm a gateway node
         bool    isGateway ();
 
@@ -192,6 +189,9 @@ namespace Vast
 
         // deal with unsuccessful send targets
         void processFailedTargets (vector<id_t> &list);
+
+        // set the gateway node for this world
+        bool setGateway (const IPaddr &gatewayIP);
 
         // whether is particular ID is the gateway node
         inline bool isGateway (id_t id);

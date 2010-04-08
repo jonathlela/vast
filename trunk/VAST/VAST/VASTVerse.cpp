@@ -437,19 +437,13 @@ namespace Vast
         // make sure matcher has joined first
         if (handlers->matcher->isJoined () == false)
         {
-            // TODO: clean-up? don't do every time
-            handlers->matcher->setGateway (gateway);
-
-            // join at dummy position
-            Position pos (0, 0, 0);
-            handlers->matcher->join (pos);
-            
+            handlers->matcher->join (gateway);           
             return NULL;
         }
 
         VAST *vnode = createNode (handlers->msgqueue, (VASTPointer *)_pointers);
 
-        // perform join first
+        // perform join for the client 
         if (vnode != NULL)
         {
             vnode->join (gateway);

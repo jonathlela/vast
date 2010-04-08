@@ -509,11 +509,13 @@ int main (int argc, char *argv[])
 		    g_position_log = LogFileManager::open (poslog);
 		    g_neighbor_log = LogFileManager::open (neilog);
     
+            /*
 		    // sleep for a random time to avoid concurrent connection
-            size_t sleep_time = g_node_no * time_offset;
-		    ACE_Time_Value duration (sleep_time, 0);
+            size_t sleep_time = g_node_no * time_offset;		    
+            ACE_Time_Value duration (sleep_time, 0);
             printf ("Node no: %u, Sleep for %u sec...\n", g_node_no, sleep_time);
             ACE_OS::sleep (duration);
+            */
         }
     }
 

@@ -1107,6 +1107,13 @@ namespace Vast
         return closest;
     }
 
+    // check if I'm a joining peer (in progress)
+    bool 
+    VSOPeer::isJoining ()
+    {
+        return (_state == JOINING);
+    }
+
     // get a list of neighbors whose regions are covered by the specified AOI
     // NOTE: we also add the option to include closest neighbor so all objects 
     //       will be backup to at least one neighbor node

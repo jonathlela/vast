@@ -39,17 +39,23 @@ namespace Vast
 
     // join the matcher mesh network with a given location
     bool 
-    VASTMatcher::join (const Position &pos)
+    VASTMatcher::join (const IPaddr &gatewayIP)
     {
         // avoid redundent join for a given node
         if (_VSOpeer != NULL)
+            return false;
+
+        // if the gatewayIP format is incorrect, also fail the join
+        if (setGateway (gatewayIP) == false)
             return false;
 
         // we use the hostID of the matcher as the ID in the matcher VON
         _VSOpeer = new VSOPeer (_self.id, this, this);
        
         // NOTE: use a small default AOI length as we only need to know enclosing matchers
-        _self.aoi.center = pos;
+        //       also, it doesn't matter where our center is, as we will certainly
+        //       join at a different location as determined by the workload
+        _self.aoi.center = Position ();
         _self.aoi.radius = 5;
 
         // if we're gateway, then our VSOpeer also has to join
@@ -214,26 +220,35 @@ namespace Vast
                 _VSOpeer->handleMessage (in_msg);
                 return true;
             }
-        
-            // if VSOPeer is not yet joined, save messages for later processing except DISCONNECT
+
+            // if I have not joined or promoted as a matcher then shouldn't queue up the messages
             if (isJoined () == false || _VSOpeer->isJoined () == false)
             {
-                _queue.push_back (new Message (in_msg));
-                return true;
-            }
-            
-            // if we've joined, check if there are pending messages to be processed
-            if (_queue.size () > 0)
-            {                
-                for (size_t i=0; i < _queue.size (); i++)
+                // if VSOPeer is still joining, save the messages for later processing 
+                if (_VSOpeer->isJoining ())
                 {
-                    sendMessage (*_queue[i]);
-                    delete _queue[i];
+                    _queue.push_back (new Message (in_msg));
+                    return true;
                 }
-        
-                _queue.clear ();
-            }        
+                else
+                {
+                    printf ("[%llu] VASTMatcher::handleMessage () non-Matcher receives Matcher-specific message of type %d from [%llu]\n", _self.id, in_msg.msgtype, in_msg.from);
+                    return false;
+                }
+            }                       
         }
+
+        // if we've joined, check if there are pending messages to be processed
+        if (_queue.size () > 0)
+        {                
+            for (size_t i=0; i < _queue.size (); i++)
+            {
+                sendMessage (*_queue[i]);
+                delete _queue[i];
+            }
+        
+            _queue.clear ();
+        }        
 
 #ifdef DEBUG_DETAIL
         if (in_msg.msgtype < VON_MAX_MSG)
@@ -405,7 +420,6 @@ namespace Vast
 
                 // NOTE: we should not have any local targets, 
                 // as matchers receiving this message can only be relays 
-
             }
             break;
 

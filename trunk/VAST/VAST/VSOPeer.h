@@ -211,9 +211,16 @@ namespace Vast
         // TODO: try to hide this from public?
         void requestObjects (id_t target, vector<id_t> &obj_list);
 
+        //
+        // helper
+        //
+
         // find the closest enclosing neighbor to a given position (other than myself)
         // returns 0 for no enclosing neighbors
         id_t getClosestEnclosing (Position &pos);
+
+        // check if I'm a joining peer (in progress)
+        bool isJoining ();
 
     private:
 
