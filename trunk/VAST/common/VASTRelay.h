@@ -41,7 +41,7 @@
 //#include "Vivaldi.h"
 
 // number of seconds before a new round of queries is sent for neighbors' coordinates
-const int TIMEOUT_COORD_QUERY = 30;
+const int TIMEOUT_COORD_QUERY = 5;
 const int TIMEOUT_RELAY_QUERY = 5;
 const int TIMEOUT_RELAY_JOIN  = 5;
 

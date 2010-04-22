@@ -43,6 +43,11 @@
 #define TIMEOUT_SUBSCRIPTION_KEEPALIVE         (1.0)   // # of seconds to send updates for my subscriptions
 
 // flag to send NEIGHBOR notices via relay (slower but can test relay correctness)
+// IMPORTANT NOTE: if position updates are not sent via relay, need to make sure
+//                 clients contact relays periodically so relays will not timeout
+//                 the connection to clients, causing clients to re-join relays
+//                 check out    TIMEOUT_COORD_QUERY         (in VASTRelay.h)
+//                              TIMEOUT_REMOVE_CONNECTION   (in VASTnet.h)
 #define SEND_NEIGHBORS_VIA_RELAY_
 
 using namespace std;

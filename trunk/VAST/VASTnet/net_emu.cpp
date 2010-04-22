@@ -135,7 +135,7 @@ namespace Vast
         printf ("[%lu] disconnection success\n", target);
 #endif
 
-        if (_id == 9151314447179972609 && target == 9151314447182331905)
+        if (_id == 9151314447179776001 && target == 9151314447181283329)
             printf ("here");
 
         // do a remote disconnect

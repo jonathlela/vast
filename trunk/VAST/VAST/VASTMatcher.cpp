@@ -317,6 +317,9 @@ namespace Vast
                     
                     sendClientMessage (msg, in_msg.from);
 
+                    if (sub.id == 9151314447179792409)
+                        printf ("here");
+
                     // erase closest matcher record, so that the subscribing client will be notified again
                     // this occurs when the client is re-subscribing to a substitute matcher in case of its current matcher's failure
                     if (_closest.find (sub.id) != _closest.end ())

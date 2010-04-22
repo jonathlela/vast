@@ -95,6 +95,10 @@ namespace Vast
             }
         }
 
+        // *must* ping current relay (to make sure it doesn't disconnect me)
+        if (isRelay () == false && _curr_relay != NULL)
+            msg.addTarget (_curr_relay->id);
+
         // send out messages        
         int num_success = sendRelay (msg);
 
@@ -267,12 +271,6 @@ namespace Vast
                         // reset
                         _request_times = 0;
                     }
-
-                    // if we've modified our coordinate and is a working relay
-                    // should let neighbors to know
-                    // TODO: move to periodic maintainence?
-                    if (_self.aoi.center != _temp_coord && isRelay ())
-                        notifyPhysicalCoordinate ();
 
                     // update into actual physical coordinate
                     _self.aoi.center = _temp_coord;
@@ -475,6 +473,9 @@ namespace Vast
                 id_t sub_id;
                 in_msg.extract (sub_id);
 
+                if (sub_id == 9151314447179792409)
+                    printf ("here");
+
                 _sub2client[sub_id] = in_msg.from;
             }
             break;
@@ -523,7 +524,10 @@ namespace Vast
                 for (size_t i=0; i < in_msg.targets.size (); i++)
                 {
                     id_t target = in_msg.targets[i];
-                
+
+                    if (target == 9151314447179792409)
+                        printf ("here");
+
                     if (_sub2client.find (target) != _sub2client.end ())
                         clients.push_back (_sub2client[target]);
                     else
@@ -599,6 +603,9 @@ namespace Vast
             
                     sendRelay (msg);
                 }
+                else if (getPhysicalCoordinate () != NULL && isRelay ())
+                    notifyPhysicalCoordinate ();
+
             }
         }
 
@@ -678,7 +685,7 @@ namespace Vast
         // remove non-essential relays
         // TODO: implement & check this very carefully, as it could disrupt normal operations
         //       if not done correctly
-        cleanupRelays ();
+        //cleanupRelays ();
     }
 
     // join the relay mesh by connecting to the closest known relay

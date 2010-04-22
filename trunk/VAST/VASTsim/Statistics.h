@@ -36,6 +36,9 @@
 
 #define SNAPSHOT_INTERVAL   (100)
 
+// count joined nodes only during consistency calculation
+#define STAT_JOINED_NODE_ONLY_
+
 
 using namespace std;
 using namespace Vast;
@@ -111,8 +114,11 @@ public:
         for (size_t j=0; j<n; ++j)
         {
             // skip self-check or failed / not yet joined node
+#ifdef STAT_JOINED_NODE_ONLY
+            if (i == j || _simnodes[j]->isJoined () == false)
+#else
             if (i == j || _simnodes[j]->isFailed ())
-            //if (i == j || _simnodes[j]->isJoined () == false)
+#endif           
                 continue;
 
             // visible neighbors
@@ -173,12 +179,14 @@ public:
         // loop through all nodes to calculate statistics
         for (i=0; i<n; ++i)
         {
+#ifdef STAT_JOINED_NODE_ONLY
+            // skipp all non-joined nodes
+            if (_simnodes[i]->isJoined () == false)
+#else
             // skip all failed nodes
             if (_simnodes[i]->isFailed ())
-            //if (_simnodes[i]->isJoined () == false)
+#endif           
                 continue;
-            else if (_simnodes[i]->isJoined () == false)
-                printf ("not joined\n");
 
             // find actual AOI neighbor (from a global view)
             calc_consistency (i, AN_actual, AN_visible, total_drift, max_drift, drift_nodes);
