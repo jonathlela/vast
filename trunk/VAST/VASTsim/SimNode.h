@@ -65,7 +65,11 @@ public:
 
     Position &get_pos ();
 
+    // get unique ID
     Vast::id_t get_id ();
+
+    // get subscription ID
+    Vast::id_t get_sub ();
     
     size_t accumulated_send ();
     size_t accumulated_recv ();

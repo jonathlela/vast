@@ -508,11 +508,12 @@ public:
                 continue;
 
             Vast::id_t id = node->get_id ();
+            Vast::id_t sub = node->get_sub ();
             char *str = node->vnode->getStat ();
             size_t send = node->accumulated_send ();
             size_t recv = node->accumulated_recv ();
 
-            fprintf (_fp, "[%llu] %10u %10u\t%s\t", id, send, recv, str);
+            fprintf (_fp, "[%llu, %llu] %10u %10u\t%s\t", id, sub, send, recv, str);
 
             /*
             StatType *peersize = _simnodes[i]->vnode->getPeerStat ();

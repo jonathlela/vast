@@ -89,7 +89,8 @@ namespace Vast
         Area *      move (id_t subID, Area &aoi, bool update_only = false);
 
         // send a custom message to a particular node
-        bool        send (Message &message);
+        // returns the number of successful send targets
+        int        send (Message &message, vector<id_t> *failed = NULL);
 
         // obtain a list of subscribers with an area
         vector<Node *>& list (Area *area = NULL);
@@ -155,6 +156,7 @@ namespace Vast
 
         bool addNeighbor (Node &neighbor, timestamp_t now);
         bool removeNeighbor (id_t id);
+        bool requestNeighbor (id_t id);
 
         //
         // fault tolerance mechanism

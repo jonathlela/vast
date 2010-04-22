@@ -113,6 +113,7 @@ typedef enum
 {
     RANDOM,
     RELAY_ONLY,
+    MATCHER_ONLY,
     CLIENT_ONLY
 
 } FailMethod;
@@ -938,10 +939,16 @@ public:
     }
 
     // reset all neighbor states so to perform a new round of visibility test
-    void clearStates ()
+    void clearStates (id_t neighbor_id = 0)
     {
-        _neighbor_states.clear ();
-        in_region = false;
+        // we need to reset 
+        if (neighbor_id != 0)
+            _neighbors.erase (neighbor_id);
+        else
+        {
+            _neighbor_states.clear ();
+            in_region = false;
+        }
     }
 
     // obtain an update of the states of neighbors

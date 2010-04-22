@@ -169,7 +169,7 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="VAST.lib VASTATE.lib"
+				AdditionalDependencies="VAST.lib "
 				LinkIncremental="0"
 				SuppressStartupBanner="true"
 				AdditionalLibraryDirectories="&quot;../../lib&quot;"

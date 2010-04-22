@@ -49,6 +49,7 @@ namespace Vast
         VAST_NetModel   model;          // network model
         bool            is_entry;       // whether current node is an entry point to the overlay (assigns ID, determine physical coordinates)
 		bool			is_relay;       // whether this node should join as a relay (may not succeed depend on public IP is available)
+        bool			is_matcher;     // whether this node should join as a candidate matcher (need to be a relay as well)
         unsigned short  port;           // default port to use 
         Position        phys_coord;     // default physical coordinate (optional)
         int             client_limit;   // max number of clients connectable to this relay
@@ -115,6 +116,9 @@ namespace Vast
         // returns time left in millisecond, 0 for no more time, (-1) for unlimited budget
         // NOTE: currently only (-1) would return
         int     tick (int time_budget = 0);
+
+        // move logical clock forward (for simulation only)
+        void    tickLogicalClock ();
 
         // stop operations on this node
         void    pause ();

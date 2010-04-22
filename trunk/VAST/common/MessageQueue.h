@@ -48,12 +48,10 @@ namespace Vast
     public:
         MessageQueue (VASTnet *net)
             :_net (net), 
-             //_host_id (NET_ID_UNASSIGNED), 
              _default_host (NET_ID_UNASSIGNED)
         {       
             // automatically start off the network
             _net->start ();
-            //_tempID = (id_t)(-1);
         }
 
         ~MessageQueue ()
@@ -95,20 +93,6 @@ namespace Vast
 
         // store default route for unaddressable targets
         void setDefaultHost (id_t default_host);
-
-        // TODO: remove these from MessageQueue?
-        // set gateway server
-        //void setGateway (const Addr &gateway);
-
-        // get the address of gateway node
-        //Addr &getGateway ();
-
-        // test if an ID is from gateway
-        //bool isGatewayID (id_t id);
-
-        // retrieve the gateway ID for a particular ID group
-        // TODO: combine into VASTnet? as we shouldn't assign/determine ID at two different places?
-        //id_t getGatewayID (int id_group = 0);
 
     private:
 

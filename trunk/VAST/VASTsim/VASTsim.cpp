@@ -39,6 +39,7 @@ VASTPara_Net        g_vastnetpara;
 statistics          g_stat;
 vector<SimNode *>   g_nodes;            // pointer to all simulation nodes
 vector<bool>        g_as_relay;
+vector<bool>        g_as_matcher;
 MovementGenerator   g_move_model;
 Addr                g_gateway_addr;          // address to gateway node
 SectionedFile      *g_pos_record = NULL;
@@ -73,6 +74,10 @@ int InitPara (VAST_NetModel model, VASTPara_Net &netpara, SimPara &simpara, cons
     netpara.relay_limit     = 0;
     netpara.client_limit    = 0;
     netpara.overload_limit  = 0;
+
+    // by default the node can be relay & matcher
+    netpara.is_relay = true;
+    netpara.is_matcher = true;
 
     simpara.NODE_SIZE = 10;
 
@@ -140,9 +145,9 @@ int InitPara (VAST_NetModel model, VASTPara_Net &netpara, SimPara &simpara, cons
         para.overload_limit     = simpara.OVERLOAD_LIMIT;
 #endif
 */
-        netpara.step_persec   = simpara.STEPS_PERSEC;           
+        netpara.step_persec    = simpara.STEPS_PERSEC;           
         netpara.overload_limit = simpara.OVERLOAD_LIMIT;
-        aoi.radius            = simpara.AOI_RADIUS;        
+        aoi.radius             = simpara.AOI_RADIUS;        
     }
     else  
     {
@@ -212,12 +217,15 @@ bool ReadPara (SimPara &para)
         &para.WORLD_HEIGHT,
         &para.NODE_SIZE,
         &para.RELAY_SIZE,
+        &para.MATCHER_SIZE,
         &para.TIME_STEPS,
         &para.STEPS_PERSEC,
         &para.AOI_RADIUS,
         &para.AOI_BUFFER,
         &para.CONNECT_LIMIT,
         &para.VELOCITY,
+        &para.STABLE_SIZE,
+        &para.JOIN_RATE,
         &para.LOSS_RATE,
         &para.FAIL_RATE, 
         &para.UPLOAD_LIMIT,
@@ -286,16 +294,23 @@ int InitSim (SimPara &para, VASTPara_Net &netpara)
     fcf.DestroyFileClass (g_pos_record);
 
     // initialize random number generator
-    srand ((unsigned int)time (NULL));
+    //srand ((unsigned int)time (NULL));
+    srand (37);
     g_last_seed = rand ();
 
     // randomly choose which nodes will be the relays
     int num_relays = 1;
     int i;
     for (i=0; i < para.NODE_SIZE; i++)
+    {
         g_as_relay.push_back (false);
+        g_as_matcher.push_back (false);
+    }
 
+    // determine which nodes will be relays & matchers
     g_as_relay[0] = true;
+    g_as_matcher[0] = true;
+
     i = 1;
     while (num_relays < para.RELAY_SIZE)
     {
@@ -308,17 +323,37 @@ int InitSim (SimPara &para, VASTPara_Net &netpara)
             i = 0;
     }
 
+    i = 1;
+    while (i < para.MATCHER_SIZE)
+    {
+        g_as_matcher[i++] = true;       
+    }
+
     // starts stat collections
     g_stat.init_timer (g_para);
     return 0;
 }
 
-int CreateNode (bool wait_till_ready)
+bool CreateNode (bool wait_till_ready)
 {
     // obtain current node index
-    size_t i = g_nodes.size ();        
+    size_t i = g_nodes.size ();
+    
+    // get # of currently active nodes
+    // TODO: more efficient way? (redundent with NextStep)
+    int num_active = 0;    
+    for (size_t j=0; j < i; j++)
+    {
+        if (g_nodes[j]->isJoined ())
+            num_active++;
+    } 
+
+    // do not create beyond some multiple of stable size
+    if (g_para.STABLE_SIZE != 0 && (num_active >= (g_para.STABLE_SIZE * STABLE_SIZE_MULTIPLIER)))
+        return false;
 
     g_vastnetpara.is_relay = g_as_relay[i];
+    g_vastnetpara.is_matcher = g_as_matcher[i];
     SimNode *n = new SimNode (i+1, &g_move_model, g_gateway_addr, g_para, g_vastnetpara);
     g_nodes.push_back (n);
 
@@ -341,15 +376,13 @@ int CreateNode (bool wait_till_ready)
     {
         // each node processes messages received so far
         for (size_t j=0; j <= i; ++j)
-            g_nodes[i]->processmsg ();
-        
-        g_nodes[i]->isJoined ();
+            g_nodes[i]->processmsg ();        
     }
 
     // store node into stat class for later processing
     g_stat.add_node (n);
     
-    return 0;
+    return true;
 }
 
 // return # of inconsistent nodes during this step if stat_collect is enabled
@@ -364,47 +397,77 @@ int NextStep ()
     
     int i;   
 
+    // total # of nodes created (both active & failed)
     int n = g_nodes.size ();
     
+    // # of currently active nodes
+    int num_active = 0;
+
     // each node makes a move or checks for joining
     for (i=0; i < n; ++i)
     {
         if (g_nodes[i]->isJoined ())
+        {
+            num_active++;
             g_nodes[i]->move ();
+        }
     }    
 
     // fail a node if time has come    
-	if (g_para.FAIL_RATE > 0 && g_steps >= g_para.FAIL_RATE && g_steps % g_para.FAIL_RATE == 0)
+    if (g_para.FAIL_RATE > 0   && 
+        num_active > g_para.STABLE_SIZE && 
+        //num_active < (g_para.STABLE_SIZE * STABLE_SIZE_MULTIPLIER) &&
+        g_steps % g_para.FAIL_RATE == 0)
     {
-        FailMethod method = RELAY_ONLY;
+        //FailMethod method = RELAY_ONLY;
+        //FailMethod method = MATCHER_ONLY;
         //FailMethod method = CLIENT_ONLY;
+        FailMethod method = RANDOM;
+        
+        // index of the node to fail
+        int i = n;
 
-        // random fail
         switch (method)
         {
+        // random fail
         case RANDOM:
             {
-                int index = rand () % n;
-                
-                // do not fail gateway
-                if (index == 0)
-                    index = 1;
-
-                Vast::id_t peer_id = g_nodes[index]->getPeerID ();
-                printf ("failing [%llu]..\n", peer_id);
-                g_nodes[index]->fail ();
+                // NOTE: we assume there's definitely some node to fail, otherwise
+                //       will enter infinite loop
+                bool failed = false;
+                while (!failed)
+                {
+                    // do not fail gateway
+                    i = (rand () % (n-1))+1;
+                                    
+                    if (g_nodes[i]->isJoined ())
+                        break;
+                }
             }
             break;
 
         case RELAY_ONLY:
             {
                 // fail each active relay (except gateway) until all are failed
-                for (int i=1; i<n; i++)
+                for (i=1; i<n; i++)
                 {
                     if (g_as_relay[i] == true)
                     {
-                        g_nodes[i]->fail ();
                         g_as_relay[i] = false;
+                        break;
+                    }
+                }
+            }
+            break;
+
+        case MATCHER_ONLY:
+            {
+                // fail each active relay (except gateway) until all are failed
+                for (i=1; i<n; i++)
+                {
+                    if (g_as_matcher[i] == true)
+                    {
+                        g_as_matcher[i] = false;
                         break;
                     }
                 }
@@ -414,24 +477,28 @@ int NextStep ()
         case CLIENT_ONLY:
             {
                 // fail each active non-relay 
-                for (int i=1; i<n; i++)
+                for (i=1; i<n; i++)
                 {
-                    if (g_as_relay[i] == false && g_nodes[i]->isJoined () == true)
+                    if ((g_as_relay[i] == false && g_as_matcher[i] == false) && 
+                        g_nodes[i]->isJoined () == true)
                     {
-                        g_nodes[i]->fail ();
                         break;
                     }
                 }
             }
             break;
         }      
+
+        if (i > 0 && i < n)
+        {
+            printf ("failing [%llu]..\n", g_nodes[i]->getPeerID ());
+            g_nodes[i]->fail ();
+        }
     }
     
     // each node processes messages received so far
     for (i=0; i < n; ++i)
-    {
         g_nodes[i]->processmsg ();    
-    }
 
     // each node calculates stats
     for (i=0; i < n; ++i)
@@ -453,7 +520,10 @@ int NextStep ()
 
 Node *GetNode (int index)
 {
-    if ((unsigned)index >= g_nodes.size () || g_nodes[index]->vnode == NULL)
+    // check for invalid index, VAST node not yet joined, or failed node
+    if ((unsigned)index >= g_nodes.size () || 
+        g_nodes[index]->vnode == NULL ||
+        g_nodes[index]->isFailed ())
         return NULL;
 
     return g_nodes[index]->vnode->getSelf ();

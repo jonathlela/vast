@@ -42,6 +42,9 @@
 
 #define TIMEOUT_SUBSCRIPTION_KEEPALIVE         (1.0)   // # of seconds to send updates for my subscriptions
 
+// flag to send NEIGHBOR notices via relay (slower but can test relay correctness)
+#define SEND_NEIGHBORS_VIA_RELAY_
+
 using namespace std;
 
 namespace Vast
@@ -52,7 +55,9 @@ namespace Vast
 
     public:
 
-        VASTMatcher (int overload_limit);
+        // constructor, passing in whether the node can be a matcher candidate, 
+        // and what's the threshold considered as overload
+        VASTMatcher (bool is_matcher, int overload_limit);
         ~VASTMatcher ();
         
         // join the Matcher overlay for a given world (gateway)
@@ -155,7 +160,7 @@ namespace Vast
         bool removeSubscription (id_t sub_no);
 
         // update a subscription content
-        bool updateSubscription (id_t sub_no, Area &new_aoi, timestamp_t sendtime);
+        bool updateSubscription (id_t sub_no, Area &new_aoi, timestamp_t sendtime, Addr *relay = NULL, bool *is_owner = NULL);
 
         // send a full subscription info to a neighboring matcher
         // returns # of successful transfers
@@ -187,8 +192,12 @@ namespace Vast
         // helper functions
         //
 
+        // send a message to clients (optional flag to send directly)
+        // returns # of targets successfully sent, optional to return failed targets
+        int sendClientMessage (Message &msg, id_t client_ID = NET_ID_UNASSIGNED, vector<id_t> *failed_targets = NULL);
+
         // deal with unsuccessful send targets
-        void processFailedTargets (vector<id_t> &list);
+        void removeFailedSubscribers (vector<id_t> &list);
 
         // set the gateway node for this world
         bool setGateway (const IPaddr &gatewayIP);
@@ -206,12 +215,13 @@ namespace Vast
         map<id_t, Node *>   _neighbors;     // list of neighboring matchers, NOTE: pointers refer to data in VSOPeer, so do not need to be released upon destruction
                                                                                                             
         map<id_t, Subscription> _subscriptions; // a list of subscribers managed by this matcher
-                                                // searchable by the hostID of the subscriber
+                                                // searchable by the subscription ID of the subscriber
 
         map<id_t, map<id_t, bool> *> _replicas; // a list of replicas of owned objects at remote neighbors, map from obj_id to host_id map
 
         map<id_t, id_t>     _closest;           // mapping of subscription to closest alternative matcher
 
+        bool                _is_matcher;        // whether the node can be a matcher candidate
         int                 _overload_limit;    // # of subscriptions considered overload
         
         timestamp_t         _next_periodic;     // record for next time stamp to process periodic (per-second) tasks

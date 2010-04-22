@@ -58,8 +58,22 @@ namespace Vast
         MOVE_F,                         // full update for an AOI region
         LEAVE,                          // departure of a client
         NEIGHBOR,                       // send back a list of known neighbors
+        NEIGHBOR_REQUEST,               // request full info for an unknown neighbor
         SEND,                           // send a particular message to certain targets        
-        MESSAGE,                        // deliver a message to a node        
+        MESSAGE,                        // deliver a message to a node
+        SUBSCRIBE_NOTIFY,               // client notifying a relay of its subscription
+
+        // Relay-specific messages
+        REQUEST,                // request for relays
+        RELAY,                  // notifying an existing relay        
+        PING,                   // query to measure latency
+        PONG,                   // reponse to PING
+        PONG_2,                 // reponse to PONG
+        RELAY_QUERY,            // find closest relay
+        RELAY_QUERY_R,          // response to closest relay query
+        RELAY_JOIN,             // attach to the physically closest relay
+        RELAY_JOIN_R,           // response to JOIN request
+
     } VAST_Message;
 
 
@@ -112,7 +126,8 @@ namespace Vast
         virtual Area *      move (id_t subID, Area &aoi, bool update_only = false) = 0;
 
         // send a custom message to a particular VAST node (ID obtained from list ())
-        virtual bool        send (Message &message) = 0;
+        // returns the number of successful send, optionally obtains the failed targets
+        virtual int         send (Message &message, vector<id_t> *failed = NULL) = 0;
 
         // obtain a list of subscribers with an area
         virtual vector<Node *>& list (Area *area = NULL) = 0;

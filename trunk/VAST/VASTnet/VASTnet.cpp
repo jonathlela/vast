@@ -683,11 +683,11 @@ namespace Vast
 
         if (_id2addr.find (id) != _id2addr.end ())        
             return _id2addr[id];
-            
-#ifdef DEBUG_DETAIL
-        printf ("VASTnet::getAddress (): address not found for [%d]\n", (int)id);
-#endif
-        return null_addr;        
+        else
+        {
+            printf ("VASTnet::getAddress (): address not found for [%llu]\n", id);
+            return null_addr;        
+        }
     }
 
     // obtain a HostID based on public IP + port for entry point hosts

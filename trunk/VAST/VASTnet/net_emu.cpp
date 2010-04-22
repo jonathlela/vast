@@ -135,6 +135,9 @@ namespace Vast
         printf ("[%lu] disconnection success\n", target);
 #endif
 
+        if (_id == 9151314447179972609 && target == 9151314447182331905)
+            printf ("here");
+
         // do a remote disconnect
         net_emu *receiver = (net_emu *)_bridge.getNetworkInterface (target);
         
@@ -222,7 +225,7 @@ namespace Vast
         for (multimap<byte_t, QMSG *>::iterator it = _msgqueue.begin (); it != _msgqueue.end (); it++)
         {
             qmsg = it->second;
-            if (time > qmsg->recvtime)
+            if (qmsg->recvtime == 0 || time > qmsg->recvtime)
             {
                 _msgqueue.erase (it);
                 return qmsg;

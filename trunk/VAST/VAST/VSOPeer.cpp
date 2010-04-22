@@ -940,7 +940,7 @@ namespace Vast
 
     // change position for a particular shared object
     bool 
-    VSOPeer::updateSharedObject (id_t obj_id, Area &aoi)
+    VSOPeer::updateSharedObject (id_t obj_id, Area &aoi, bool *is_owner)
     {
         map<id_t, VSOSharedObject>::iterator it = _objects.find (obj_id);
 
@@ -956,6 +956,10 @@ namespace Vast
         // for example, if object's AOI covers this VSOPeer's region
         so.aoi = aoi;
         so.last_update = _net->getTimestamp ();
+
+        // update ownership, if available
+        if (is_owner != NULL)
+            so.is_owner = *is_owner;
 
         return true;
     }

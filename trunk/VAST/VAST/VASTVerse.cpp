@@ -49,7 +49,7 @@ namespace Vast
     //       a better mechanism?
     static net_emubridge *g_bridge     = NULL;
     int            g_bridge_ref = 0;            // reference count for the bridge
-    int            g_bridge_tickcount = 0;      // countdown to next tick
+    //int            g_bridge_tickcount = 0;      // countdown to next tick
    
     class VASTPointer
     {
@@ -205,8 +205,9 @@ namespace Vast
         _pointers = new VASTPointer ();
         memset (_pointers, 0, sizeof (VASTPointer));
 
-        // initialize rand generator (for node fail simulation)
-        srand ((unsigned int)time (NULL));
+        // initialize rand generator (for node fail simulation, NOTE: same seed is used to produce exactly same results)
+        //srand ((unsigned int)time (NULL));
+        srand (0);
 
         if (g_bridge == NULL)
         {
@@ -320,6 +321,7 @@ namespace Vast
         // create the VAST node
         if (_state == ABSENT)
         {
+            printf ("VASTVerse::getVASTNode () createClient...\n");
             if ((createClient (info.relay.publicIP)) != NULL)
             {                            
                 _state = JOINING;
@@ -329,6 +331,7 @@ namespace Vast
         {
             if (handlers->client->isJoined ())
             {
+                printf ("VASTVerse::getVASTNode () subscribing ... \n");
                 handlers->client->subscribe (info.aoi, info.layer);
                 _state = JOINING_2;
             }
@@ -337,6 +340,7 @@ namespace Vast
         {
             if (handlers->client->getSubscriptionID () != NET_ID_UNASSIGNED)
             {
+                printf ("VASTVerse::getVASTNode () ID obtained, joined\n");
                 _state = JOINED;
             }
         }
@@ -350,7 +354,7 @@ namespace Vast
     // whether this VASTVerse is initialized to create VASTNode instances
     bool 
     VASTVerse::isLogined ()
-    {       
+    {
         if (_logined == true)
             return true;
 
@@ -413,7 +417,7 @@ namespace Vast
             printf ("[%llu] physical coord: (%.3f, %.3f)\n", handlers->net->getHostID (), physcoord->x, physcoord->y);
 
             // create (idle) 'matcher' instance
-            handlers->matcher = new VASTMatcher (_netpara.overload_limit);
+            handlers->matcher = new VASTMatcher (_netpara.is_matcher, _netpara.overload_limit);
             handlers->msgqueue->registerHandler (handlers->matcher);
 
             _logined = true;
@@ -494,21 +498,21 @@ namespace Vast
         if (handlers->msgqueue != NULL)
             handlers->msgqueue->tick ();
            
+        // right now there's always time available
+        return time_budget;
+    }
+
+    // move logical clock forward (for simulation only)
+    void  
+    VASTVerse::tickLogicalClock ()
+    {
         // increase tick globally when the last node has processed its messages for this round
         // this will prevent its message be delayed one round in processing by other nodes
         // TODO: find a better way? 
         if (g_bridge != NULL)
         {
-            //printf ("tickcount: %d, ref: %d\n", g_bridge_tickcount, g_bridge_ref);
-            if (++g_bridge_tickcount == g_bridge_ref)
-            {                
-                g_bridge_tickcount = 0;
-                g_bridge->tick ();
-            }
+            g_bridge->tick ();
         }
-
-        // right now there's always time available
-        return time_budget;
     }
 
     // stop operations on this node

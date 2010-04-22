@@ -14,12 +14,15 @@ namespace Vast
     VASTRelay::VASTRelay (bool as_relay, size_t client_limit, size_t relay_limit, Position *phys_coord)
             :MessageHandler (MSG_GROUP_VAST_RELAY), 
              _curr_relay (NULL),
+             _contact_relay (NULL),
              _as_relay (as_relay),
              _state (ABSENT),
              _timeout_ping (0),
              _timeout_query (0),
              _timeout_join (0)
-    {                     
+    {     
+        //_as_relay = true;
+
         _client_limit = client_limit;     // if 0 means unlimited
         _relay_limit  = relay_limit;      // if 0 means unlimited
 
@@ -56,6 +59,8 @@ namespace Vast
     bool 
     VASTRelay::ping ()
     {
+        printf ("ping relays to update physical coord...\n");
+
         // prepare PING message
         Message msg (PING);
         msg.priority = 1;
@@ -81,33 +86,20 @@ namespace Vast
             if (random_set[i++] == false)
                 continue;
 
-            // check for redundency
+            // avoid self & check for redundency
             id_t target = it->first;
-            if (_pending.find (target) == _pending.end ())
+            if (_self.id != target && _pending.find (target) == _pending.end ())
             {
                 msg.addTarget (target);
-                _pending[target] = true;                
+                _pending[target] = current_time;             
             }
         }
 
-        // send out messages
-        vector<id_t> failed;
+        // send out messages        
+        int num_success = sendRelay (msg);
 
-        if (msg.targets.size () > 0)
-        {
-            sendMessage (msg, &failed);
-                
-            // remove failed relays
-            for (size_t i=0; i < failed.size (); i++)
-            {
-                printf ("removing failed relay (%lld) ", failed[i]);
-                removeRelay (failed[i]);
-                //_relays.erase (failed[i]);                       
-            }
-        }
-                        
         // if no PING is sent
-        if ((msg.targets.size () - failed.size ()) == 0)
+        if (num_success == 0)
         {
             // error if cannot contact any relays
             if (_net->getEntries ().size () != 0)                        
@@ -119,7 +111,7 @@ namespace Vast
             // success means at least a few PING requests are sent
             _request_times++;
             return true;
-        }
+        }        
     }
 
     // send a message to a remote host in order to obtain round-trip time
@@ -149,7 +141,7 @@ namespace Vast
             _pending.erase (target);
         }
 
-        sendMessage (msg);
+        sendRelay (msg);
 
         return true;
     }
@@ -165,6 +157,13 @@ namespace Vast
             return false;
 
         return (_state == JOINED);
+    }
+
+    // whether the current node is a relay
+    bool 
+    VASTRelay::isRelay ()
+    {
+        return (_as_relay && _net->isPublic ());
     }
 
     // obtain the ID of my relay node
@@ -193,13 +192,17 @@ namespace Vast
     bool 
     VASTRelay::handleMessage (Message &in_msg)
     {
+        // store the app-specific message type if exists
+        msgtype_t app_msgtype = APP_MSGTYPE(in_msg.msgtype);
+        in_msg.msgtype = VAST_MSGTYPE(in_msg.msgtype);
+
         switch (in_msg.msgtype)
         {
 
         case REQUEST:
             {
                 // send back a list of known relays
-                sendRelays (in_msg.from, MAX_CONCURRENT_PING);
+                sendRelayList (in_msg.from, MAX_CONCURRENT_PING);
             }
             break;
 
@@ -218,7 +221,7 @@ namespace Vast
         case PONG_2:
             {                
                 // tolerance for error to determine stabilization
-                static float tolerance = RELAY_TOLERANCE;
+                //static float tolerance = RELAY_TOLERANCE;
                                                    
                 timestamp_t querytime;
                 Position    xj;             // remote node's physical coord
@@ -239,6 +242,7 @@ namespace Vast
                 }
                 
                 // call the Vivaldi algorithm to update my physical coordinate
+
                 vivaldi (rtt, _temp_coord, xj, _error, ej);
 
 //#ifdef DEBUG_DETAIL
@@ -252,7 +256,7 @@ namespace Vast
 
                 // check if the local error value is small enough, 
                 // if so we've got our physical coordinate
-                if (_error < tolerance)
+                if (_error < RELAY_TOLERANCE)
                 {
                     // print a small message to show it
                     if (_request_times > 0)
@@ -266,23 +270,9 @@ namespace Vast
 
                     // if we've modified our coordinate and is a working relay
                     // should let neighbors to know
-                    if (_self.aoi.center != _temp_coord && _net->isPublic () && _relays.size () > 0)
-                    {                        
-                        // notify existing known relays of myself as a new relay
-                        Message msg (RELAY);
-                        msg.priority = 1;
-                        listsize_t n = 1;
-                        msg.store (n);
-                        msg.store (_self);
-
-                        // obtain list of targets (check if redundent PING has been sent)
-                        map<id_t, Node>::iterator it = _relays.begin ();
-
-                        for (;it != _relays.end (); it++)
-                            msg.addTarget (it->first);
-
-                        sendMessage (msg);
-                    }
+                    // TODO: move to periodic maintainence?
+                    if (_self.aoi.center != _temp_coord && isRelay ())
+                        notifyPhysicalCoordinate ();
 
                     // update into actual physical coordinate
                     _self.aoi.center = _temp_coord;
@@ -318,15 +308,16 @@ namespace Vast
                     in_msg.extract (relay);
 
                     // check if it's not from differnet nodes from the same host 
-                    if (VASTnet::extractHost (relay.id) != VASTnet::extractHost (_self.id))
-                    {
+                    //if (VASTnet::extractHost (relay.id) != VASTnet::extractHost (_self.id))
+                    //{
                         // add a new relay (while storing ID->address mapping)
                         addRelay (relay);
-                    }
+                    //}
                 }
             }
             break;
 
+        // response to a query of the closest relay by a joining node
         case RELAY_QUERY:
             {
                 Node joiner;
@@ -335,12 +326,14 @@ namespace Vast
                 in_msg.extract (relay);
 
                 bool success = false;
+
+                // TODO: potential bug? will loop infinitely? or eventually I will reply myself
                 while (!success)
                 {
                     // find the closet relay
                     Node *closest = closestRelay (joiner.aoi.center);
                 
-                    // respond the query if I'm closest 
+                    // respond the query if I'm the closest 
                     if (closest->id == _self.id)
                     {
                         Message msg (RELAY_QUERY_R);
@@ -350,22 +343,14 @@ namespace Vast
                         msg.addTarget (relay.host_id);
                                         
                         notifyMapping (relay.host_id, &relay);
-                        sendMessage (msg);
-                        success = true;
+                        success = (sendRelay (msg) > 0);
                     }
                     // otherwise greedy-forward the message to the next closest, valid relay
                     else
                     {
                         in_msg.targets.clear ();
                         in_msg.addTarget (closest->id);
-                        success = (sendMessage (in_msg) > 0);
-
-                        // remove the invalid relay, this occurs if the neighbor relay has failed
-                        if (!success)
-                        {
-                            removeRelay (closest->id);
-                            //_relays.erase (closest->id);
-                        }
+                        success = (sendRelay (in_msg) > 0);
                     }          
                 }
             }
@@ -387,12 +372,11 @@ namespace Vast
                 {
                     addRelay (relay);
 
-                    if (_net->isPublic () == false)
-                        _curr_relay = &_relays[relay.id];
-                    else
-                        _curr_relay = &_self;
+                    // add myself as initial relay
+                    if (isRelay () == true)
+                        addRelay (_self);
 
-                    joinRelay (_curr_relay);
+                    joinRelay ();
                 }
                 // if I was the forwarder, forward the response to the requester
                 else
@@ -401,7 +385,7 @@ namespace Vast
                     in_msg.targets.clear ();
                     in_msg.addTarget (requester.id);
 
-                    sendMessage (in_msg);
+                    sendRelay (in_msg);
                 }
             }
             break;
@@ -411,34 +395,36 @@ namespace Vast
         case RELAY_JOIN:
             {
                 Node joiner;
-                bool as_relay;                
+                bool is_relay;                
                 in_msg.extract (joiner);
-                in_msg.extract ((char *)&as_relay, sizeof (bool));
+                in_msg.extract ((char *)&is_relay, sizeof (bool));
                 
                 // check if I can take in this new node, default is NO 
                 // (because joiner is itself a relay, or no more peer space available)
                 bool join_reply = false;
 
-                if (as_relay == false && 
-                    (_client_limit == 0 || _accepted.size () < _client_limit))
+                // conditions for accepting a joiner:
+                //  1. I myself is joining  or
+                //  
+                //  2a. I'm an accepting relay & still have space (or no limit)
+                //  2b. the joiner must not be relay
+                
+                if (joiner.id == _self.id ||
+                    (_as_relay == true && is_relay == false && (_client_limit == 0 || _clients.size () < _client_limit)))
                 {
-                    join_reply = true;
-                    
-                    // record the clients this relay has accepted
-                    _accepted[joiner.id] = joiner;
+                    join_reply = true;                    
+                    addClient (in_msg.from, joiner);
                 }                                
-
-                // compose return message
+                
+                // compose & send return message
                 Message msg (RELAY_JOIN_R);
                 msg.priority = 1;
-                msg.store ((char *)&join_reply, sizeof (bool));                                    
-                msg.addTarget (in_msg.from);
+                msg.store ((char *)&join_reply, sizeof (bool));                                                    
+                msg.addTarget (joiner.id);
                 sendMessage (msg);
 
-                printf ("\n[%llu] VASTRelay accepts join request from [%llu]\n\n", _self.id, in_msg.from); 
-
-                // also send the joiner some of my known relays
-                sendRelays (in_msg.from);
+                // also send the joiner some of my known relays, not too many though
+                sendRelayList (joiner.id, MAX_CONCURRENT_PING);
             }
             break;
 
@@ -449,44 +435,47 @@ namespace Vast
                 if (_state == JOINED)
                     break;
 
-                bool as_relay = _net->isPublic ();
+                // I must be both willing & have public IP to be an accepting relay
                 bool join_success;
 
                 in_msg.extract ((char *)&join_success, sizeof (bool));
 
-                // if a non-relay client fails to join, then find another relay to join
-                if (!as_relay && join_success == false)
+                // NOTE that as long as we have public IP, I can use myself as relay
+                //      and there's no need to seek join acceptance from an existing relay
+                if (isRelay () == false && join_success == false)
                 {
+                    // if a non-relay client fails to join, then find another relay to join
                     joinRelay ();
                 }
                 // otherwise, we've successfully joined the relay mesh 
                 else 
                 {                   
-                    // if I'm a relay, let each newly learned relay also know
-                    if (as_relay)
+                    // if I'm an accepting relay, let existing relays also know
+                    if (isRelay ())
                     {
-                        Message msg (RELAY);
-                        msg.priority = 1;
-                        listsize_t n = 1;
-                        msg.store (n);
-                        msg.store (_self);
-                        
-                        map<id_t, Node>::iterator it = _relays.begin ();
-                        
-                        // notify up to _relay_limit
-                        msg.targets.clear ();
-                        for (size_t i=0; it != _relays.end () && (_relay_limit == 0 || i < _relay_limit); it++)
-                            msg.addTarget (it->first);
-
-                        sendMessage (msg);
+                        // let other relays know me
+                        notifyPhysicalCoordinate ();
 
                         // set myself as relay
                         setJoined ();
                     }
-                    // set the sender as my relay
                     else
+                    {
+                        // set the sender as my relay 
+                        // NOTE: if I join myself, then I could receive RELAY_JOIN_R from myself as well
                         setJoined (in_msg.from);
+                    }
                 }
+            }
+            break;
+
+        // getting a notice from client about its subscribion ID
+        case SUBSCRIBE_NOTIFY:
+            {
+                id_t sub_id;
+                in_msg.extract (sub_id);
+
+                _sub2client[sub_id] = in_msg.from;
             }
             break;
         
@@ -500,22 +489,62 @@ namespace Vast
                     // remove the disconnecting relay from relay list
                     removeRelay (in_msg.from);
                    
-                    // if disconnected from current relay, re-find closest relay
-                    if (_curr_relay != NULL && 
-                        in_msg.from == _curr_relay->id && 
-                        in_msg.from != _self.id)
-                    {
-                        // invalidate relay ID, re-initiate query for closest relay
-                        _curr_relay = NULL;                        
-                        _timeout_query = 0;
-                        _state = QUERYING;
-                    }
+                }
+
+                else
+                {
+                    // otherwise we simply remove a client connected to us
+                    // NOTE: that a host can only be either a client or a relay
+                    removeClient (in_msg.from);
                 }
             }
             break;
 
+        // assume all other messages are forwardwd messages 
+        // receiving a forwarded message (source can be either PUBLISH or SEND) or NEIGHBOR
         default:
-            return false;
+        //case MESSAGE:
+        //case NEIGHBOR:
+            {
+                // forward message to clients 
+
+                // NOTE must send to remote first before local, as sendtime will be extracted by local host
+                //      and the message structure will get changed
+                
+                // store back app-specific message type
+                if (in_msg.msgtype == MESSAGE)
+                    in_msg.msgtype = (app_msgtype << VAST_MSGTYPE_RESERVED) | MESSAGE;
+                                
+                in_msg.msggroup = MSG_GROUP_VAST_CLIENT;
+
+                // translate targets to actual client hostID 
+                vector<id_t> clients;
+                
+                for (size_t i=0; i < in_msg.targets.size (); i++)
+                {
+                    id_t target = in_msg.targets[i];
+                
+                    if (_sub2client.find (target) != _sub2client.end ())
+                        clients.push_back (_sub2client[target]);
+                    else
+                    {
+                        printf ("VASTRelay: cannot translate received subscriptionID [%llu] to clientID\n", target);
+                    }
+                }
+
+                // use the converted client hostID
+                if (clients.size () > 0)
+                {
+                    in_msg.targets = clients;
+                    sendMessage (in_msg);
+                }
+                else
+                {
+                    printf ("VASTRelay: cannot forward message, message type: %d\n", in_msg.msgtype);
+                    return false;                        
+                }
+            }
+            break;
         }
 
         return true;
@@ -549,7 +578,7 @@ namespace Vast
                     relay.id = relay.addr.host_id  = _net->resolveHostID (&entries[i]);
                     relay.addr.publicIP = entries[i];
         
-                    addRelay (relay);                    
+                    addRelay (relay);
                 }
             }
 
@@ -557,7 +586,6 @@ namespace Vast
             if (_relays.size () > 0)
             {
                 // re-send PING to known relays
-                printf ("VASTRelay::postHandling () pinging relays to determine physical coord\n");
                 ping ();
             
                 // if not yet joined, try to request more relays
@@ -569,7 +597,7 @@ namespace Vast
                     for (; it != _relays.end (); it++)
                         msg.addTarget (it->first);
             
-                    sendMessage (msg);
+                    sendRelay (msg);
                 }
             }
         }
@@ -591,6 +619,9 @@ namespace Vast
         }
         else if (_state == QUERYING)
         {
+            if (_self.id == 9151314447182331905)
+                printf ("here");
+
             // if the closest relay is found, start joining it
             if (_curr_relay != NULL)
                 _state = JOINING;
@@ -605,21 +636,31 @@ namespace Vast
 
                 Node *relay = nextRelay ();
 
-                // send query to one existing relay to find physically closest relay to join
-                Message msg (RELAY_QUERY);
-                msg.priority = 1;
-        
-                // parameter 1: requester physical coord & address
-                msg.store (_self);
-        
-                Addr addr = relay->addr;
-                // parameter 2: forwarder's address 
-                msg.store (addr);
-        
-                // send to the selected relay
-                msg.addTarget (relay->id);
-        
-                sendMessage (msg);
+                if (relay == NULL)
+                {
+                    // need to re-ping for relays
+                    _timeout_ping = 0;
+                }
+                else
+                {
+                    // send query to one existing relay to find physically closest relay to join
+                    Message msg (RELAY_QUERY);
+                    msg.priority = 1;
+                
+                    // parameter 1: requester physical coord & address
+                    msg.store (_self);
+                                    
+                    // parameter 2: forwarder's address 
+                    Addr addr = relay->addr;
+                    msg.store (addr);
+                
+                    // send to the selected relay
+                    msg.addTarget (relay->id);
+                
+                    // if the relay has failed, we'll try again next tick 
+                    if (sendRelay (msg) == 0)
+                        _timeout_query = 0;
+                }
             }
         }
         else if (_state == JOINING)
@@ -637,7 +678,42 @@ namespace Vast
         // remove non-essential relays
         // TODO: implement & check this very carefully, as it could disrupt normal operations
         //       if not done correctly
-        //cleanupRelays ();
+        cleanupRelays ();
+    }
+
+    // join the relay mesh by connecting to the closest known relay
+    bool
+    VASTRelay::joinRelay (Node *relay)
+    {
+        // check if relay info exists
+        if (relay == NULL && _relays.size () == 0)
+        {
+            printf ("VASTRelay::joinRelay (): no known relay to contact\n");
+            return false;
+        }
+
+        // see if I'm also a relay when contacting the relay mesh
+        // NOTE: that we could join the mesh without accepting clients
+        bool as_relay = isRelay ();
+
+        // if no preferred relay is provided, find next available (distance sorted)
+        if (relay == NULL)
+            relay = nextRelay ();
+
+        // send JOIN request to the closest relay
+        Message msg (RELAY_JOIN);
+        msg.priority = 1;
+        msg.store (_self);
+        msg.store ((char *)&as_relay, sizeof (bool));
+        msg.addTarget (relay->id);
+        
+        // reset countdown, if the send failed, try again next tick
+        if (sendRelay (msg) > 0)        
+            _timeout_join = _net->getTimestamp () + (TIMEOUT_RELAY_JOIN * _net->getTimestampPerSecond ());
+        else
+            _timeout_join = 0;
+
+        return true;
     }
 
     // find the relay closest to a position, which can be myself
@@ -675,39 +751,45 @@ namespace Vast
     Node *
     VASTRelay::nextRelay ()
     {
-        // if no existing relay exists, pick first known
-                                                                                                                      if (_curr_relay == NULL)
+        // if no existing contact relay exists, pick first closest
+        if (_contact_relay == NULL)
         {
             if (_relays.size () == 0)
             {
                 printf ("VASTRelay::nextRelay () relay list is empty, no next relay available\n");
                 return NULL;
             }
-            _curr_relay = &(_relays.begin ()->second);
-        }
 
-        // begin looping to find the next available relay in terms of distance to self
-        multimap<double, Node *>::iterator it = _dist2relay.begin ();
+            _contact_relay = _dist2relay.begin ()->second;
+        }
+        else
+        {
+            // begin looping to find the next available relay in terms of distance to self
+            multimap<double, Node *>::iterator it = _dist2relay.begin ();
+            
+            // find the next closest
+            for (; it != _dist2relay.end (); it++)
+            {
+                if (it->second->id == _contact_relay->id)
+                    break;
+            }
         
-        // find the next closest
-        for (; it != _dist2relay.end (); it++)
-        {
-            if (it->second->id == _curr_relay->id)
-                break;
+            // find next available
+            if (it != _dist2relay.end ())
+                it++;
+        
+            // loop from beginning
+            if (it == _dist2relay.end ())
+            {
+                printf ("VASTRelay::nextRelay () - last known relay reached, re-try first\n");
+                it = _dist2relay.begin ();
+            }
+        
+            // set current relay as the next closest relay
+            _contact_relay = it->second;
         }
 
-        // find next available
-        if (it != _dist2relay.end ())
-            it++;
-
-        // loop from beginning
-        if (it == _dist2relay.end ())
-        {
-            printf ("VASTRelay::nextRelay () - last known relay reached, re-try first\n");
-            it = _dist2relay.begin ();
-        }
-
-        return it->second;
+        return _contact_relay;
     }
     
     // add a newly learned relay
@@ -721,17 +803,36 @@ namespace Vast
         }
 
         // we first determine a temp distance between our current estimated coord & the relay's coord
-        double dist = relay.aoi.center.distance (_temp_coord);
+        double dist = relay.aoi.center.distance (_self.aoi.center);
+
+        map<id_t, Node>::iterator it = _relays.find (relay.id);
 
         // avoid inserting the same relay, but note that we accept two relays have the same distance
-        if (_relays.find (relay.id) != _relays.end ())
-            return;
+        if (it != _relays.end ())
+        {
+            printf ("[%llu] VASTRelay::addRelay () updating relay [%llu]..\n", _self.id, relay.id);
 
-        printf ("[%llu] VASTRelay::addRelay () adding relay [%llu]..\n", _self.id, relay.id);
+            it->second = relay;
 
-        _relays[relay.id] = relay;
+            // erase distance record            
+            for (multimap<double, Node *>::iterator it = _dist2relay.begin (); it != _dist2relay.end (); it++)
+            {
+                if (it->second->id == relay.id)
+                {                
+                    _dist2relay.erase (it);                
+                    break;
+                }
+            }           
+        }
+        else
+        {
+            printf ("[%llu] VASTRelay::addRelay () adding relay [%llu]..\n", _self.id, relay.id);
+            _relays[relay.id] = relay;            
+        }
+
+        _relays[relay.id].time = _net->getTimestamp ();
+
         _dist2relay.insert (multimap<double, Node *>::value_type (dist, &(_relays[relay.id])));
-
         notifyMapping (relay.id, &relay.addr);
     }
     
@@ -742,9 +843,22 @@ namespace Vast
         if ((it_relay = _relays.find (id)) == _relays.end ())
             return;
 
-        double dist = it_relay->second.aoi.center.distance (_self.aoi.center);
+        // if disconnected from current relay, re-find closest relay
+        if (_curr_relay != NULL && id == _curr_relay->id)
+        {
+            // invalidate relay ID, re-initiate query for closest relay
+            _curr_relay = NULL;   
+            _contact_relay = NULL;
+            _timeout_query = 0;
+            _state = QUERYING;
+        }
 
-        multimap<double, Node *>::iterator it = _dist2relay.find (dist);
+        if (_contact_relay != NULL && id == _contact_relay->id)
+            _contact_relay = NULL;
+
+        //double dist = it_relay->second.aoi.center.distance (_self.aoi.center);
+
+        multimap<double, Node *>::iterator it = _dist2relay.begin ();
         for (; it != _dist2relay.end (); it++)
         {
             if (it->second->id == id)
@@ -759,41 +873,38 @@ namespace Vast
 
         // also erase the pending tracker
         _pending.erase (id);
+
+        // if no relays exist, need to re-create relays
+        if (_relays.size () == 0)
+        {
+            printf ("VASTRelay::removeRelay () no more relays known, need to re-query network\n");
+            _timeout_ping = 0;
+        }
     }
 
-    // join the relay mesh by connecting to the closest known relay
-    bool
-    VASTRelay::joinRelay (Node *relay)
-    {
-        // check if relay info exists
-        if (relay == NULL && _relays.size () == 0)
+    // send message to a relay, remove the relay if send isn't successful
+    // return # of targets sent successfully
+    int
+    VASTRelay::sendRelay (Message &msg)
+    {               
+        size_t num_success = msg.targets.size ();
+        
+        if (num_success > 0)
         {
-            printf ("VASTRelay::joinRelay (): no known relay to contact\n");
-            return false;
+            vector<id_t> failed;
+            sendMessage (msg, &failed);
+                
+            // remove failed relays
+            for (size_t i=0; i < failed.size (); i++)
+            {
+                printf ("removing failed relay (%lld) ", failed[i]);
+                removeRelay (failed[i]);
+            }
+        
+            num_success -= failed.size ();
         }
 
-        // see if I'm also a relay when contacting the relay mesh
-        bool as_relay = _net->isPublic ();
-
-        // if no preferred relay is provided, find next available (distance sorted)
-        if (relay == NULL)
-            relay = nextRelay ();
-
-        // set current relay as the next closest relay
-        _curr_relay = relay;
-
-        // send JOIN request to the closest relay
-        Message msg (RELAY_JOIN);
-        msg.priority = 1;
-        msg.store (_self);
-        msg.store ((char *)&as_relay, sizeof (bool));
-        msg.addTarget (relay->id);
-        sendMessage (msg);       
-
-        // reset countdown
-        _timeout_join = _net->getTimestamp () + (TIMEOUT_RELAY_JOIN * _net->getTimestampPerSecond ());
-
-        return true;
+        return (int)num_success;
     }
 
     // remove non-useful relays
@@ -812,21 +923,22 @@ namespace Vast
 
             vector<id_t> remove_list;
 
-            multimap<double, Node *>::iterator it = _dist2relay.end ();
+            multimap<double, Node *>::reverse_iterator rit = _dist2relay.rbegin ();
        
             while (num_removals > 0)
             {
-                remove_list.push_back (it->second->id);
-                it--;
+                remove_list.push_back (rit->second->id);
+                rit++;
+                num_removals--;
             }
 
-            for (int i=0; i < num_removals; i++)      
+            for (size_t i=0; i < remove_list.size (); i++)      
                 removeRelay (remove_list[i]);
         }
     }
 
     int 
-    VASTRelay::sendRelays (id_t target, int limit)
+    VASTRelay::sendRelayList (id_t target, int limit)
     {                
          listsize_t n = (listsize_t)_relays.size ();
 
@@ -834,7 +946,7 @@ namespace Vast
              return 0;
 
          // limit at max ping size
-         if (n > limit)
+         if (limit != 0 && n > limit)
              n = (listsize_t)limit;
 
          Message msg (RELAY);
@@ -864,15 +976,41 @@ namespace Vast
          return n;
     }
 
+    // notify neighboring relay of my updated physical coordinate
+    bool 
+    VASTRelay::notifyPhysicalCoordinate ()
+    {
+        if (_relays.size () == 0)
+            return false;
+
+        // notify existing known relays of myself as a new relay
+        Message msg (RELAY);
+        msg.priority = 1;
+        listsize_t n = 1;
+        msg.store (n);
+        msg.store (_self);
+
+        // obtain list of targets (check if redundent PING has been sent)
+        map<id_t, Node>::iterator it = _relays.begin ();
+
+        //for (;it != _relays.end (); it++)
+        // notify up to _relay_limit neighbors
+        for (size_t i=0; it != _relays.end () && (_relay_limit == 0 || i < _relay_limit); it++, i++)
+            if (it->first != _self.id)
+                msg.addTarget (it->first);
+
+        sendRelay (msg);
+        
+        return true;
+    }
+
     // specify we've joined at a given relay.
     bool 
     VASTRelay::setJoined (id_t relay_id)
     {
         // if no ID is specified, I myself is relay
         if (relay_id == NET_ID_UNASSIGNED)
-        {
             _curr_relay = &_self;
-        }
         else
         {
             // if the specify ID is not found
@@ -883,6 +1021,9 @@ namespace Vast
             _curr_relay = &it->second;
         }
 
+        // no longer needs this, reset so next time calls to nextRelay will return closest
+        _contact_relay = NULL;
+
         _state = JOINED;
 
         // notify network of default host to route messages
@@ -892,6 +1033,39 @@ namespace Vast
         return true;
     }
 
+    // accept a client
+    void 
+    VASTRelay::addClient (id_t from_host, Node &client)
+    {
+        // record the clients this relay has accepted
+        _clients[client.id] = client;
+
+        // estblish link to the joining client
+        notifyMapping (client.id, &client.addr);
+
+        printf ("\n[%llu] VASTRelay accepts join request from [%llu]\n\n", _self.id, from_host); 
+    }
+
+    // remove a client no longer connected
+    void 
+    VASTRelay::removeClient (id_t id)
+    {
+        map<id_t, Node>::iterator it = _clients.find (id);
+
+        if (it != _clients.end ())
+            _clients.erase (it);
+
+        // remove all mappings from subscription to client host ID
+        map<id_t, id_t>::iterator itr = _sub2client.begin ();
+
+        vector<id_t> remove_list;
+        for (; itr != _sub2client.end (); itr++)
+            if (itr->second == id)
+                remove_list.push_back (itr->first);
+
+        for (size_t i=0; i < remove_list.size (); i++)
+            _sub2client.erase (remove_list[i]);
+    }
 
     // recalculate my physical coordinate estimation (using Vivaldi)
     // given a neighbor j's position xj & error estimate ej

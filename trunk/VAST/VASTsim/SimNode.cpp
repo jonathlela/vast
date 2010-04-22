@@ -161,7 +161,8 @@
             {
                 if ((_sub_no = vnode->getSubscriptionID ()) != NET_ID_UNASSIGNED)
                 {
-                    _self.id = _sub_no;
+                    //_self.id = _sub_no;
+                    _self.id = vnode->getSelf ()->id;
                     state = NORMAL;
                 }
             }
@@ -170,7 +171,13 @@
         // NOTE: we assume that message process will occur after some logical time progression
         //       that is, events are allowed some timesteps (e.g. 100ms) before they're being 
         //       processed and calculated for respective stats
-        _world->tick ();
+        
+        if (state != FAILED)        
+            _world->tick ();
+
+        // tick globally if I'm the first node
+        if (_self.id == _gateway.host_id)
+            _world->tickLogicalClock ();
     }
 
     void SimNode::record_stat ()
@@ -238,6 +245,12 @@
     {
         return _self.id;
     }
+
+    // get subscription ID
+    Vast::id_t SimNode::get_sub ()
+    {
+        return _sub_no;
+    }
     
     inline size_t SimNode::accumulated_send () 
     {
@@ -296,7 +309,7 @@
     Node *
     SimNode::knows (SimNode *node)
     {
-        Vast::id_t id = node->get_id ();
+        Vast::id_t id = node->get_sub ();
         
         // see if 'node' is a known neighbor of me
         if (_neighbors.find (id) != _neighbors.end ())

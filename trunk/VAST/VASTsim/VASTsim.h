@@ -51,6 +51,8 @@ using namespace std;
 #define DIM_Y               768
 #define STEPS_PER_SECOND    10      // default steps per second
 
+#define STABLE_SIZE_MULTIPLIER  (1.50) // define upper bound for stable size
+
 typedef struct {
     int     VAST_MODEL;
     int     NET_MODEL;
@@ -58,15 +60,18 @@ typedef struct {
     int     WORLD_WIDTH;    
     int     WORLD_HEIGHT; 
     int     NODE_SIZE;   
-    int     RELAY_SIZE;
+    int     RELAY_SIZE;         // # of relays
+    int     MATCHER_SIZE;       // # of matchers
     int     TIME_STEPS;         // total # of timesteps
     int     STEPS_PERSEC;       // # of steps per second
     int     AOI_RADIUS;
     int     AOI_BUFFER;
     int     CONNECT_LIMIT;      
     int     VELOCITY;           // movement speed of node
+    int     STABLE_SIZE;        // # of nodes in stable state
+    int     JOIN_RATE;          // # of steps before a new node join
     int     LOSS_RATE;
-    int     FAIL_RATE;
+    int     FAIL_RATE;          // # of steps before a node fails
     int     UPLOAD_LIMIT;       // upload limit 
     int     DOWNLOAD_LIMIT;     // download bandwidth limitation
     int     PEER_LIMIT;         // max # of peers hosted at each relay
@@ -88,7 +93,7 @@ typedef enum
 EXPORT int                  InitPara (VAST_NetModel model, VASTPara_Net &netpara, SimPara &simpara, const char *cmdline = NULL, bool *is_gateway = NULL, Area *aoi = NULL, Addr *gateway = NULL, vector<IPaddr> *entries = NULL);
 EXPORT bool                 ReadPara (SimPara &para);
 EXPORT int                  InitSim (SimPara &para, VASTPara_Net &netpara);
-EXPORT int                  CreateNode (bool wait_till_ready = true);
+EXPORT bool                 CreateNode (bool wait_till_ready = true);
 EXPORT int                  NextStep ();
 EXPORT Node *               GetNode (int index);
 EXPORT vector<Vast::Node *>*GetNeighbors (int index);

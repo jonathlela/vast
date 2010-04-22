@@ -38,7 +38,7 @@ SimPara                     g_para;
 map<int, vector<Node *> *>  g_nodes;
 map<int, vector<id_t> *>    g_ENs;
 int                         g_steps = 0;
-int                         CREATE_NODE_COUNTDOWN = 10;
+//int                         CREATE_NODE_COUNTDOWN = 10;
 
 // GUI-settings
 int     NODE_RADIUS     = 10;
@@ -320,17 +320,15 @@ VOID MoveOnce (HWND hWnd)
         if (g_create_countdown == 0)
         {
             // only make sure gateway is fully joined before creating next node
-            CreateNode (g_nodes_created == 0);
-            //CreateNode (true);
-            
-            //CreateNode (true);
-            g_show_aoi[g_nodes_created++] = false;
-            g_create_countdown = CREATE_NODE_COUNTDOWN;
+            if (CreateNode (g_nodes_created == 0) == true)
+                g_show_aoi[g_nodes_created++] = false;
+
+            g_create_countdown = g_para.JOIN_RATE;
         }
         else
             g_create_countdown--;
     }
-           
+
     g_inconsistent = NextStep ();
     
     if (g_inconsistent < 0)

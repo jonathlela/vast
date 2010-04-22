@@ -193,7 +193,7 @@ namespace Vast
         bool insertSharedObject (id_t obj_id, Area &aoi, bool is_owner = true, void *obj = NULL);
 
         // change position for a particular shared object
-        bool updateSharedObject (id_t obj_id, Area &aoi);
+        bool updateSharedObject (id_t obj_id, Area &aoi, bool *is_owner = NULL);
 
         // remove a shared object
         bool deleteSharedObject (id_t obj_id);

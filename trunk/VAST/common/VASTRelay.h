@@ -37,12 +37,13 @@
 #include "Config.h"
 #include "VASTTypes.h"
 #include "MessageHandler.h"
-#include "Vivaldi.h"
+#include "VAST.h"               // for VASTMessage
+//#include "Vivaldi.h"
 
 // number of seconds before a new round of queries is sent for neighbors' coordinates
 const int TIMEOUT_COORD_QUERY = 30;
-const int TIMEOUT_RELAY_QUERY = 10;
-const int TIMEOUT_RELAY_JOIN  = 10;
+const int TIMEOUT_RELAY_QUERY = 5;
+const int TIMEOUT_RELAY_JOIN  = 5;
 
 #define MAX_CONCURRENT_PING          (5)
 
@@ -59,6 +60,7 @@ using namespace std;
 namespace Vast
 {
 
+    /*
     typedef enum 
     {
         REQUEST = 1,            // request for relays
@@ -72,6 +74,7 @@ namespace Vast
         RELAY_JOIN_R,           // response to JOIN request
 
     } RELAY_Message;
+    */
 
     // this is an export class so physical coordinates can be obtained externally
     class EXPORT VASTRelay : public MessageHandler
@@ -91,6 +94,9 @@ namespace Vast
         // whether the current node is joined (find & connect to closest relay)
         bool isJoined ();
 
+        // whether the current node is a relay
+        bool isRelay ();
+
         // obtain the ID of my relay node
         id_t getRelayID ();
 
@@ -107,7 +113,7 @@ namespace Vast
         void postHandling ();
 
         //
-        // connect to physically closest relay
+        // relay management 
         //
 
         // connect to the closest, currently known relay
@@ -126,14 +132,32 @@ namespace Vast
         // remove a relay no longer valid
         void removeRelay (id_t id);
 
+        // send message to a relay, remove the relay if send isn't successful
+        // return # of targets sent successfully
+        int sendRelay (Message &msg);
+
         // remove non-useful relays
         void cleanupRelays ();
 
         // send to target a list of known relays, return # of relays sent
-        int sendRelays (id_t target, int limit = 0);
+        int sendRelayList (id_t target, int limit = 0);
+
+        // notify neighboring relay of my updated physical coordinate
+        bool notifyPhysicalCoordinate ();
+
+
+        //
+        // client management
+        //
 
         // specify we've joined
         bool setJoined (id_t relay_id = NET_ID_UNASSIGNED);
+
+        // accept a client
+        void addClient (id_t from_host, Node &client);
+
+        // remove a client no longer connected
+        void removeClient (id_t id);
 
         //
         //  physical coordinate discovery
@@ -162,6 +186,7 @@ namespace Vast
         //
         Node        _self;              // info about myself
         Node       *_curr_relay;        // pointer to closest relay (could be myself)
+        Node       *_contact_relay;     // pointer to the relay we try to join
         Position    _temp_coord;        // still in-progress coordinate
         float       _error;             // error estimate for the local node
 
@@ -178,12 +203,13 @@ namespace Vast
         map<id_t, Node> _relays;        // list of contact neighbors
         multimap<double, Node *> _dist2relay;    // pointers to known relays (neighbors or otherwise), listed / queried by distance        
         
-        map<id_t, Node> _accepted;  // list of accepted clients to this relay
+        map<id_t, Node> _clients;       // list of accepted clients to this relay
+        map<id_t, id_t> _sub2client;    // mapping from subscription ID to client's hostID
 
         size_t          _relay_limit;   // # of relays this node keeps
         size_t          _client_limit;  // number of clients I can accomodate, could vary depending on load
 
-        map<id_t, bool> _pending;       // list of pending PING requests sent        
+        map<id_t, timestamp_t> _pending; // list of pending PING requests sent & sent time
 	};
 
 } // namespace Vast

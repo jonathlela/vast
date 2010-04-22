@@ -10,10 +10,11 @@ using namespace Vast;
 namespace Vast
 {   
 
-    VASTMatcher::VASTMatcher (int overload_limit)
+    VASTMatcher::VASTMatcher (bool is_matcher, int overload_limit)
             :MessageHandler (MSG_GROUP_VAST_MATCHER), 
              _state (ABSENT),
              _VSOpeer (NULL),
+             _is_matcher (is_matcher),
              _overload_limit (overload_limit)
              //_tick (0)
     {
@@ -210,9 +211,8 @@ namespace Vast
         msgtype_t app_msgtype = APP_MSGTYPE(in_msg.msgtype);
         in_msg.msgtype = VAST_MSGTYPE(in_msg.msgtype);
 
-        // we need to check if VSOpeer has joined for all messages except
-        // DISCONNECT & MESSAGE (as this is a forward-only message that does not involve VSOpeer)
-        if (in_msg.msgtype != DISCONNECT && in_msg.msgtype != MESSAGE)
+        // we need to check if VSOpeer has joined for all messages except DISCONNECT 
+        if (in_msg.msgtype != DISCONNECT)
         {
             // check if the message is directed towards the VSOpeer
             if (in_msg.msgtype < VON_MAX_MSG)
@@ -284,25 +284,43 @@ namespace Vast
                     // assign a unique subscription number if one doesn't exist, or if the provided one is not known
                     // otherwise we could re-use a previously assigned subscription ID
                     // TODO: potentially buggy? (for example, if the matcher that originally assigns the ID, leaves & joins again, to assign another subscription the same ID?)
-                    if (sub.id == NET_ID_UNASSIGNED || _subscriptions.find (sub.id) == _subscriptions.end ()) 
+                    // TODO: may need a way to periodically re-check ID with the assigning entry point
+                    //if (sub.id == NET_ID_UNASSIGNED || _subscriptions.find (sub.id) == _subscriptions.end ()) 
+                    // IMPORTANT NOTE: we assume a provided subscription ID is good, and re-use it
+                    //                 if we only re-use if the ID already exists in record (e.g. check existence in _subscriptions)
+                    //                 then must make sure the client app also updates the subID, otherwise the movement would be invalid
+                    if (sub.id == NET_ID_UNASSIGNED) 
                         sub.id = _net->getUniqueID (ID_GROUP_VON_VAST);
                     else
                         printf ("VASTMatcher [%llu] re-SUBSCRIBE using ID [%llu]\n", in_msg.from, sub.id);
 
                     // by default we own the client subscriptions we create
-                    addSubscription (sub, true);
+                    // we may simply update existing subscription when clients re-subscribe due to matcher failure
+                    map<id_t, Subscription>::iterator it = _subscriptions.find (sub.id);
+                    if (it == _subscriptions.end ()) 
+                        addSubscription (sub, true);
+                    else
+                    {
+                        bool is_owner = true;
+
+                        updateSubscription (sub.id, sub.aoi, 0, &sub.relay, &is_owner);
+                    }
 
                     // send back acknowledgement of subscription to client
                     Message msg (SUBSCRIBE_R);
-                    msg.msggroup = MSG_GROUP_VAST_CLIENT;
                     msg.priority = 1;
 
                     // store both the assigned subscription ID, and also this matcher's address
                     // (so the client may switch the current matcher)
                     msg.store (sub.id);
                     msg.store (_self.addr);
-                    msg.addTarget (in_msg.from);
-                    sendMessage (msg);
+                    
+                    sendClientMessage (msg, in_msg.from);
+
+                    // erase closest matcher record, so that the subscribing client will be notified again
+                    // this occurs when the client is re-subscribing to a substitute matcher in case of its current matcher's failure
+                    if (_closest.find (sub.id) != _closest.end ())
+                        _closest.erase (sub.id);
 
                     printf ("VASTMatcher: SUBSCRIBE request from [%llu] success\n", in_msg.from);
                 }
@@ -384,6 +402,7 @@ namespace Vast
                     //      1) at the same layer as publisher
                     //      2) interested in this publication
                     // then add as target
+
                     if (layer == sub.layer && sub.aoi.overlaps (area.center))
                         in_msg.addTarget (sub.id);
                 }                
@@ -391,35 +410,16 @@ namespace Vast
                 if (in_msg.targets.size () > 0)
                 {
                     vector<id_t> failed_targets;
-
-                    //in_msg.msggroup = MSG_GROUP_VAST_RELAY;
-                    // NOTE: this message will be processed by a relay node
-                    //       under MESSAGE first
-                    sendMessage (in_msg, &failed_targets);
-
-                    processFailedTargets (failed_targets);
+                    
+                    // send the message to relay
+                    sendClientMessage (in_msg, 0, &failed_targets);
+                    removeFailedSubscribers (failed_targets);
                 }
 #ifdef DEBUG_DETAIL
                 else
                     printf ("VASTMatcher::handleMessage PUBLISH, no peer covers publication at (%d, %d)\n", (int)area.center.x, (int)area.center.y);
 #endif
                    
-            }
-            break;
-        
-        // receiving a forwarded message (source can be either PUBLISH or SEND)
-        case MESSAGE:
-            {
-                // forward message to clients 
-
-                // NOTE must send to remote first before local, as sendtime will be extracted by local host
-                //      and the message structure will get changed
-                in_msg.msgtype = (app_msgtype << VAST_MSGTYPE_RESERVED) | MESSAGE;
-                in_msg.msggroup = MSG_GROUP_VAST_CLIENT;
-                sendMessage (in_msg);
-
-                // NOTE: we should not have any local targets, 
-                // as matchers receiving this message can only be relays 
             }
             break;
 
@@ -439,11 +439,13 @@ namespace Vast
                     in_msg.addTarget (target);
                 }
 
+                // deliver to the the targets' relays
                 in_msg.reset ();
                 in_msg.msgtype = (app_msgtype << VAST_MSGTYPE_RESERVED) | MESSAGE;
 
-                // send to correct targets
-                sendMessage (in_msg);
+                vector<id_t> failed_targets;                
+                sendClientMessage (in_msg, 0, &failed_targets);
+                removeFailedSubscribers (failed_targets);
             }
             break;
 
@@ -461,9 +463,20 @@ namespace Vast
                     in_msg.extract (sub);
                     
                     // NOTE by default a transferred subscription is not owned
-                    //      it will be owned if a corresponding ownership transfer is sent (often later)
-                    if (addSubscription (sub, false))
-                        success++;
+                    //      it will be owned if a corresponding ownership transfer is sent (often later)                    
+                    if (_subscriptions.find (sub.id) == _subscriptions.end ())
+                    {
+                        if (addSubscription (sub, false))
+                            success++;
+                    }
+                    else
+                    {
+                        // update only
+                        // NOTE that we do not change any ownership status,
+                        //      but time sent by remote host is used
+                        if (updateSubscription (sub.id, sub.aoi, sub.time, &sub.relay))
+                            success++;
+                    }
                 }
 
                 printf ("[%llu] VASTMatcher::handleMessage () SUBSCRIBE_TRANSFER %d sent %d success\n", _self.id, (int)n, success);
@@ -482,10 +495,11 @@ namespace Vast
 
                 for (listsize_t i=0; i < n; i++)
                 {
+                    // TODO: also send time to ensure only the lastest gets used
                     in_msg.extract (sub_id);
                     in_msg.extract (aoi);
-                    
-                    if (updateSubscription (sub_id, aoi, _net->getTimestamp ()) == false)
+                   
+                    if (updateSubscription (sub_id, aoi, 0) == false)
                     {
                         // subscription doesn't exist, request the subscription 
                         // this happens if the subscription belongs to a neighboring matcher but AOI overlaps with my region
@@ -496,6 +510,20 @@ namespace Vast
                 if (missing_list.size () > 0)
                     // TODO: try not to use requestObjects publicly?
                     _VSOpeer->requestObjects (in_msg.from, missing_list);
+            }
+            break;
+
+        case NEIGHBOR_REQUEST:
+            {
+                id_t sub_id;
+                id_t neighbor_id;
+                in_msg.extract (sub_id);
+                in_msg.extract (neighbor_id);
+
+                if (_subscriptions.find (sub_id) != _subscriptions.end ())
+                {
+                    _subscriptions[sub_id].clearStates (neighbor_id);
+                }
             }
             break;
 
@@ -589,41 +617,22 @@ namespace Vast
     bool     
     VASTMatcher::addSubscription (Subscription &sub, bool is_owner)
     {      
-        bool relay_changed = false;
+        map<id_t, Subscription>::iterator it = _subscriptions.find (sub.id);
 
-        // store as a shared object (for ownership management) or update if already exists
-        // NOTE: this occurs for a client to re-subscribe due to change in its relay
-        if (_subscriptions.find (sub.id) == _subscriptions.end ())               
-            _VSOpeer->insertSharedObject (sub.id, sub.aoi, is_owner, &_subscriptions[sub.id]);   
-        else
-        {
-            // check if relay has changed
-            if (_subscriptions[sub.id].relay.host_id != sub.relay.host_id)
-                relay_changed = true;
-
-            _VSOpeer->updateSharedObject (sub.id, sub.aoi);           
-        }
-
-        // record the subscription
+        // do not add if there's existing subscription
+        if (it != _subscriptions.end ()) 
+            return false;       
+        
+        // record a new subscription
+        sub.dirty = true;
         _subscriptions[sub.id] = sub;
-        _subscriptions[sub.id].dirty = true;
+        it = _subscriptions.find (sub.id);
 
+        // update the VSOpeer
+        _VSOpeer->insertSharedObject (sub.id, sub.aoi, is_owner, &it->second);
+        
         // notify network layer of the subscriberID -> relay hostID mapping
         notifyMapping (sub.id, &sub.relay);
-
-        // if the subscriber's relay has changed and I'm owner 
-        // need to propagate to all affected 
-        if (is_owner && relay_changed)
-        {
-            // clear the record of the hosts already received full replicas
-            // so next time when sending the subscription update, 
-            // full update (including the relay info) will be sent
-            if (_replicas.find (sub.id) != _replicas.end ())
-            {
-                delete _replicas[sub.id];
-                _replicas.erase (sub.id);
-            }
-        }
 
         return true;
     }
@@ -649,8 +658,9 @@ namespace Vast
     }
 
     // update a subscription content
+    // time = 0 means no update & no checking
     bool 
-    VASTMatcher::updateSubscription (id_t sub_no, Area &new_aoi, timestamp_t sendtime)
+    VASTMatcher::updateSubscription (id_t sub_no, Area &new_aoi, timestamp_t sendtime, Addr *relay, bool *is_owner)
     {
         map<id_t, Subscription>::iterator it = _subscriptions.find (sub_no);
         if (it == _subscriptions.end ())
@@ -658,17 +668,45 @@ namespace Vast
                 
         Subscription &sub = it->second;
 
-        // update AOI
+        // update record only if update occurs later than existing record
+        if (sendtime != 0)
+        {
+            if (sendtime < sub.time)
+                return false;
+            else 
+                sub.time = sendtime;
+        }
+        
         sub.aoi.center = new_aoi.center;
         if (new_aoi.radius != 0)
             sub.aoi.radius = new_aoi.radius;
         if (new_aoi.height != 0)
             sub.aoi.height = new_aoi.height;
 
-        sub.time = sendtime;
         sub.dirty = true;
 
-        _VSOpeer->updateSharedObject (sub_no, sub.aoi);
+        // update states in shared object management
+        _VSOpeer->updateSharedObject (sub_no, sub.aoi, is_owner);
+
+        // update relay, if changed
+        if (relay != NULL &&
+            sub.relay.host_id != relay->host_id)
+        {            
+            sub.relay = *relay;
+            notifyMapping (sub.id, &sub.relay);
+
+            // if I'm owner, need to propagate relay change to all affected 
+            if (_VSOpeer->isOwner (sub.id) && 
+                _replicas.find (sub.id) != _replicas.end ())
+            {
+                // clear the record of the hosts already received full replicas
+                // so next time when sending the subscription update, 
+                // full update (including the relay info) will be sent
+                delete _replicas[sub.id];
+                _replicas.erase (sub.id);
+                
+            }
+        }
 
         return true;
     }
@@ -865,8 +903,6 @@ namespace Vast
 
             if (_VSOpeer->isOwner (sub.id))
             {
-                //Area aoi = sub.aoi;
-                //aoi.center.x++;
                 updateSubscription (sub.id, sub.aoi, sub.time);
             }
         }
@@ -879,8 +915,6 @@ namespace Vast
         // check over updates on each Peer's neighbors and notify the 
         // respective Clients of the changes (insert/delete/update)        
         Message msg (NEIGHBOR);
-        msg.priority = 1;
-        msg.msggroup = MSG_GROUP_VAST_CLIENT;
 
         Node node;              // neighbor info
         vector<id_t> failed;    // clients whose message cannot be sent
@@ -890,42 +924,42 @@ namespace Vast
         {
             id_t sub_id  = it->first;
             Subscription &sub = it->second;
-                            
+                       
             map<id_t, NeighborUpdateStatus>& update_status = sub.getUpdateStatus ();
-            
+                        
             if (update_status.size () == 0)
                 continue;
 
             // we only notify objects we own, erase updates for other non-own objects
             if (_VSOpeer->isOwner (sub.id) == false)
-            {
+            {            
                 //printf ("VASTMatcher::notifyClients () updates exist for non-owned subscription [%llu]\n", sub.id);
-                update_status.clear ();
+                // TODO: update_status for non-own subscribers occur during refreshSubscriptionNeighbors (), try to avoid it?
                 continue;
             }
 
-            id_t closest = _VSOpeer->getClosestEnclosing (sub.aoi.center);
-                        
             // see if we need to notify the client its closest alternative matcher 
+            id_t closest = _VSOpeer->getClosestEnclosing (sub.aoi.center);                                    
+
             if (closest != 0 && _closest[sub.id] != closest)
             {
                 _closest[sub.id] = closest;
     
                 msg.clear (CLOSEST_NOTIFY);
                 msg.priority = 1;
-                msg.msggroup = MSG_GROUP_VAST_CLIENT;
-
                 msg.store (_neighbors[closest]->addr);
-                msg.addTarget (sub.id);
-                sendMessage (msg);
+
+                // send a direct message to notify the client (faster)
+                sendClientMessage (msg, sub.host_id);
             }
         
-            msg.clear (NEIGHBOR); 
-            msg.msggroup = MSG_GROUP_VAST_CLIENT;
-
-            // NOTE: size is stored at the end
+            // prepare to notify client of its AOI neighbors
+            msg.clear (NEIGHBOR);
+            msg.priority = 1;
+            
             listsize_t listsize = 0;
             // loop through each neighbor for this peer and record its status change
+            // NOTE: size is stored at the end
             map<id_t, NeighborUpdateStatus>::iterator itr = update_status.begin ();
             for (; itr != update_status.end (); itr++)
             {               
@@ -991,38 +1025,72 @@ namespace Vast
             if (listsize > 0)
             {
                 // store number of entries at the end
-                msg.store (listsize);
-                
-                //id_t target = _peer2host[peer_id];
-                msg.addTarget (sub_id); 
-        
-                // check if send was successful
-                if (sendMessage (msg) == 0)
+                msg.store (listsize);                
+
+#ifdef SEND_NEIGHBORS_VIA_RELAY
+                // send via relay
+                msg.addTarget (sub_id);
+                if (sendClientMessage (msg) == 0)
+                {
+                    // TODO: relay has failed, should we try to contact client or relay?
+                }
+#else
+                // send directly to client (for faster notify)                
+                if (sendClientMessage (msg, sub.host_id) == 0)
                     failed.push_back (sub_id);
+#endif
+                    
             }
 
             // at the end we clear the status record for next time-step
-            update_status.clear ();
+            // it's cleared when refreshing neighbor states
+            //update_status.clear ();
             
             // clear dirty flag 
-            // (IMPORTANT, as this will prevent UNCHANGED status be continously sent)
+            // (IMPORTANT, to prevent UNCHANGED status be continously sent)
             sub.dirty = false;
 
         } // end for each subscriber      
 
-        processFailedTargets (failed);                
+        removeFailedSubscribers (failed);                
 
     }
 
+    // send a message to clients (optional to include the client's hostID for direct message)
+    // returns # of targets successfully sent, optional to return failed targets
+    int 
+    VASTMatcher::sendClientMessage (Message &msg, id_t client_ID, vector<id_t> *failed_targets)
+    {
+        // for direct message, we send to a directly connected client (for faster response)
+        if (client_ID != NET_ID_UNASSIGNED)
+        {
+            // perform error check, but note that connections may not be established for a gateway client
+            if (msg.targets.size () != 0)
+            {
+                printf ("VASTMatcher::sendClientMessage targets exist\n");
+                return 0;
+            }
+
+            msg.addTarget (client_ID);
+            msg.msggroup = MSG_GROUP_VAST_CLIENT;    
+        }
+        else
+            msg.msggroup = MSG_GROUP_VAST_RELAY;
+
+        // NOTE: for messages directed to relays, the network layer will do the translation from targets to relay's hostID
+        return sendMessage (msg, failed_targets);    
+    }
+
+
     // deal with unsuccessful send targets
     void 
-    VASTMatcher::processFailedTargets (vector<id_t> &list)
+    VASTMatcher::removeFailedSubscribers (vector<id_t> &list)
     {
         // some targets are invalid, remove the subs
         // TODO: perhaps should check / wait? 
         if (list.size () > 0)
         {
-            printf ("VASTMatcher::processFailedTargets () removing failed send targets\n");
+            printf ("VASTMatcher::removeFailedSubscribers () removing failed send targets\n");
            
             // remove failed targets
             for (size_t i=0; i < list.size (); i++)
@@ -1035,7 +1103,7 @@ namespace Vast
     VASTMatcher::isCandidate ()
     {
         // currently all nodes with public IP can be candidates
-        return _net->isPublic ();
+        return (_is_matcher && _net->isPublic ());
     }
 
     // obtain the ID of the gateway node
@@ -1110,17 +1178,25 @@ namespace Vast
         if (_neighbors.find (target) == _neighbors.end ())
             return false;
 
-        // notify the clients making those subscriptions about the transfer
-        // so they can switch current matcher
+        // notify the clients associated with the subscriptions so they can switch matchers
         Message msg (MATCHER_NOTIFY);
-        
-        msg.msggroup = MSG_GROUP_VAST_CLIENT;
         msg.priority = 1;
         
         msg.store (_neighbors[target]->addr);
-        msg.targets = obj_list;
 
-        sendMessage (msg);
+        // translate subscriber ID to hostID and sent to clients directly (faster)
+        for (size_t i=0; i < obj_list.size (); i++)
+        {
+            if (_subscriptions.find (obj_list[i]) != _subscriptions.end ())
+            {
+                sendClientMessage (msg, _subscriptions[obj_list[i]].host_id);
+                msg.targets.clear ();
+            }
+        }
+
+        // NOTE that this will be sent via relays (slower)
+        //msg.targets = obj_list;
+        //sendClientMessage (msg);
 
         return true;
     }
@@ -1130,24 +1206,25 @@ namespace Vast
     VASTMatcher::objectClaimed (id_t sub_id)
     {
         map<id_t, Subscription>::iterator it = _subscriptions.find (sub_id);
-        if (it != _subscriptions.end ())
+        if (it == _subscriptions.end ())
+        {
+            printf ("VASTMatcher::objectClaimed () subscription [%llu] not found\n", sub_id);
+            return false;
+        }
+        else
         {
             Subscription &sub = it->second;
 
             // notify the client that I become its matcher
-            Message msg (MATCHER_NOTIFY);
-            msg.msggroup = MSG_GROUP_VAST_CLIENT;
-            msg.priority = 1;
-            
+            // NOTE that this message should be sent via relay, as there may not be
+            //      direct connection to this client, mapping from sub_id to relay hostID should already exist
+            Message msg (MATCHER_NOTIFY);            
+            msg.priority = 1;            
             msg.store (_self.addr);
             msg.addTarget (sub.id);
 
-            // notify mapping so that the MATCHER_NOTIFY can be properly delivered
-            notifyMapping (sub.id, &sub.relay);
-            sendMessage (msg);
-        }
-
-        return true;
+            return (sendClientMessage (msg) > 0);
+        }        
     }
 
     // handle the event of a new VSO node's successful join

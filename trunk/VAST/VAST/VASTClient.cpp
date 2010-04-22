@@ -103,19 +103,20 @@ namespace Vast
     bool
     VASTClient::subscribe (Area &area, layer_t layer)
     {
-        // set timeout to re-try, necessary because it might take time 
-        // to find a new relay for sending the subscription
+        // set timeout to re-try, necessary because it might take time for sending the subscription
         _timeout_subscribe = _net->getTimestamp () + (TIMEOUT_SUBSCRIBE * _net->getTimestampPerSecond ());
 
-        // if matcher or relay is yet known, wait first
-        if (_state != JOINED || _relay->getRelayID () == NET_ID_UNASSIGNED)
-            return false;
-
         // record my subscription, not yet successfully subscribed  
-        // NOTE: current we assume we subscribe only one at a time        
-        //_sub.id     = NET_ID_UNASSIGNED;
+        // NOTE: current we assume we subscribe only one at a time  
+        //       also, it's important to record the area & layer first, so that
+        //       re-subscribe attempt may be correct (in case the check below is not passed yet)
         _sub.aoi    = area;
         _sub.layer  = layer;
+
+        // if matcher or relay is yet known, wait first
+        if (_state != JOINED || _relay->isJoined () == false)
+            return false;
+
         _sub.active = false;
         _sub.relay  = _net->getAddress (_relay->getRelayID ());
 
@@ -127,6 +128,9 @@ namespace Vast
         msg.addTarget (_matcher_id);
 
         sendMessage (msg);
+
+        // TODO: very strange if this is put here, consistency drops 10%        
+        //_timeout_subscribe = _net->getTimestamp () + (TIMEOUT_SUBSCRIBE * _net->getTimestampPerSecond ());
 
         printf ("VASTClient::subscribe () [%llu] sends SUBSCRIBE request to [%llu]\n", _self.id, _matcher_id);
 
@@ -172,7 +176,10 @@ namespace Vast
     {
         // if no subscription exists or the subID does not match, don't update
         if (_sub.active == false || subID != _sub.id)
+        {
+            printf ("VASTClient::move () [%llu] try to move for inactive or invalid subscription ID\n", _self.id);
             return NULL;
+        }
         
         Area &prev_aoi = _sub.aoi;
 
@@ -248,11 +255,11 @@ namespace Vast
     }
 
     // send a custom message to a particular node
-    bool        
-    VASTClient::send (Message &message)
+    int     
+    VASTClient::send (Message &message, vector<id_t> *failed)
     {
         if (_state != JOINED)
-            return false;
+            return 0;
 
         Message msg (message);
         msg.msggroup = MSG_GROUP_VAST_MATCHER;
@@ -275,7 +282,7 @@ namespace Vast
         // modify the msgtype to indicate this is an app-specific message
         msg.msgtype = (msg.msgtype << VAST_MSGTYPE_RESERVED) | SEND;
 
-        return ((sendMessage (msg) > 0) ? true : false);
+        return sendMessage (msg, failed);
     }
 
     // obtain a list of subscribers within an area
@@ -486,11 +493,12 @@ namespace Vast
 
                 _sub.id = sub_no;
                 _sub.active = true;
-                
-                // store to 'self' so it can be accessed externally
-                // NOTE that self.id is host_id
-                // TODO: may need to remove for cleanness?
-                //_self.id  = _sub.id;
+
+                // update timestamp so myself would not be removed as ghost object (after a re-subscribe)
+                _last_update[sub_no] = _net->getTimestamp ();
+
+                // update _self to allow external query of position change
+                // NOTE that _self.id is not updated as it specifies host_id                
                 _self.aoi = _sub.aoi;
                                       
                 // notify network so incoming messages can be processed by this host
@@ -502,6 +510,14 @@ namespace Vast
                     _matcher_id = matcher_addr.host_id;
                     notifyMapping (matcher_addr.host_id, &matcher_addr);
                 }
+
+                // notify relay of my subscription
+                Message msg (SUBSCRIBE_NOTIFY);
+                msg.priority = 1;
+                msg.msggroup = MSG_GROUP_VAST_RELAY;
+                msg.store (sub_no);
+                msg.addTarget (_relay->getRelayID ());
+                sendMessage (msg);
             }
             break;
 
@@ -509,7 +525,7 @@ namespace Vast
         case MATCHER_NOTIFY:
             {     
                 // TODO: security check? 
-                // right now no check is being done because MATCHER_NOTIFY can come
+                // right now no check is done because MATCHER_NOTIFY can come
                 // from either the previous existing matcher, or a new matcher that
                 // takes on the client
                 
@@ -562,6 +578,9 @@ namespace Vast
 
                 timestamp_t now = _net->getTimestamp ();
 
+                if (_sub.id == 9151314447179792425)
+                    printf ("here");
+
                 for (size_t i=0; i < size; i++)
                 {
                     in_msg.extract (neighbor_id);
@@ -572,10 +591,7 @@ namespace Vast
                     case INSERTED:
                         {
                             in_msg.extract (node);
-
-                            addNeighbor (node, now);
-                            
-                            recordLatency (MOVE, node.time);
+                            addNeighbor (node, now);                                                        
                         }
                         break;
 
@@ -607,11 +623,15 @@ namespace Vast
 #ifdef VAST_RECORD_LATENCY
                                     (*it)->time = time;
 #endif
-
                                     _last_update[neighbor_id] = now;
                                     
                                     break;
                                 }
+                            }
+                            if (it == _neighbors.end ())
+                            {
+                                printf ("VASTClient receives update on neighbor [%llu] without its full info\n", neighbor_id);
+                                requestNeighbor (neighbor_id);
                             }
                         }
                         break;
@@ -648,7 +668,9 @@ namespace Vast
                     handleMatcherDisconnect ();
                 }
                 // if the relay fails
-                else if (in_msg.from == _relay->getRelayID ())
+                // NOTE that if relay fails, VASTRelay might detect it first and nullify the relay ID
+                else if (_relay->getRelayID () == NET_ID_UNASSIGNED ||
+                         in_msg.from == _relay->getRelayID ())
                 {
                     printf ("VASTClient::handleMessage () DISCONNECT by my relay, wait until new relay is found\n");
 
@@ -658,6 +680,9 @@ namespace Vast
 
                     // turn subscription off so we can re-notify the matcher of a new relay                   
                     _sub.active = false;
+                    
+                    // set timeout to a small number to indicate we need to re-subscribe
+                    _timeout_subscribe = 1;
                 }
             }
             break;
@@ -763,6 +788,19 @@ namespace Vast
         return false;
     }
 
+    bool 
+    VASTClient::requestNeighbor (id_t id)
+    {
+        Message msg (NEIGHBOR_REQUEST);
+        msg.priority = 1;
+        msg.store (_sub.id);
+        msg.store (id);
+        msg.msggroup = MSG_GROUP_VAST_MATCHER;
+        msg.addTarget (_matcher_id);
+
+        return (sendMessage (msg) > 0);
+    }
+
     //
     // fault tolerance
     //
@@ -782,6 +820,9 @@ namespace Vast
 
         // reset active flag so we need to re-subscribe (to re-affirm with matcher)
         _sub.active = false;
+
+        // set timeout to a small number to indicate we need to re-subscribe
+        _timeout_subscribe = 1;
     }
 
     /*
