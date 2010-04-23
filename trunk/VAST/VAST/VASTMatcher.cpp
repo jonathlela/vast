@@ -281,6 +281,9 @@ namespace Vast
                     // store which host requests for the subscription
                     sub.host_id = in_msg.from;
 
+                    // slight increase AOI radius to avoid client-side ghost objects
+                    sub.aoi.radius += SUBSCRIPTION_AOI_BUFFER;
+
                     // assign a unique subscription number if one doesn't exist, or if the provided one is not known
                     // otherwise we could re-use a previously assigned subscription ID
                     // TODO: potentially buggy? (for example, if the matcher that originally assigns the ID, leaves & joins again, to assign another subscription the same ID?)
@@ -316,9 +319,6 @@ namespace Vast
                     msg.store (_self.addr);
                     
                     sendClientMessage (msg, in_msg.from);
-
-                    if (sub.id == 9151314447179792409)
-                        printf ("here");
 
                     // erase closest matcher record, so that the subscribing client will be notified again
                     // this occurs when the client is re-subscribing to a substitute matcher in case of its current matcher's failure
@@ -478,7 +478,12 @@ namespace Vast
                         // NOTE that we do not change any ownership status,
                         //      but time sent by remote host is used
                         if (updateSubscription (sub.id, sub.aoi, sub.time, &sub.relay))
+                        {
                             success++;
+
+                            // remove all current AOI neighbor records, so we can notify the new Client of more accurate neighbor states
+                            //_subscriptions[sub.id].clearNeighbors ();
+                        }
                     }
                 }
 
@@ -624,7 +629,7 @@ namespace Vast
 
         // do not add if there's existing subscription
         if (it != _subscriptions.end ()) 
-            return false;       
+            return false;
         
         // record a new subscription
         sub.dirty = true;
@@ -794,6 +799,7 @@ namespace Vast
             Subscription &sub1 = it->second;
 
             // check each other subscriber till the end of list
+            // NOTE that we're checking for mutual visibility at once
             map<id_t, Subscription>::iterator it2 = it;
             it2++;                                    
 
@@ -803,15 +809,21 @@ namespace Vast
                 // NOTE: that if layer 0 is subscribed, then all known subscribers within the Voronoi region of this matcher are reported
                 Subscription &sub2 = it2->second;
 
-                // if subscriber 1 can see subscriber 2
-                if ((sub1.layer == 0 && sub2.in_region == true) || 
-                    (sub1.layer == sub2.layer && sub1.aoi.overlaps (sub2.aoi.center)))
-                    sub1.addNeighbor (&sub2);
+                if (_VSOpeer->isOwner (sub1.id))
+                {
+                    // if subscriber 1 can see subscriber 2
+                    if ((sub1.layer == 0 && sub2.in_region == true) || 
+                        (sub1.layer == sub2.layer && sub1.aoi.overlaps (sub2.aoi.center)))
+                        sub1.addNeighbor (&sub2);
+                }
 
-                // if subscriber 2 can see subscriber 1
-                if ((sub2.layer == 0 && sub1.in_region == true) || 
-                    (sub2.layer == sub1.layer && sub2.aoi.overlaps (sub1.aoi.center)))
-                    sub2.addNeighbor (&sub1);
+                if (_VSOpeer->isOwner (sub2.id))
+                {
+                    // if subscriber 2 can see subscriber 1
+                    if ((sub2.layer == 0 && sub1.in_region == true) || 
+                        (sub2.layer == sub1.layer && sub2.aoi.overlaps (sub1.aoi.center)))
+                        sub2.addNeighbor (&sub1);
+                }
             }
 
             // add self (NOTE: must add self before clearing neighbors, or self will be cleared)
@@ -819,7 +831,6 @@ namespace Vast
 
             // remove neighbors no longer within AOI
             sub1.clearInvisibleNeighbors ();
-
         }        
     } 
 

@@ -45,25 +45,27 @@ public:
     
     ~SimNode ();
 
-    void clear_variables ();
+    void clearVariables ();
     
     void move ();
 
     // stop this node 
     void fail ();
 
-    void adjust_AOI ();
+    void adjustAOI ();
     
-    void processmsg ();
+    void processMessage ();
 
-    void record_stat ();
+    void recordStat ();
 
     // record per node per second transmission 
-    void record_stat_persec ();
+    void recordStatPerSecond ();
 
-    length_t get_aoi ();
+    length_t getAOI ();
 
     Position &get_pos ();
+
+    Node *getSelf ();
 
     // get unique ID
     Vast::id_t get_id ();
@@ -114,6 +116,7 @@ private:
     VASTVerse           *_world;        // factory class for VAST    
 
     Addr                _gateway;       // address to gateway
+    bool                _is_gateway;    // whether I'm the first node
 
     SimPara             _para;
     VASTPara_Net        _netpara;       // network parameters sent to VASTVerse

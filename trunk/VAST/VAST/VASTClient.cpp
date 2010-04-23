@@ -574,12 +574,11 @@ namespace Vast
                 NeighborUpdateStatus    status;
                 Node                    node;
                 Area                    aoi;
-                //timestamp_t             time;
+#ifdef VAST_RECORD_LATENCY
+                timestamp_t             time;
+#endif
 
                 timestamp_t now = _net->getTimestamp ();
-
-                if (_sub.id == 9151314447179792425)
-                    printf ("here");
 
                 for (size_t i=0; i < size; i++)
                 {

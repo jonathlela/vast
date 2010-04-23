@@ -35,8 +35,9 @@ using namespace std;
 // simulation parameters
 SimPara                     g_para;
 
-map<int, vector<Node *> *>  g_nodes;
-map<int, vector<id_t> *>    g_ENs;
+map<int, vector<Node *> *>  g_nodes;            // map of each node's AOI neighbors
+map<int, vector<id_t> *>    g_ENs;              // map of each node's enclosing neighbors
+map<id_t, int>              g_id2index;         // mapping from node ID to node index
 int                         g_steps = 0;
 //int                         CREATE_NODE_COUNTDOWN = 10;
 
@@ -83,11 +84,17 @@ bool is_EN (vector<id_t>* en_list, id_t id)
 // obtain current list of neighbors (to be rendered)
 void RefreshNeighbors ()
 {
-    // obtain positions of my current neighbors        
-    for (int i=0; i<g_nodes_created; ++i)  
+    Node *node;
+    
+    for (int i=0; i < g_nodes_created; ++i)  
     {
-        g_nodes[i] = GetNeighbors (i);
-        g_ENs[i] = GetEnclosingNeighbors (i, EN_LEVEL);
+        if ((node = GetNode (i)) != NULL)
+        {
+            // create mapping & pointers for neighbors & enclosing neighbors
+            g_id2index[node->id] = i;
+            g_nodes[i] = GetNeighbors (i);
+            g_ENs[i] = GetEnclosingNeighbors (i, EN_LEVEL);
+        }
     }
 }
 
@@ -195,7 +202,8 @@ VOID Render (HWND hWnd)
         // draw node id
         if (show_node_id)
         {
-            sprintf (str, "%d", (int)VASTnet::resolvePort (self->id)-GATEWAY_DEFAULT_PORT+1);
+            //sprintf (str, "%d", (int)VASTnet::resolvePort (self->id)-GATEWAY_DEFAULT_PORT+1);
+            sprintf (str, "%d", i+1);
             TextOut (hdc, x-5, y-25, str, strlen(str));
         }
 
@@ -245,7 +253,11 @@ VOID Render (HWND hWnd)
                 // draw node id
                 if (show_node_id)
                 {
-                    sprintf (str, "%d", (int)VASTnet::resolvePort (nodes[j]->addr.host_id)-GATEWAY_DEFAULT_PORT+1);
+                    //sprintf (str, "%d", (int)VASTnet::resolvePort (nodes[j]->addr.host_id)-GATEWAY_DEFAULT_PORT+1);
+                    id_t neighbor_id = nodes[j]->id;
+                    int index = (g_id2index.find (neighbor_id) == g_id2index.end () ? 0 : g_id2index[neighbor_id]);
+
+                    sprintf (str, "%d", index + 1);
                     TextOut (hdc, x-5, y-25, str, strlen(str));
                 }
             }

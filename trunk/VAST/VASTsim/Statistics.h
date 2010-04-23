@@ -242,7 +242,7 @@ public:
         if (_steps % _para.STEPS_PERSEC == 0)
         {
             for (i=0; i<n; ++i)
-                _simnodes[i]->record_stat_persec ();
+                _simnodes[i]->recordStatPerSecond ();
         }
 
         // take snapshot records of current stat
@@ -411,7 +411,7 @@ public:
 #endif
 
             // clean per node record
-            _simnodes[i]->clear_variables ();            
+            _simnodes[i]->clearVariables ();            
         }
 
         // calculate Topology Consistency

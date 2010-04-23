@@ -441,14 +441,14 @@ public:
     }
 
     // whether this area covers a given position
-    bool overlaps (const Position &pos)
+    bool overlaps (const Position &pos, length_t buffer = 0)
     {
         // circular area
         if (height == 0)
-            return (center.distance (pos) <= radius);
+            return (center.distance (pos) <= (radius + buffer));
         // rectangular area
         else
-            return (fabs (center.x - pos.x) <= radius/2) && (fabs (center.y - pos.y) <= height/2);
+            return (fabs (center.x - pos.x) <= (radius/2 + buffer)) && (fabs (center.y - pos.y) <= (height/2 + buffer));
     }
 
     // whether this area covers a given position
@@ -949,6 +949,12 @@ public:
             _neighbor_states.clear ();
             in_region = false;
         }
+    }
+
+    // remove all records of my visible neighbors
+    void clearNeighbors ()
+    {
+        _neighbors.clear ();
     }
 
     // obtain an update of the states of neighbors

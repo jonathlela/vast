@@ -473,9 +473,6 @@ namespace Vast
                 id_t sub_id;
                 in_msg.extract (sub_id);
 
-                if (sub_id == 9151314447179792409)
-                    printf ("here");
-
                 _sub2client[sub_id] = in_msg.from;
             }
             break;
@@ -524,9 +521,6 @@ namespace Vast
                 for (size_t i=0; i < in_msg.targets.size (); i++)
                 {
                     id_t target = in_msg.targets[i];
-
-                    if (target == 9151314447179792409)
-                        printf ("here");
 
                     if (_sub2client.find (target) != _sub2client.end ())
                         clients.push_back (_sub2client[target]);
@@ -626,9 +620,6 @@ namespace Vast
         }
         else if (_state == QUERYING)
         {
-            if (_self.id == 9151314447182331905)
-                printf ("here");
-
             // if the closest relay is found, start joining it
             if (_curr_relay != NULL)
                 _state = JOINING;
@@ -685,7 +676,7 @@ namespace Vast
         // remove non-essential relays
         // TODO: implement & check this very carefully, as it could disrupt normal operations
         //       if not done correctly
-        //cleanupRelays ();
+        cleanupRelays ();
     }
 
     // join the relay mesh by connecting to the closest known relay
@@ -918,8 +909,8 @@ namespace Vast
     void 
     VASTRelay::cleanupRelays ()
     {
-        // no limit
-        if (_relay_limit == 0)
+        // if there's no limit or we're still in process of joining
+        if (_relay_limit == 0 || _curr_relay == NULL)
             return;
 
         // remove known relays that are too far, but only after we've JOINED
@@ -934,12 +925,18 @@ namespace Vast
        
             while (num_removals > 0)
             {
-                remove_list.push_back (rit->second->id);
+                // skip current relay
+                // TODO: if physical coord is continously adjusted, perhaps we should
+                //       allow current relay change?
+                if (_curr_relay->id != rit->second->id)
+                {                    
+                    remove_list.push_back (rit->second->id);                
+                    num_removals--;
+                }
                 rit++;
-                num_removals--;
             }
 
-            for (size_t i=0; i < remove_list.size (); i++)      
+            for (size_t i=0; i < remove_list.size (); i++)  
                 removeRelay (remove_list[i]);
         }
     }

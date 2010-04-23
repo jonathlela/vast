@@ -42,6 +42,8 @@
 
 #define TIMEOUT_SUBSCRIPTION_KEEPALIVE         (1.0)   // # of seconds to send updates for my subscriptions
 
+#define SUBSCRIPTION_AOI_BUFFER                 (10)    // extended AOI to avoid ghost objects
+
 // flag to send NEIGHBOR notices via relay (slower but can test relay correctness)
 // IMPORTANT NOTE: if position updates are not sent via relay, need to make sure
 //                 clients contact relays periodically so relays will not timeout

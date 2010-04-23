@@ -16,7 +16,6 @@
         _nodeindex = id;
         if (_para.AOI_RADIUS < 0)
             _self.aoi.radius = (-1)*_para.AOI_RADIUS + (rand () % 3-1) * (rand () % _para.AOI_RADIUS);
-
         else
             _self.aoi.radius = _para.AOI_RADIUS;
 
@@ -35,7 +34,12 @@
                 
         // if not gateway, store some IPs to home
         if (id != 1)
+        {
+            _is_gateway = false;
             entries.push_back (_gateway.publicIP);
+        }
+        else
+            _is_gateway = true;
         
         _world = new VASTVerse (entries, &_netpara, &_simpara);
         _world->createVASTNode (_gateway.publicIP, _self.aoi, LAYER_UPDATE);
@@ -43,7 +47,7 @@
         state = WAITING;
 
         _last_recv = _last_send = 0;        
-        clear_variables ();
+        clearVariables ();
     }
     
     SimNode::~SimNode ()
@@ -54,7 +58,7 @@
         delete _world;
     }
 
-    void SimNode::clear_variables ()
+    void SimNode::clearVariables ()
     {
         _steps_recorded = _seconds_recorded = 0;
         _min_aoi = _para.WORLD_WIDTH;
@@ -79,7 +83,7 @@
             _self.aoi.center = *pos;
         
             if (_para.CONNECT_LIMIT > 0)
-                adjust_AOI ();
+                adjustAOI ();
 
             // set the new position (NOTE: aoi could change)
             vnode->move (_sub_no, _self.aoi);
@@ -133,7 +137,7 @@
         }
     }
 
-    void SimNode::adjust_AOI ()
+    void SimNode::adjustAOI ()
     {
         // NOTE: the following code is small but produces very interesting behaviors. :) 
 
@@ -152,7 +156,7 @@
             _self.aoi.radius = 5;
     }
     
-    void SimNode::processmsg ()
+    void SimNode::processMessage ()
     {    
         // check if we have properly joined the overlay and subscribed
         if (state == WAITING)
@@ -161,8 +165,10 @@
             {
                 if ((_sub_no = vnode->getSubscriptionID ()) != NET_ID_UNASSIGNED)
                 {
-                    //_self.id = _sub_no;
-                    _self.id = vnode->getSelf ()->id;
+                    // NOTE we use subscription number as ID, this is because the neighbor list 
+                    //      also refer to subscription IDs
+                    _self.id = _sub_no;
+                    //_self.id = vnode->getSelf ()->id;
                     state = NORMAL;
                 }
             }
@@ -176,11 +182,11 @@
             _world->tick ();
 
         // tick globally if I'm the first node
-        if (_self.id == _gateway.host_id)
+        if (_is_gateway)
             _world->tickLogicalClock ();
     }
 
-    void SimNode::record_stat ()
+    void SimNode::recordStat ()
     {
         if (vnode == NULL)
             return;
@@ -212,7 +218,7 @@
     }
 
     // record per node per second transmission 
-    void SimNode::record_stat_persec ()
+    void SimNode::recordStatPerSecond ()
     {
         size_t send_size = accumulated_send () - _last_send;
         size_t recv_size = accumulated_recv () - _last_recv;
@@ -231,7 +237,7 @@
 		_seconds_recorded++;
     }
 
-    length_t SimNode::get_aoi ()
+    length_t SimNode::getAOI ()
     {
         return _self.aoi.radius;
     }
@@ -239,6 +245,11 @@
     Position &SimNode::get_pos ()
     {
         return _self.aoi.center;
+    }
+
+    Node *SimNode::getSelf ()
+    {
+        return &_self;
     }
 
     Vast::id_t SimNode::get_id ()

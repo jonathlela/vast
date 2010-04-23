@@ -367,7 +367,7 @@ bool CreateNode (bool wait_till_ready)
         {
             // each node processes messages received so far
             for (size_t j=0; j <= i; ++j)
-                g_nodes[j]->processmsg ();
+                g_nodes[j]->processMessage ();
         }
         // make sure the new node has joined before moving on
         while (g_nodes[i]->isJoined () == false);
@@ -376,7 +376,7 @@ bool CreateNode (bool wait_till_ready)
     {
         // each node processes messages received so far
         for (size_t j=0; j <= i; ++j)
-            g_nodes[i]->processmsg ();        
+            g_nodes[i]->processMessage ();        
     }
 
     // store node into stat class for later processing
@@ -498,11 +498,11 @@ int NextStep ()
     
     // each node processes messages received so far
     for (i=0; i < n; ++i)
-        g_nodes[i]->processmsg ();    
+        g_nodes[i]->processMessage ();    
 
     // each node calculates stats
     for (i=0; i < n; ++i)
-        g_nodes[i]->record_stat ();
+        g_nodes[i]->recordStat ();
 
     //
     // stat collection 
@@ -526,7 +526,7 @@ Node *GetNode (int index)
         g_nodes[index]->isFailed ())
         return NULL;
 
-    return g_nodes[index]->vnode->getSelf ();
+    return g_nodes[index]->getSelf ();
 }
 
 std::vector<Node *>* GetNeighbors (int index)

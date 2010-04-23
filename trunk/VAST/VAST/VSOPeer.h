@@ -47,14 +47,14 @@
 #define VSO_TIMEOUT_OVERLOAD_REQUEST    (3)     // seconds to re-send a overload help request
 #define VSO_INSERTION_TRIGGER           (5)     // # of matcher movement requests before an insertion should be requested
 
-#define VSO_AOI_BUFFER_OVERLAP          (5)     // buffer size determining whether an AOI overlaps with a region
+#define VSO_AOI_BUFFER_OVERLAP          (10)    // buffer size determining whether an AOI overlaps with a region
 
-#define VSO_PEER_AOI_BUFFER        (5)    // buffer for a VSOPeer's AOI (which needs to cover all AOI of the objects it manages)
+#define VSO_PEER_AOI_BUFFER             (5)    // buffer for a VSOPeer's AOI (which needs to cover all AOI of the objects it manages)
 
 
 // ownership transfer setting
 #define VSO_TIMEOUT_TRANSFER            (0.3)   // # of seconds before transfering ownership to a neighbor
-#define VSO_TIMEOUT_AUTO_REMOVE         (3.0)   // # of seconds to delete an un-owned object if it's not being updated
+#define VSO_TIMEOUT_AUTO_REMOVE         (2.0)   // # of seconds to delete an un-owned object if it's not being updated
 
 using namespace std;
 

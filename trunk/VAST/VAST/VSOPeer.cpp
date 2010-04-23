@@ -443,8 +443,8 @@ namespace Vast
             {
                 vector<id_t> neighbors;
         
-                // if the AOI of this object overlaps into other nodes, 
-                // then send updates to these neighbors
+                // if the AOI of this object overlaps into other VSOpeers
+                // then send updates to these neighbors (that is, notify the neighbor VSOpeer of its subscription interest
                 if (getOverlappedNeighbors (so.aoi, neighbors, so.closest) == true)
                 {
                     num_updates++;
