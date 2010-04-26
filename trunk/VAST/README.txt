@@ -14,19 +14,20 @@ This release has been compiled and tested with the following compilers:
 
     - Visual C++ 2008 Express
 
-Please see "INSTALL.TXT" for instructions on how to build VAST.
+For instructions on how to build VAST, please refer to the URL:
+http://vast.sourceforge.net/docs
 
 Additional information can be found at the VAST homepage:
 http://vast.sourceforge.net
 
-VAST is based on the research about Voronoi-based Overlay Network (VON)
+VAST is based on the research of Voronoi-based Overlay Network (VON)
 and Spatial Publish Subscribe (SPS). Basically, VAST can be seen as an
 implementation of SPS using VON.
 
 VON: http://vast.sourceforge.net/docs/pub/2006-hu-VON.pdf
 SPS: http://vast.sourceforge.net/docs/pub/2009-MMVE-SPS.pdf
 
-Inquiries may be sent to the VAST mailing list:
+Inquiries can be sent to the VAST mailing list:
 vast-tech@lists.sourceforge.net
 
 
@@ -37,7 +38,7 @@ Functions
 VAST currently supports the following main SPS functions:
 (see "/common/VAST.h" for actual C++ header)
 
-join (position)            - joining the VAST P2P overlay at a virutal coordinate
+join (gateway)             - joining the VAST P2P overlay created by a given 'gateway'
 leave ()                   - leave the P2P overlay
 subscribe (area, layer)	   - subscribe 'area' to receive messages at a specified 'layer'
 publish (area, layer, msg) - publish a message 'msg' to an 'area' at the specified 'layer'
@@ -46,11 +47,9 @@ send (msg)                 - send a message 'msg' to a target host (specified wi
 list (area)                - list currently known subscribers within 'area'
 receive ()                 - receive messages from other nodes via 'send ()' or 'publish ()'
 
-As of release 0.4.2, the following features are not yet supported
-
-- area publication (so currently published message can only be at a point)
-- list () currently returns all known subscribers, not just those inside 'area'
-
+NOTE: VASTATE was introduced in 0.4.2 but is not functional in 0.4.4 as there has been heavy
+      redesign of how VAST internally works in 0.4.4. So right now it may be broken. The
+      following is kept for reference.
 
 For state management, the VASTATE library builds upon VAST and provides the following services:
 

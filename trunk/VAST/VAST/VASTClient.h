@@ -77,7 +77,6 @@ namespace Vast
         void        leave ();
         
 		// specify a subscription area for point or area publications 
-        // returns a unique subscription number that represents subscribed area
         bool        subscribe (Area &area, layer_t layer);
 
         // send a message to all subscribers within a publication area
@@ -92,7 +91,7 @@ namespace Vast
         // returns the number of successful send targets
         int        send (Message &message, vector<id_t> *failed = NULL);
 
-        // obtain a list of subscribers with an area
+        // obtain a list of subscribers at the same layer with an area
         vector<Node *>& list (Area *area = NULL);
 
         // obtain a list of physically closest hosts
@@ -113,8 +112,8 @@ namespace Vast
         // whether the current node is joined
         bool isJoined ();
 
-        // whether the current node is listening for publications, returns subscription ID
-        // 0 indicates no subscription
+        // whether the current node is listening for publications, 
+        // returns subscription ID, 0 indicates no subscription
         id_t getSubscriptionID ();
 
         // if I'm a relay

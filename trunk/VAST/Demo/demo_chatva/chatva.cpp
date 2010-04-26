@@ -161,7 +161,7 @@ VOID Render (HWND hWnd)
         Ellipse (hdc, x-(NODE_RADIUS/2), y-(NODE_RADIUS/2), x+(NODE_RADIUS/2), y+(NODE_RADIUS/2));
 
         // draw node id
-        sprintf (str, "%d", (int)VASTnet::resolvePort (id) - GATEWAY_DEFAULT_PORT + 1);
+        sprintf (str, "%d", (int)VASTnet::resolvePort (id) - g_netpara.port + 1);
         TextOut (hdc, x-5, y-25, str, strlen(str));
     }
 
@@ -197,7 +197,7 @@ VOID Render (HWND hWnd)
     sprintf (str, "step: %d (%d, %d) node: %d [%d, %d] %s aoi: %d CN: %d %s char: %d gw: %s", 
              g_steps/(UPDATE_INTERVAL/TIMER_INTERVAL), 
              g_cursor.x-g_origin.x, g_cursor.y-g_origin.y, 
-             (int)VASTnet::resolvePort (self->id)-GATEWAY_DEFAULT_PORT+1, (int)g_aoi.center.x, (int)g_aoi.center.y, 
+             (int)VASTnet::resolvePort (self->id)-g_netpara.port+1, (int)g_aoi.center.x, (int)g_aoi.center.y, 
              join_state,
              g_aoi.radius, 
              n, (follow_mode ? "[follow]" : ""), 
@@ -412,10 +412,11 @@ LRESULT WINAPI MsgProc (HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
         case WM_PAINT:
             if (g_input[0] == 0 && g_self != NULL && g_self->getSelf () != NULL)
             {
-                id_t id = g_self->getSelf ()->id;
+                Node *self = g_self->getSelf ();
+                id_t id = self->id;
                 if (id > 0)
                 {
-                    sprintf (g_input, "[%d]: ", id);
+                    sprintf (g_input, "[%d]: ", (int)VASTnet::resolvePort (id)-g_netpara.port+1);
                     count = strlen (g_input);
                     g_input[count] = 0;
                     base_count = count;                    
@@ -470,11 +471,11 @@ LRESULT WINAPI MsgProc (HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
                 send_msg.store (g_input, count, true);
 
                 /* SEND-based */
-                //vector<Node *>&nodes = g_self->list ();
-                vector<Node *>&nodes = g_self->getLogicalNeighbors ();
+                vector<Node *>&nodes = g_self->list ();
+                //vector<Node *>&nodes = g_self->getLogicalNeighbors ();
                 //vector<Node *>&nodes = g_self->getPhysicalNeighbors ();
                 
-                for(size_t j=0; j < nodes.size (); j++)
+                for (size_t j=0; j < nodes.size (); j++)
                 {
                     Position pos = nodes[j]->aoi.center;
                     id_t id      = nodes[j]->id;

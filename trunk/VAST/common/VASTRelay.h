@@ -41,8 +41,16 @@
 //#include "Vivaldi.h"
 
 // number of seconds before a new round of queries is sent for neighbors' coordinates
-const int TIMEOUT_COORD_QUERY = 5;
+const int TIMEOUT_COORD_QUERY = 30;
+
+// number of seconds before a keepalive message is sent to my current relay (by a client)
+// IMPORTANT NOTE: this has to be shorter than network inactivity connectino removal
+const int KEEPALIVE_RELAY = 5;
+
+// timeout for re-sending relay query
 const int TIMEOUT_RELAY_QUERY = 5;
+
+// timeout for re-sending join request to a relay
 const int TIMEOUT_RELAY_JOIN  = 5;
 
 #define MAX_CONCURRENT_PING          (5)
@@ -164,7 +172,7 @@ namespace Vast
         //
 
         // send a message to a remote host in order to obtain round-trip time
-        bool ping ();
+        bool ping (bool curr_relay_only = false);
 
         // response to a PING message
         bool pong (id_t target, timestamp_t querytime, bool first = false);
@@ -197,6 +205,7 @@ namespace Vast
         timestamp_t _timeout_ping;      // countdown counter to send query
         timestamp_t _timeout_query;     // timeout for querying the initial relay
         timestamp_t _timeout_join;      // timeout for joining a relay
+        int         _ping_all_count;    // whether to ping all relays
 
         int         _request_times;     // # of times we've sent out PING requests
 
@@ -215,3 +224,4 @@ namespace Vast
 } // namespace Vast
 
 #endif
+

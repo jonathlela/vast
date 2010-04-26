@@ -139,7 +139,7 @@ VOID Render (HWND hWnd)
 
     HPEN hPenRed    = CreatePen(PS_SOLID, 2, RGB(255, 0, 0));
     HPEN hPenBlue   = CreatePen(PS_SOLID, 2, RGB(0, 0, 255));
-    HPEN hPenGreen  = CreatePen(PS_SOLID, 2, RGB(0, 255, 0));
+    //HPEN hPenGreen  = CreatePen(PS_SOLID, 2, RGB(0, 255, 0));
     HPEN hPenOld;
 
     // reset # of active (not failed) nodes

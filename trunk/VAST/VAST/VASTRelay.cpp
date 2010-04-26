@@ -19,7 +19,8 @@ namespace Vast
              _state (ABSENT),
              _timeout_ping (0),
              _timeout_query (0),
-             _timeout_join (0)
+             _timeout_join (0),
+             _ping_all_count (0)
     {     
         //_as_relay = true;
 
@@ -57,10 +58,8 @@ namespace Vast
 
     // send a message to a remote host in order to obtain round-trip time
     bool 
-    VASTRelay::ping ()
+    VASTRelay::ping (bool curr_relay_only)
     {
-        printf ("ping relays to update physical coord...\n");
-
         // prepare PING message
         Message msg (PING);
         msg.priority = 1;
@@ -68,36 +67,44 @@ namespace Vast
         timestamp_t current_time = _net->getTimestamp ();
         msg.store (current_time);
 
-        // set how many we send PING each time
-        int ping_num = (_relays.size () > MAX_CONCURRENT_PING ? MAX_CONCURRENT_PING : _relays.size ());
-
-        // obtain list of targets (checking if redundent PING has been sent)
-        vector<bool> random_set;
-        randomSet (ping_num, _relays.size (), random_set);
-
-        // TODO: should we keep PINGing the same set of hosts, or different?
-        //       which converges faster?
-        map<id_t, Node>::iterator it = _relays.begin ();
-        int i=0;
-        for (; it != _relays.end (); it++)
+        // ping all known relays
+        if (curr_relay_only == false)
         {
-            // skip relays not chosen this time
-            // NOTE: actual contact relays may be less than desired, if the target is already contacted
-            if (random_set[i++] == false)
-                continue;
-
-            // avoid self & check for redundency
-            id_t target = it->first;
-            if (_self.id != target && _pending.find (target) == _pending.end ())
+            // set how many we send PING each time
+            int ping_num = (_relays.size () > MAX_CONCURRENT_PING ? MAX_CONCURRENT_PING : _relays.size ());
+        
+            // obtain list of targets (checking if redundent PING has been sent)
+            vector<bool> random_set;
+            randomSet (ping_num, _relays.size (), random_set);
+        
+            // TODO: should we keep PINGing the same set of hosts, or different?
+            //       which converges faster?
+            map<id_t, Node>::iterator it = _relays.begin ();
+            int i=0;
+            for (; it != _relays.end (); it++)
             {
-                msg.addTarget (target);
-                _pending[target] = current_time;             
+                // skip relays not chosen this time
+                // NOTE: actual contact relays may be less than desired, if the target is already contacted
+                if (random_set[i++] == false)
+                    continue;
+        
+                // avoid self & check for redundency
+                id_t target = it->first;
+                if (_self.id != target && _pending.find (target) == _pending.end ())
+                {
+                    msg.addTarget (target);
+                    _pending[target] = current_time;             
+                }
             }
         }
 
         // *must* ping current relay (to make sure it doesn't disconnect me)
         if (isRelay () == false && _curr_relay != NULL)
             msg.addTarget (_curr_relay->id);
+
+        // if no targets exist
+        if (msg.targets.size () == 0)
+            return false;
 
         // send out messages        
         int num_success = sendRelay (msg);
@@ -110,12 +117,12 @@ namespace Vast
                 printf ("VASTRelay::ping () no known relays to contact\n cannot determine physical coordinate, check if relays are valid\n");
             return false;
         }
-        else
-        {
-            // success means at least a few PING requests are sent
+        
+        if (curr_relay_only == false)            
             _request_times++;
-            return true;
-        }        
+
+        // success means at least a few PING requests are sent
+        return true;
     }
 
     // send a message to a remote host in order to obtain round-trip time
@@ -560,7 +567,7 @@ namespace Vast
         if (now >= _timeout_ping)
         {
             // reset re-try countdown
-            _timeout_ping = now + (TIMEOUT_COORD_QUERY * _net->getTimestampPerSecond ());
+            _timeout_ping = now + (KEEPALIVE_RELAY * _net->getTimestampPerSecond ());
 
             // obtain some relays from network layer if no known relays
             if (_relays.size () == 0)
@@ -584,7 +591,14 @@ namespace Vast
             if (_relays.size () > 0)
             {
                 // re-send PING to known relays
-                ping ();
+                bool curr_relay_only = (_ping_all_count++ != (TIMEOUT_COORD_QUERY / KEEPALIVE_RELAY));
+                if (_ping_all_count == (TIMEOUT_COORD_QUERY / KEEPALIVE_RELAY))
+                    _ping_all_count = 0;
+
+                if (isJoined () == false)
+                    curr_relay_only = false;
+
+                ping (curr_relay_only);
             
                 // if not yet joined, try to request more relays
                 if (_state != JOINED)
@@ -599,10 +613,9 @@ namespace Vast
                 }
                 else if (getPhysicalCoordinate () != NULL && isRelay ())
                     notifyPhysicalCoordinate ();
-
             }
         }
-
+        
         if (_state == ABSENT)
         {
             // if no relays are known and no physical coordinate specified, 
