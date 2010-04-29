@@ -141,6 +141,16 @@ namespace Vast
             return NULL;
     }
 
+    // obtain the matcher's adjustable radius (determined by VSOPeer)
+    Area *
+    VASTMatcher::getMatcherAOI ()
+    {
+        if (_VSOpeer != NULL && _VSOpeer->isJoined ())
+            return &_VSOpeer->getSelf ()->aoi;
+        else
+            return NULL;
+    }
+
     //
     // VONNetwork
     //

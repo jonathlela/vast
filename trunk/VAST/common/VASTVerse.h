@@ -130,6 +130,9 @@ namespace Vast
         // returns NULL if matcher does not exist on this node
         Voronoi *getMatcherVoronoi ();
 
+        // obtain the matcher's adjustable AOI radius, returns 0 if no matcher exists
+        Area *getMatcherAOI ();
+
         // obtain the number of active connections at this node
         int getConnectionSize ();
 

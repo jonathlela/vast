@@ -44,7 +44,7 @@
 const int TIMEOUT_COORD_QUERY = 30;
 
 // number of seconds before a keepalive message is sent to my current relay (by a client)
-// IMPORTANT NOTE: this has to be shorter than network inactivity connectino removal
+// IMPORTANT NOTE: this has to be shorter than network inactivity connection removal
 const int KEEPALIVE_RELAY = 5;
 
 // timeout for re-sending relay query
@@ -53,7 +53,12 @@ const int TIMEOUT_RELAY_QUERY = 5;
 // timeout for re-sending join request to a relay
 const int TIMEOUT_RELAY_JOIN  = 5;
 
-#define MAX_CONCURRENT_PING          (5)
+// number of pings sent concurrently to neighbor relays
+//#define MAX_CONCURRENT_PING          (5)
+const int MAX_CONCURRENT_PING = 5;
+
+// maximum number of queries sent to obtain new physical coordinate
+const int MAX_RELAY_QUERIES     = 5;
 
 // NOTE the below parameters need to be fine-tuned & tested
 //      currently local tests reveal that it'll take about 3-7 ping-pong to converge a physical coordinate upon join (~ 2 seconds)

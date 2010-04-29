@@ -109,7 +109,9 @@ int InitPara (VAST_NetModel model, VASTPara_Net &netpara, SimPara &simpara, cons
     
             // Gateway IP
             case 1:
-                sprintf (GWstr, "%s:%d", p, netpara.port);
+                // (zero indicates gateway)
+                if (p[0] != '0')
+                    sprintf (GWstr, "%s:%d", p, netpara.port);
                 break;
     
             case 2:
@@ -125,6 +127,21 @@ int InitPara (VAST_NetModel model, VASTPara_Net &netpara, SimPara &simpara, cons
             // Y-coord
             case 4:
                 aoi.center.y = (coord_t)atoi (p);
+                break;
+
+            // AOI-radius
+            case 5:
+                aoi.radius = (length_t)atoi (p);
+                break;
+
+            // is relay
+            case 6:
+                netpara.is_relay = (atoi (p) == 1);
+                break;
+
+            // is matcher
+            case 7:
+                netpara.is_matcher = (atoi (p) == 1);
                 break;
             }
     
@@ -147,7 +164,10 @@ int InitPara (VAST_NetModel model, VASTPara_Net &netpara, SimPara &simpara, cons
 */
         netpara.step_persec    = simpara.STEPS_PERSEC;           
         netpara.overload_limit = simpara.OVERLOAD_LIMIT;
-        aoi.radius             = simpara.AOI_RADIUS;        
+
+        // command line radius takes precedence than INI radius
+        if (aoi.radius == (length_t)DEFAULT_AOI)
+            aoi.radius             = simpara.AOI_RADIUS;        
     }
     else  
     {

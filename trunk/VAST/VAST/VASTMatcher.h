@@ -90,6 +90,9 @@ namespace Vast
         // returns NULL if the peer does not exist
         Voronoi *getVoronoi ();
 
+        // obtain the matcher's adjustable radius (determined by VSOPeer)
+        Area *getMatcherAOI ();
+
     private:
 
         // perform initialization tasks for this handler (optional)

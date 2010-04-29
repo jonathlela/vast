@@ -175,9 +175,17 @@ namespace Vast
     VASTClient::move (id_t subID, Area &aoi, bool update_only)
     {
         // if no subscription exists or the subID does not match, don't update
-        if (_sub.active == false || subID != _sub.id)
+        if (_sub.active == false)
+            return NULL;
+        
+        if (subID != _sub.id)
         {
-            printf ("VASTClient::move () [%llu] try to move for inactive or invalid subscription ID\n", _self.id);
+            printf ("VASTClient::move () [%llu] try to move for invalid subscription ID\n", _self.id);
+            
+            // re-initiate subscription
+            _sub.active = false;
+            _timeout_subscribe = 1;
+
             return NULL;
         }
         
@@ -698,7 +706,7 @@ namespace Vast
     void 
     VASTClient::postHandling ()
     {   
-        // if we've intenionally left, then no actions are needed
+        // if we've intentionally left, then no actions are needed
         if (_state == ABSENT)
             return;
 

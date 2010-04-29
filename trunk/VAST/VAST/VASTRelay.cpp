@@ -253,7 +253,6 @@ namespace Vast
                 }
                 
                 // call the Vivaldi algorithm to update my physical coordinate
-
                 vivaldi (rtt, _temp_coord, xj, _error, ej);
 
 //#ifdef DEBUG_DETAIL
@@ -265,9 +264,9 @@ namespace Vast
                 if (_relays.find (in_msg.from) != _relays.end ())
                     _relays[in_msg.from].aoi.center = xj;
 
-                // check if the local error value is small enough, 
-                // if so we've got our physical coordinate
-                if (_error < RELAY_TOLERANCE)
+                // if the local error value is small enough, we've got our physical coordinate
+                // or we force the convergence if too many queries are sent
+                if (_error < RELAY_TOLERANCE || _request_times > MAX_RELAY_QUERIES)
                 {
                     // print a small message to show it
                     if (_request_times > 0)
@@ -332,7 +331,8 @@ namespace Vast
 
                 bool success = false;
 
-                // TODO: potential bug? will loop infinitely? or eventually I will reply myself
+                // Eventually I will reply myself, unless the relay provided is invalid,
+                // in which case I should still break
                 while (!success)
                 {
                     // find the closet relay
@@ -348,7 +348,15 @@ namespace Vast
                         msg.addTarget (relay.host_id);
                                         
                         notifyMapping (relay.host_id, &relay);
-                        success = (sendRelay (msg) > 0);
+
+                        // TODO: if the relay provided is not valid, the joining node may wait for longer time before another RELAY_QUERY is sent
+                        if (sendRelay (msg) == 0)
+                        {
+                            // if the relay provided cannot be reached, drop this request
+                            printf ("[%llu] VASTRelay::handleMessage () RELAY_QUERY relay supplied [%llu] is no longer valid\n", _self.id, relay.host_id);
+                        }
+                        // whether success or not, we have to leave the loop
+                        break;
                     }
                     // otherwise greedy-forward the message to the next closest, valid relay
                     else
@@ -590,16 +598,21 @@ namespace Vast
             // send ping if some relays are known
             if (_relays.size () > 0)
             {
+                /*
                 // re-send PING to known relays
-                bool curr_relay_only = (_ping_all_count++ != (TIMEOUT_COORD_QUERY / KEEPALIVE_RELAY));
+                bool send_maintain = (_ping_all_count++ != (TIMEOUT_COORD_QUERY / KEEPALIVE_RELAY));
                 if (_ping_all_count == (TIMEOUT_COORD_QUERY / KEEPALIVE_RELAY))
                     _ping_all_count = 0;
+                */
 
-                if (isJoined () == false)
-                    curr_relay_only = false;
+                //if (isJoined () == false)
+                //    curr_relay_only = false;
 
-                ping (curr_relay_only);
-            
+                //ping (curr_relay_only);
+
+                // we only ping current relay once joined (to reduce PING traffic)
+                ping (isJoined ());
+                
                 // if not yet joined, try to request more relays
                 if (_state != JOINED)
                 {
@@ -611,8 +624,14 @@ namespace Vast
             
                     sendRelay (msg);
                 }
-                else if (getPhysicalCoordinate () != NULL && isRelay ())
-                    notifyPhysicalCoordinate ();
+               
+                /*
+                else if (send_maintain)
+                {
+                    if (getPhysicalCoordinate () != NULL && isRelay ())
+                        notifyPhysicalCoordinate ();
+                } 
+                */
             }
         }
         

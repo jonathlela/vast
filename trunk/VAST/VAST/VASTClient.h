@@ -38,6 +38,7 @@
 // NOTE: remove ghost should be at least twice as much as keepalive
 
 const int TIMEOUT_SUBSCRIBE    = (5);        // # of seconds before re-attempting to subscribe 
+//const int TIMEOUT_SUBSCRIBE    = (5000);        // # of seconds before re-attempting to subscribe 
 const int TIMEOUT_REMOVE_GHOST = (5);        // # of seconds before removing ghost objects at clients
 //const int TIMEOUT_KEEP_ALIVE   = (2);        // # of seconds before re-sending our own position
 

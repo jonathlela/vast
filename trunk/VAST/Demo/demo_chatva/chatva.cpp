@@ -122,6 +122,9 @@ VOID Render (HWND hWnd)
 
     // get screen size (?)
 
+    HPEN hPenRed = CreatePen (PS_SOLID, 2, RGB(255, 0, 0));
+    HPEN hPenOld;
+
     if (follow_mode)
     {             
         g_origin.x = (long)(-(g_aoi.center.x - DIM_X/2));
@@ -144,7 +147,16 @@ VOID Render (HWND hWnd)
     //SelectObject( hdc, GetStockObject(HOLLOW_BRUSH) );
     Ellipse (hdc, (int)g_aoi.center.x - g_aoi.radius, (int)g_aoi.center.y - g_aoi.radius, (int)g_aoi.center.x + g_aoi.radius, (int)g_aoi.center.y + g_aoi.radius);
     //Ellipse( hdc, x-aoi_buf, y-aoi_buf, x+aoi_buf, y+aoi_buf );        
-            
+
+    // draw matcher AOI, if available
+    Area *matcher_aoi = g_world->getMatcherAOI ();
+    if (matcher_aoi != NULL)
+    {
+        hPenOld = (HPEN)SelectObject (hdc, hPenRed);
+        Ellipse (hdc, (int)matcher_aoi->center.x - matcher_aoi->radius, (int)matcher_aoi->center.y - matcher_aoi->radius, (int)matcher_aoi->center.x + matcher_aoi->radius, (int)matcher_aoi->center.y + matcher_aoi->radius);
+        SelectObject (hdc, hPenOld);
+    }
+
     size_t j;
                 
     // draw neighbor dots
@@ -199,7 +211,7 @@ VOID Render (HWND hWnd)
              g_cursor.x-g_origin.x, g_cursor.y-g_origin.y, 
              (int)VASTnet::resolvePort (self->id)-g_netpara.port+1, (int)g_aoi.center.x, (int)g_aoi.center.y, 
              join_state,
-             g_aoi.radius, 
+             (matcher_aoi == NULL ? self->aoi.radius : matcher_aoi->radius), 
              n, (follow_mode ? "[follow]" : ""), 
              last_char,
              GWstr.c_str ());

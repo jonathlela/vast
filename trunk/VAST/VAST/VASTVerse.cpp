@@ -553,6 +553,22 @@ namespace Vast
         return NULL;
     }
 
+    // obtain the matcher's adjustable AOI radius, returns 0 if no matcher exists
+    Area *
+    VASTVerse::getMatcherAOI ()
+    {
+        if (isLogined () == false)
+            return NULL;
+
+        VASTPointer *handlers = (VASTPointer *)_pointers;
+
+        // if there's a joined matcher on this node, then we should have a Voronoi map
+        if (handlers->matcher->isJoined ())
+            return handlers->matcher->getMatcherAOI ();
+
+        return NULL;
+    }
+
     // obtain the number of active connections at this node
     int 
     VASTVerse::getConnectionSize ()
