@@ -38,7 +38,7 @@ namespace Vast {
     {
     public:
         Voronoi () {}
-        ~Voronoi () {}
+        virtual ~Voronoi () {}
 
         // insert a new site, the first inserted is myself
         virtual void insert (id_t id, const Position &coord) = 0;

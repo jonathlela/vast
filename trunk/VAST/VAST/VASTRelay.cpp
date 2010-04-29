@@ -71,7 +71,7 @@ namespace Vast
         if (curr_relay_only == false)
         {
             // set how many we send PING each time
-            int ping_num = (_relays.size () > MAX_CONCURRENT_PING ? MAX_CONCURRENT_PING : _relays.size ());
+            int ping_num = ((int)_relays.size () > MAX_CONCURRENT_PING ? MAX_CONCURRENT_PING : (int)_relays.size ());
         
             // obtain list of targets (checking if redundent PING has been sent)
             vector<bool> random_set;
