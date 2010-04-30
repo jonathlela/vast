@@ -3,7 +3,8 @@ demo_console = ../../bin/demo_console
 
 .PHONY: all noace
 
-LIBS_COMMON = -lvastcommon -lvastsim -lvast -lvastnet  
+# IMPORTANT NOTE: the least dependent library must begin from the rightmost (often vastcommon) 
+LIBS_COMMON = -lvastsim -lvast -lvastnet -lvastcommon 
 #-lz -ldl -lpthread
 LIBS_ACE    = -lACE 
 LIBS_THREAD = -lpthread
@@ -11,8 +12,8 @@ LIBS_DL	    = -ldl
 
 ACE_PATH    = ../../../ACE_wrappers
 
-#CFLAGS      = -Wall -static 
-CFLAGS      = -Wall -fPIC
+CFLAGS      = -Wall -static 
+#CFLAGS      = -Wall -fPIC
 
 INC_PATHS   = -I../../common -I../../VASTsim -I$(ACE_PATH) 
 

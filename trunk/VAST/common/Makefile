@@ -3,12 +3,13 @@ lib_vastcommon = ../lib/libvastcommon.a
 AR = ar
 CC = g++
 
-CFLAGS = -static -c -Wall -I../Dependencies/include/ace -I../Dependencies/include 
+#CFLAGS = -static -c -Wall -I../Dependencies/include/ace -I../Dependencies/include 
 
 ACE_ROOT = ../../ACE_wrappers
 
 #replace -fPIC with -static for static linking
 CFLAGS = -static -c -Wall -I$(ACE_ROOT) 
+#CFLAGS = -fPIC -c -Wall -I$(ACE_ROOT) -I../Dependencies/include
 
 sources_o = Compressor.cpp Errout.cpp \
             SectionedFile.cpp StdIO_SectionedFile.cpp \

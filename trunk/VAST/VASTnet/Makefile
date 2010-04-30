@@ -7,6 +7,7 @@ CC = g++
 ACE_ROOT = ../../ACE_wrappers
 
 CFLAGS = -static -c -Wall -I../common -I../../ACE_wrappers
+#CFLAGS = -fPIC -c -Wall -I../common -I$(ACE_ROOT)
 
 #Note that ACE path is not included here, as we assume it's already properly installed on the system
 

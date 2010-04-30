@@ -3,6 +3,8 @@ lib_vastsim = ../lib/libvastsim.a
 AR = ar
 CC = g++
 CFLAGS = -static -c -Wall -I../common 
+#CFLAGS = -fPIC -c -Wall -I../common
+
 
 sources = SimNode.cpp  VASTsim.cpp
 objects = $(subst .cpp,.o,$(sources))

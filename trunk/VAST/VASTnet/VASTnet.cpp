@@ -716,9 +716,9 @@ namespace Vast
     id_t 
     VASTnet::resolvePort (id_t host_id)
     {
-        id_t port = (host_id & 0x00000000FFFF0000);
-        id_t tail = (host_id & 0x000000000000FFFF);
-        return (port >> 16);
+        //id_t port = (host_id & 0x00000000FFFF0000);
+        //id_t tail = (host_id & 0x000000000000FFFF);
+        return ((host_id & 0x00000000FFFF0000) >> 16);
     }
 
     // obtain a NodeID
@@ -796,7 +796,7 @@ namespace Vast
         msg.extract (id);
         msg.extract (detectedIP);
 
-        id_t port = VASTnet::resolvePort (id);
+        //id_t port = VASTnet::resolvePort (id);
 
         // debug msg
         //printf ("[%lld] ID request from: %lld (%s:%d) actual address (%s:%d)\n", _host. addr.host_id, IP_sent, addr.publicIP.port, IP_actual, actual_addr.publicIP.port);

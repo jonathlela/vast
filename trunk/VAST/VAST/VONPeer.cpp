@@ -41,7 +41,7 @@ namespace Vast
         _self.addr  = _net->getHostAddress ();
 
         _state      = ABSENT;
-        _Voronoi    = new VoronoiSF ();
+        _Voronoi    = new Vast::VoronoiSF ();
 
         // initialize internal counter for ticks elapsed
         //_tick_count = 0;
