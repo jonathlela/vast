@@ -192,7 +192,8 @@ namespace Vast
             */
 
             // TODO: record recvtime?
-            receiver->processRawMessage (header, p, _id);
+            // NOTE: my actual IP is sent for processing, so that public/private IP check will pass
+            receiver->processRawMessage (header, p, _id, &_addr.publicIP);
             p += header.msg_size;
         }
 

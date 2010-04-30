@@ -496,8 +496,9 @@ namespace Vast
                         }
                     }
                 }
-
+#ifdef DEBUG_DETAIL
                 printf ("[%llu] VASTMatcher::handleMessage () SUBSCRIBE_TRANSFER %d sent %d success\n", _self.id, (int)n, success);
+#endif
             }
             break;
 

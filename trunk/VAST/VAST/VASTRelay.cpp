@@ -213,6 +213,7 @@ namespace Vast
         case REQUEST:
             {
                 // send back a list of known relays
+                printf ("REQUEST received from [%llu]\n", in_msg.from);
                 sendRelayList (in_msg.from, MAX_CONCURRENT_PING);
             }
             break;
@@ -840,7 +841,9 @@ namespace Vast
         // avoid inserting the same relay, but note that we accept two relays have the same distance
         if (it != _relays.end ())
         {
+#ifdef DEBUG_DETAIL
             printf ("[%llu] VASTRelay::addRelay () updating relay [%llu]..\n", _self.id, relay.id);
+#endif
 
             it->second = relay;
 
@@ -856,7 +859,9 @@ namespace Vast
         }
         else
         {
+#ifdef DEBUG_DETAIL
             printf ("[%llu] VASTRelay::addRelay () adding relay [%llu]..\n", _self.id, relay.id);
+#endif
             _relays[relay.id] = relay;            
         }
 
@@ -893,7 +898,9 @@ namespace Vast
         {
             if (it->second->id == id)
             {
+#ifdef DEBUG_DETAIL
                 printf ("[%lld] VASTRelay::removeRelay () removing relay [%lld]..\n", _self.id, id);
+#endif
                 
                 _dist2relay.erase (it);                
                 _relays.erase (id);
@@ -968,6 +975,7 @@ namespace Vast
                 rit++;
             }
 
+            printf ("[%llu] VASTRelay::cleanupRelays () remove %d relays\n", _self.id, remove_list.size ());
             for (size_t i=0; i < remove_list.size (); i++)  
                 removeRelay (remove_list[i]);
         }
@@ -999,12 +1007,14 @@ namespace Vast
          {
              if (selected[i++] == true)
              {
+#ifdef DEBUG_DETAIL
                  printf ("(%lld) ", it->first);
+#endif
                  msg.store (it->second);
              }
          }
 
-         printf ("\n[%llu] responds with %d relays\n", _self.id, n);
+         printf ("\n[%llu] responds with %d relays to [%llu]\n", _self.id, n, target);
          
          msg.addTarget (target);                
          sendMessage (msg);

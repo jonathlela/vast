@@ -716,7 +716,9 @@ namespace Vast
     id_t 
     VASTnet::resolvePort (id_t host_id)
     {
-        return ((host_id & 0x00000000FFFF0000) >> 16);
+        id_t port = (host_id & 0x00000000FFFF0000);
+        id_t tail = (host_id & 0x000000000000FFFF);
+        return (port >> 16);
     }
 
     // obtain a NodeID
@@ -778,6 +780,13 @@ namespace Vast
     id_t
     VASTnet::processIDRequest (Message &msg, IPaddr *actualIP)
     {
+        // parameter check, actual IP must exist in order to process the request
+        if (actualIP == NULL)
+        {
+            printf ("VASTnet::processIDRequest () actualIP invalid\n");
+            return NET_ID_UNASSIGNED;
+        }
+
         // extract the ID request message, consists of
         //   1) determined hostID and 2) detected IP
         id_t    id;
@@ -787,21 +796,23 @@ namespace Vast
         msg.extract (id);
         msg.extract (detectedIP);
 
+        id_t port = VASTnet::resolvePort (id);
+
         // debug msg
         //printf ("[%lld] ID request from: %lld (%s:%d) actual address (%s:%d)\n", _host. addr.host_id, IP_sent, addr.publicIP.port, IP_actual, actual_addr.publicIP.port);
         
         // we assume the remote host has public IP
         // if actual IP is provided, we perform a more accurate check
-        bool is_public = true;
-                
-        if (actualIP != NULL)
-        {
-            is_public = (actualIP->host == detectedIP.host);
-        }
+        bool is_public = (actualIP->host == detectedIP.host);
 
         // if the remote host does not have have public IP, assign one
         if (!is_public)      
-            id = getUniqueID ();
+        {
+            //id = getUniqueID ();
+            // use the actual IP/port pair to define the unique ID
+            id = resolveHostID (actualIP);
+
+        }
 
         if (id == NET_ID_UNASSIGNED)                    
             printf ("VASTnet::processIDRequest () we cannot assign new ID to remote host any more\n");        
@@ -925,11 +936,15 @@ namespace Vast
 
         if (remove_list.size () > 0)
         {
+#ifdef DEBUG_DETAIL
             printf ("VASTnet::cleanConnections () removing timeout connections: ");
+#endif
         
             for (size_t i=0; i < remove_list.size (); i++)
             {
+#ifdef DEBUG_DETAIL
                 printf ("[%llu] ", remove_list[i]);
+#endif
                 disconnect (remove_list[i]);
                 
                 // remove address
@@ -938,8 +953,9 @@ namespace Vast
                 
                 // TODO: at somepoint should clean up id2host mappings
             }
-        
+#ifdef DEBUG_DETAIL        
             printf ("\n");
+#endif
         }
     }
 

@@ -637,7 +637,7 @@ namespace Vast
                             }
                             if (it == _neighbors.end ())
                             {
-                                printf ("VASTClient receives update on neighbor [%llu] without its full info\n", neighbor_id);
+                                printf ("VASTClient receives update on neighbor [%llu] without info\n", neighbor_id);
                                 requestNeighbor (neighbor_id);
                             }
                         }

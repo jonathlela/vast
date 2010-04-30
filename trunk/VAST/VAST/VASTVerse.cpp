@@ -320,10 +320,10 @@ namespace Vast
 
         // create the VAST node
         if (_state == ABSENT)
-        {
-            printf ("VASTVerse::getVASTNode () createClient...\n");
+        {            
             if ((createClient (info.relay.publicIP)) != NULL)
             {                            
+                printf ("VASTVerse::getVASTNode () client created\n");
                 _state = JOINING;
             }
         }

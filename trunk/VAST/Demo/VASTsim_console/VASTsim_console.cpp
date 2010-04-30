@@ -25,85 +25,46 @@ using namespace Vast;
 
 int main (int argc, char *argv[])
 {    
-    SimPara para;                   // simulation parameters
+    SimPara simpara;                       // simulation parameters
+    VASTPara_Net netpara;               // network parameter
     map<int, vector<Node *> *> nodes;   // neighbors of each node
+   
+    // read parameters and initialize simulations
+    InitPara (VAST_NET_EMULATED, netpara, simpara);
+    
+    InitSim (simpara, netpara);
 
-    // order of preference for parameters: 1. file 2. commandline 3. built-in
-    if (ReadPara (para) == false)
-    {
-        if (argc != 17)
-        {
-            // use defaults
-            para.VAST_MODEL      =  1;        // 1: Direct connection 2: Forwarding
-            para.NET_MODEL       =  1;        // 1: emulated 2: emulated with bandwidth limit
-            para.MOVE_MODEL      =  1;        // 1: random 2: cluster
-            para.WORLD_WIDTH     =  800;
-            para.WORLD_HEIGHT    =  600;
-            para.NODE_SIZE       =  10;
-            para.RELAY_SIZE      =  5;
-            para.TIME_STEPS      =  100;
-            para.STEPS_PERSEC    =  10;
-            para.AOI_RADIUS      =  100;
-            para.AOI_BUFFER      =  15;
-            para.CONNECT_LIMIT   =  0;
-            para.VELOCITY        =  5;
-            para.LOSS_RATE       =  0;
-            para.FAIL_RATE       =  0;
-            para.UPLOAD_LIMIT    =  2000;   // in bytes / step
-            para.DOWNLOAD_LIMIT  =  10000;  // in bytes / step
-            para.PEER_LIMIT      =  100;
-            para.RELAY_LIMIT     =  10;
-        }
-        else
-        {
-            int i=1;
-            para.VAST_MODEL          = atoi (argv[i++]);
-            para.NET_MODEL           = atoi (argv[i++]);
-            para.MOVE_MODEL          = atoi (argv[i++]);
-            para.WORLD_WIDTH         = atoi (argv[i++]);
-            para.WORLD_HEIGHT        = atoi (argv[i++]);        
-            para.NODE_SIZE           = atoi (argv[i++]);
-            para.RELAY_SIZE          = atoi (argv[i++]);
-            para.TIME_STEPS          = atoi (argv[i++]);
-            para.STEPS_PERSEC        = atoi (argv[i++]);
-            para.AOI_RADIUS          = atoi (argv[i++]);
-            para.AOI_BUFFER          = atoi (argv[i++]);
-            para.CONNECT_LIMIT       = atoi (argv[i++]);
-            para.VELOCITY            = atoi (argv[i++]);
-            para.LOSS_RATE           = atoi (argv[i++]);        
-            para.FAIL_RATE           = atoi (argv[i++]);
-            para.UPLOAD_LIMIT        = atoi (argv[i++]);
-            para.DOWNLOAD_LIMIT      = atoi (argv[i++]);
-            para.PEER_LIMIT          = atoi (argv[i++]);
-            para.RELAY_LIMIT         = atoi (argv[i++]);
-        }        
-    }
-    
-    InitSim (para);
-
-    int i;    
-    
-    // create nodes
-    printf ("Creating nodes ...\n");
-    for (i=0; i<para.NODE_SIZE; ++i)
-    {
-        CreateNode ();
-        printf ("\r%3d%%\n", (int) ((double) ((i+1) * 100) / (double) para.NODE_SIZE));
-    }    
-    
+    // # of nodes currently created
+    int nodes_created = 0;
+    int create_countdown = 0;
+        
     // start simulation moves    
     int steps = 0;
     bool running = true;
     while (running)
     {     
         steps++; 
+
+        // create nodes
+        if (nodes_created < simpara.NODE_SIZE)
+        {
+            if (create_countdown == 0)
+            {                
+                CreateNode (nodes_created == 0);
+                nodes_created++;
+                printf ("creating node %d \r%3d%%\n", nodes_created, (int) ((double) (nodes_created * 100) / (double) simpara.NODE_SIZE));
+                create_countdown = simpara.JOIN_RATE;
+            }            
+            else
+                create_countdown--;
+        }    
                  
-		 if (NextStep () < 0)
+		if (NextStep () < 0)
             break;
   
-        // obtain positions of my current neighbors
-        
-        for (int j=0; j < para.NODE_SIZE; ++j)
+/*
+        // obtain positions of my current neighbors        
+        for (int j=0; j < simpara.NODE_SIZE; ++j)
         {
 #ifdef PRINT_MSG
             printf ("[%d] has neighbors: ", j+1);
@@ -120,7 +81,9 @@ int main (int argc, char *argv[])
 
             printf ("\n");
 #endif
-        }       
+        }     
+*/
+
         // do various stat calculations/collection here
         printf ("step %d\n", steps);
         //getch ();

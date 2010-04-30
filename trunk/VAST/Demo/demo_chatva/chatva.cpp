@@ -165,8 +165,8 @@ VOID Render (HWND hWnd)
         //int size = nodes.size ();
         int   x = (int)nodes[j]->aoi.center.x;
         int   y = (int)nodes[j]->aoi.center.y;
-        //id_t id = nodes[j]->id;
-        id_t id = nodes[j]->addr.host_id;
+        id_t id = nodes[j]->id;
+        //id_t id = nodes[j]->addr.host_id;
 
         // draw small circle
         SelectObject (hdc, GetStockObject(GRAY_BRUSH));

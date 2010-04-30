@@ -414,7 +414,10 @@ namespace Vast
 
         // reflect the new AOI, with some buffer
         _newpos.aoi.radius = (length_t)(longest + VSO_PEER_AOI_BUFFER);
+
+#ifdef DEBUG_DETAIL
         printf ("[%llu] VSOPeer::adjustPeerRadius () to (%.2f, %.2f) r: %u\n", _self.id, _newpos.aoi.center.x, _newpos.aoi.center.y, (unsigned)_newpos.aoi.radius);
+#endif
     }
 
     // check if neighbors need to be notified of object updates
@@ -506,12 +509,16 @@ namespace Vast
 
         if (remove_list.size () > 0)
         {
+#ifdef DEBUG_DETAIL
             printf ("VSOPeer::refreshObjects () removing objects: \n");
+#endif
 
             // remove each obsolete object
             for (size_t i=0; i < remove_list.size (); i++)
             {
+#ifdef DEBUG_DETAIL
                 printf ("[%llu]\n", remove_list[i]);
+#endif
 
                 // deleteSharedObject should be called automatically
                 _policy->removeObject (remove_list[i]);
