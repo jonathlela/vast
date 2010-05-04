@@ -305,7 +305,7 @@ namespace Vast
                     if (sub.id == NET_ID_UNASSIGNED) 
                         sub.id = _net->getUniqueID (ID_GROUP_VON_VAST);
                     else
-                        printf ("VASTMatcher [%llu] re-SUBSCRIBE using ID [%llu]\n", in_msg.from, sub.id);
+                        printf ("VASTMatcher [%llu] using existing ID [%llu]\n", in_msg.from, sub.id);
 
                     // by default we own the client subscriptions we create
                     // we may simply update existing subscription when clients re-subscribe due to matcher failure

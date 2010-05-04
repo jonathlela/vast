@@ -109,7 +109,12 @@ namespace Vast
         // record my subscription, not yet successfully subscribed  
         // NOTE: current we assume we subscribe only one at a time  
         //       also, it's important to record the area & layer first, so that
-        //       re-subscribe attempt may be correct (in case the check below is not passed yet)
+        //       re-subscribe attempt may be correct (in case the check below is not passed yet)        
+        
+        // NOTE: because my hostID is unique, it guarantee my subscription ID is also unique
+        if (_sub.id == NET_ID_UNASSIGNED)
+            _sub.id = _net->getUniqueID (ID_GROUP_VON_VAST);
+
         _sub.aoi    = area;
         _sub.layer  = layer;
 

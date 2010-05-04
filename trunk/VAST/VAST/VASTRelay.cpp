@@ -210,6 +210,8 @@ namespace Vast
         switch (in_msg.msgtype)
         {
 
+        // combined into PING
+        /*
         case REQUEST:
             {
                 // send back a list of known relays
@@ -217,6 +219,7 @@ namespace Vast
                 sendRelayList (in_msg.from, MAX_CONCURRENT_PING);
             }
             break;
+        */
 
         case PING:
             {
@@ -226,6 +229,10 @@ namespace Vast
 
                 // respond the PING message
                 pong (in_msg.from, senttime, true);
+
+                // send back a list of known relays
+                //printf ("REQUEST received from [%llu]\n", in_msg.from);
+                sendRelayList (in_msg.from, MAX_CONCURRENT_PING);
             }
             break;
 
@@ -614,17 +621,20 @@ namespace Vast
                 // we only ping current relay once joined (to reduce PING traffic)
                 ping (isJoined ());
                 
+                /*
                 // if not yet joined, try to request more relays
                 if (_state != JOINED)
                 {
                     Message msg (REQUEST);
             
+                    // select a few (but not all relays)
                     map<id_t, Node>::iterator it = _relays.begin ();
                     for (; it != _relays.end (); it++)
                         msg.addTarget (it->first);
             
                     sendRelay (msg);
                 }
+                */
                
                 /*
                 else if (send_maintain)
