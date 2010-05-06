@@ -137,8 +137,11 @@ namespace Vast
         int getConnectionSize ();
 
         // obtain the tranmission size by message type, default is to return all types
-        StatType &getSendStat (const msgtype_t msgtype = 0);
-        StatType &getReceiveStat (const msgtype_t msgtype = 0);
+        StatType &getSendStat (bool interval_only = false);
+        StatType &getReceiveStat (bool interval_only = false);
+
+        // reset stat collection for a particular interval, however, accumulated stat will not be cleared
+        void    clearStat ();
 
         // record nodeID on the same host
         void    recordLocalTarget (id_t target);
@@ -172,6 +175,10 @@ namespace Vast
         timestamp_t         _next_periodic; // next timestamp when per-second task is executed
         StatType            _sendstat;      // stat on send size
         StatType            _recvstat;      // stat on recv size
+
+        StatType            _sendstat_interval;      // stat on send size per interval
+        StatType            _recvstat_interval;      // stat on recv size per interval
+
         StatType            _connstat;      // stat on connection size
 
         size_t              _lastsend;      // last accumulated send bytes

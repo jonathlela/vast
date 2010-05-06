@@ -509,10 +509,12 @@ namespace Vast
             // record network stat for this node
             size_t size = handlers->net->getSendSize (0);            
             _sendstat.addRecord (size - _lastsend);
+            _sendstat_interval.addRecord (size - _lastsend);
             _lastsend = size;
         
             size = handlers->net->getReceiveSize (0);
-            _recvstat.addRecord (size - _lastrecv);            
+            _recvstat.addRecord (size - _lastrecv);
+            _recvstat_interval.addRecord (size - _lastrecv);
             _lastrecv = size;
         }
 
@@ -600,29 +602,29 @@ namespace Vast
 
     // obtain the tranmission size by message type, default is to return all types
     StatType &
-    VASTVerse::getSendStat (const msgtype_t msgtype)
+    VASTVerse::getSendStat (bool interval_only)
     {
-        /*
-        VASTPointer *handlers = (VASTPointer *)_pointers;
-        if (handlers->net != NULL)
-            return handlers->net->getSendSize (msgtype);
-        return 0;
-        */
-
-        return _sendstat;
+        if (interval_only)
+            return _sendstat_interval;
+        else
+            return _sendstat;
     }
     
     StatType &
-    VASTVerse::getReceiveStat (const msgtype_t msgtype)
+    VASTVerse::getReceiveStat (bool interval_only)
     {
-        /*
-        VASTPointer *handlers = (VASTPointer *)_pointers;
-        if (handlers->net != NULL)
-            return handlers->net->getReceiveSize (msgtype);
-        return 0;
-        */
+        if (interval_only)
+            return _recvstat_interval;
+        else
+            return _recvstat;
+    }
 
-        return _recvstat;
+    // reset stat collection for a particular interval, however, accumulated stat will not be cleared
+    void
+    VASTVerse::clearStat ()
+    {
+        _sendstat_interval.reset ();
+        _recvstat_interval.reset ();
     }
 
     // record nodeID on the same host

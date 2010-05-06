@@ -59,8 +59,8 @@ public:
     void recordStat ();
 
     // get stat
-    StatType &getSendStat ();
-    StatType &getRecvStat ();
+    StatType &getSendStat (bool interval_only = false);
+    StatType &getRecvStat (bool interval_only = false);
 
     // record per node per second transmission 
     //void recordStatPerSecond ();

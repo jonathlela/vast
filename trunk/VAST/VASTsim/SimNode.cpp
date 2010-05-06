@@ -60,15 +60,18 @@
 
     void SimNode::clearVariables ()
     {
-        _steps_recorded = 0;
-        //_seconds_recorded = 0;
+        _steps_recorded = 0;        
         _min_aoi = _para.WORLD_WIDTH;
         _total_aoi = 0;
 
         _max_CN = _total_CN = 0;
                 
+        //_seconds_recorded = 0;
         //max_send_persec = max_recv_persec = 0;
         //_total_send = _total_recv = 0;
+
+        // clear stat collection so we could record stat for an interval freshly
+        _world->clearStat ();
     }
     
     void SimNode::move ()
@@ -240,14 +243,14 @@
     }
     */
 
-    StatType &SimNode::getSendStat ()
+    StatType &SimNode::getSendStat (bool interval_only)
     {
-        return _world->getSendStat ();
+        return _world->getSendStat (interval_only);
     }
 
-    StatType &SimNode::getRecvStat ()
+    StatType &SimNode::getRecvStat (bool interval_only)
     {
-        return _world->getReceiveStat ();
+        return _world->getReceiveStat (interval_only);
     }
 
     length_t SimNode::getAOI ()

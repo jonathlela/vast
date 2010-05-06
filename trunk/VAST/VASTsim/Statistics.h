@@ -357,8 +357,8 @@ public:
             else
                 total_aoi += avg;
 
-            StatType &sendstat = _simnodes[i]->getSendStat ();
-            StatType &recvstat = _simnodes[i]->getRecvStat ();
+            StatType &sendstat = _simnodes[i]->getSendStat (true);
+            StatType &recvstat = _simnodes[i]->getRecvStat (true);
 
             sendstat.calculateAverage ();
             recvstat.calculateAverage ();            
