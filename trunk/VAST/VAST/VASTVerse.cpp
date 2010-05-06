@@ -188,6 +188,8 @@ namespace Vast
     VASTVerse (vector<IPaddr> &entries, VASTPara_Net *netpara, VASTPara_Sim *simpara)
     {
         _state = ABSENT;
+        _lastsend = _lastrecv = 0;
+        _next_periodic = 0;
 
         _logined = false;
 
@@ -498,11 +500,27 @@ namespace Vast
         if (handlers->msgqueue != NULL)
             handlers->msgqueue->tick ();
            
+        // perform per-second tasks
+        timestamp_t now = handlers->net->getTimestamp ();
+        if (now >= _next_periodic)
+        {
+            _next_periodic = now + handlers->net->getTimestampPerSecond ();
+        
+            // record network stat for this node
+            size_t size = handlers->net->getSendSize (0);            
+            _sendstat.addRecord (size - _lastsend);
+            _lastsend = size;
+        
+            size = handlers->net->getReceiveSize (0);
+            _recvstat.addRecord (size - _lastrecv);            
+            _lastrecv = size;
+        }
+
         // right now there's always time available
         return time_budget;
     }
 
-    // move logical clock forward (for simulation only)
+    // move logical clock forward
     void  
     VASTVerse::tickLogicalClock ()
     {
@@ -512,7 +530,7 @@ namespace Vast
         if (g_bridge != NULL)
         {
             g_bridge->tick ();
-        }
+        }      
     }
 
     // stop operations on this node
@@ -581,22 +599,30 @@ namespace Vast
     }
 
     // obtain the tranmission size by message type, default is to return all types
-    size_t 
-    VASTVerse::getSendSize (const msgtype_t msgtype)
+    StatType &
+    VASTVerse::getSendStat (const msgtype_t msgtype)
     {
+        /*
         VASTPointer *handlers = (VASTPointer *)_pointers;
         if (handlers->net != NULL)
             return handlers->net->getSendSize (msgtype);
         return 0;
-    }
+        */
 
-    size_t 
-    VASTVerse::getReceiveSize (const msgtype_t msgtype)
+        return _sendstat;
+    }
+    
+    StatType &
+    VASTVerse::getReceiveStat (const msgtype_t msgtype)
     {
+        /*
         VASTPointer *handlers = (VASTPointer *)_pointers;
         if (handlers->net != NULL)
             return handlers->net->getReceiveSize (msgtype);
         return 0;
+        */
+
+        return _recvstat;
     }
 
     // record nodeID on the same host

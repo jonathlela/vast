@@ -46,7 +46,7 @@
 
         state = WAITING;
 
-        _last_recv = _last_send = 0;        
+        //_last_recv = _last_send = 0;        
         clearVariables ();
     }
     
@@ -60,14 +60,15 @@
 
     void SimNode::clearVariables ()
     {
-        _steps_recorded = _seconds_recorded = 0;
+        _steps_recorded = 0;
+        //_seconds_recorded = 0;
         _min_aoi = _para.WORLD_WIDTH;
         _total_aoi = 0;
 
         _max_CN = _total_CN = 0;
                 
-        max_send_persec = max_recv_persec = 0;
-        _total_send = _total_recv = 0;
+        //max_send_persec = max_recv_persec = 0;
+        //_total_send = _total_recv = 0;
     }
     
     void SimNode::move ()
@@ -217,6 +218,7 @@
         _steps_recorded++;
     }
 
+    /*
     // record per node per second transmission 
     void SimNode::recordStatPerSecond ()
     {
@@ -235,6 +237,17 @@
         _last_recv = accumulated_recv ();
 
 		_seconds_recorded++;
+    }
+    */
+
+    StatType &SimNode::getSendStat ()
+    {
+        return _world->getSendStat ();
+    }
+
+    StatType &SimNode::getRecvStat ()
+    {
+        return _world->getReceiveStat ();
     }
 
     length_t SimNode::getAOI ()
@@ -263,15 +276,19 @@
         return _sub_no;
     }
     
+    /*
     inline size_t SimNode::accumulated_send () 
     {
-        return _world->getSendSize ();
+        //return _world->getSendSize ();
+        return _world->getSendStat ().total;
     }
 
     inline size_t SimNode::accumulated_recv () 
     {        
-        return _world->getReceiveSize ();
+        //return _world->getReceiveSize ();
+        return _world->getReceiveStat ().total;
     }
+    */
 
 	long SimNode::min_aoi ()
     {
@@ -296,6 +313,7 @@
         return (_steps_recorded == 0 ? 0 : (float)_total_CN / (float)_steps_recorded);
     }
 
+    /*
     float 
     SimNode::avg_send ()
     {
@@ -306,7 +324,8 @@
     SimNode::avg_recv ()
     {
         return (_seconds_recorded == 0 ? 0 : (float)_total_recv / (float)_seconds_recorded);
-    }    
+    } 
+    */
 
 	// distance to a point
     bool 

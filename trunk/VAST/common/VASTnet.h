@@ -266,6 +266,9 @@ namespace Vast {
         // periodic cleanup of inactive connections
         void cleanConnections ();
 
+        // remove a single connection cleanly
+        bool removeConnection (id_t target);
+
         // update send/recv size statistics
         // type: 1 = send, type: 2 = receive
         void updateTransmissionStat (id_t target, msgtype_t msgtype, size_t total_size, int type);

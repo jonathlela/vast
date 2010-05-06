@@ -71,26 +71,30 @@ namespace Vast
             list.push_back (it2->first);
 
         for (size_t i=0; i < list.size (); i++)
-            disconnect (list[i]);
-
-        _id2conn.clear ();        
+            removeConnection (list[i]);
+        
+        cleanConnections ();
 
         // NOTE: when _active turns false, the listening thread for messages will start to terminate
         //_active = false;
 
         // clean up the sendbufs
+        // NOTE: number of buffers may be larger than active connections, as remote host could disconnect me        
         // NOTE: important to also 'clear' the buffers to avoid double delete
+        /*
         std::map<id_t, VASTBuffer *>::iterator it;
         
         for (it = _sendbuf_TCP.begin (); it != _sendbuf_TCP.end (); it++)
             delete it->second;
-        _sendbuf_TCP.clear ();
-
+        
         for (it = _sendbuf_UDP.begin (); it != _sendbuf_UDP.end (); it++)
             delete it->second;
+
+        _sendbuf_TCP.clear ();
         _sendbuf_UDP.clear ();
-        
-        
+
+        */
+                        
         // clear up current messages received
         for (std::multimap<byte_t, QMSG *>::iterator it = _msgqueue.begin (); it != _msgqueue.end (); it++)
         {
@@ -945,19 +949,74 @@ namespace Vast
 #ifdef DEBUG_DETAIL
                 printf ("[%llu] ", remove_list[i]);
 #endif
-                disconnect (remove_list[i]);
-                
-                // remove address
-                // NOTE: disconnect would not remove id to address mapping as they could still be useful
-                //_id2addr.erase (remove_list[i]);
-                
-                // TODO: at somepoint should clean up id2host mappings
+                removeConnection (remove_list[i]);                                
             }
 #ifdef DEBUG_DETAIL        
             printf ("\n");
 #endif
         }
+
+        // TODO: cleaner way?
+        // remove send buffers no longer assocated with valid connections
+        std::map<id_t, VASTBuffer *>::iterator it;
+        remove_list.clear ();        
+        for (it = _sendbuf_TCP.begin (); it != _sendbuf_TCP.end (); it++)
+        {
+            if (isConnected (it->first) == false)
+            {
+                delete it->second;
+                remove_list.push_back (it->first);
+            }
+        }
+
+        for (size_t i=0; i < remove_list.size (); i++)
+            _sendbuf_TCP.erase (remove_list[i]);
+        
+        remove_list.clear ();
+        for (it = _sendbuf_UDP.begin (); it != _sendbuf_UDP.end (); it++)
+        {
+            if (isConnected (it->first) == false)
+            {
+                delete it->second;
+                remove_list.push_back (it->first);
+            }
+        }
+
+        for (size_t i=0; i < remove_list.size (); i++)
+            _sendbuf_UDP.erase (remove_list[i]);
     }
+
+    // remove a single connection cleanly
+    bool 
+    VASTnet::removeConnection (id_t target)
+    {
+        if (_id2conn.find (target) == _id2conn.end ())
+            return false;
+
+        disconnect (target);
+
+        // also remove the send buffer to this host
+        if (_sendbuf_TCP.find (target) != _sendbuf_TCP.end ())
+        {
+            delete _sendbuf_TCP[target];
+            _sendbuf_TCP.erase (target);
+        }
+
+        if (_sendbuf_UDP.find (target) != _sendbuf_UDP.end ())
+        {
+            delete _sendbuf_UDP[target];
+            _sendbuf_UDP.erase (target);
+        }
+
+        // remove address
+        // NOTE: disconnect should not remove id to address mapping as they could still be useful
+        //_id2addr.erase (remove_list[i]);
+        
+        // TODO: at somepoint should clean up id2host mappings
+
+        return true;
+    }
+
 
     // update send/recv size statistics
     // type 1: send, type 2: receive

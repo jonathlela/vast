@@ -238,12 +238,14 @@ public:
             }
         }
 
+        /*
         // record transmission size per simulated second
         if (_steps % _para.STEPS_PERSEC == 0)
         {
             for (i=0; i<n; ++i)
                 _simnodes[i]->recordStatPerSecond ();
         }
+        */
 
         // take snapshot records of current stat
         if (_steps % SNAPSHOT_INTERVAL == 0)
@@ -355,15 +357,23 @@ public:
             else
                 total_aoi += avg;
 
+            StatType &sendstat = _simnodes[i]->getSendStat ();
+            StatType &recvstat = _simnodes[i]->getRecvStat ();
+
+            sendstat.calculateAverage ();
+            recvstat.calculateAverage ();            
+
             // transmission
-            total_send += (size_t)_simnodes[i]->avg_send ();
-            total_recv += (size_t)_simnodes[i]->avg_recv ();
+            //total_send += (size_t)_simnodes[i]->avg_send ();
+            //total_recv += (size_t)_simnodes[i]->avg_recv ();
+            total_send += (size_t)sendstat.average;
+            total_recv += (size_t)recvstat.average; 
 
             // transmission per second
-            if (_simnodes[i]->max_send_persec > max_send_per_sec)
-                max_send_per_sec = _simnodes[i]->max_send_persec;
-            if (_simnodes[i]->max_recv_persec > max_recv_per_sec)
-                max_recv_per_sec = _simnodes[i]->max_recv_persec;
+            if (sendstat.maximum > max_send_per_sec)
+                max_send_per_sec = sendstat.maximum;
+            if (recvstat.maximum > max_recv_per_sec)
+                max_recv_per_sec = recvstat.maximum;
 
 			// CN
             if (_simnodes[i]->max_CN () > max_CN)
@@ -484,8 +494,8 @@ public:
 
 		for (i=0; i<_simnodes.size (); ++i)
         {
-            send_accumulated += _simnodes[i]->accumulated_send ();
-            recv_accumulated += _simnodes[i]->accumulated_recv ();
+            send_accumulated += _simnodes[i]->getSendStat ().total;
+            recv_accumulated += _simnodes[i]->getRecvStat ().total;
         }
 
         double consistency = (double)_AN_visible_accumulated / (double)_AN_actual_accumulated;
@@ -506,7 +516,7 @@ public:
         //
 
         fprintf (_fp, "\ntransmission size (total # of bytes over %u steps)\n\n", _steps);
-		fprintf (_fp, "             send       recv   DISCONNCT       ID    QUERY    HELLO       EN     MOVE   MOVE_B     NODE  OVERCAP  PAYLOAD\n");
+		fprintf (_fp, "             send (avg/max/min)   recv (avg/max/min)   DISCONNCT       ID    QUERY    HELLO       EN     MOVE   MOVE_B     NODE  OVERCAP  PAYLOAD\n");
 
 		for (i=0; i<_simnodes.size (); i++)
         {            
@@ -518,10 +528,13 @@ public:
             Vast::id_t id = node->get_id ();
             Vast::id_t sub = node->get_sub ();
             char *str = node->vnode->getStat ();
-            size_t send = node->accumulated_send ();
-            size_t recv = node->accumulated_recv ();
 
-            fprintf (_fp, "[%llu, %llu] %10u %10u\t%s\t", id, sub, send, recv, str);
+            StatType &sendstat = node->getSendStat ();
+            StatType &recvstat = node->getRecvStat ();
+            sendstat.calculateAverage ();
+            recvstat.calculateAverage ();
+
+            fprintf (_fp, "[%llu, %llu] %10u (%7u/%7u/%7u) %10u (%7u/%7u/%7u)\t%s\t", id, sub, sendstat.total, (size_t)sendstat.average, sendstat.maximum, sendstat.minimum, recvstat.total, (size_t)recvstat.average, recvstat.maximum, recvstat.minimum, str);
 
             /*
             StatType *peersize = _simnodes[i]->vnode->getPeerStat ();

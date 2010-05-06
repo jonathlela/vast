@@ -58,8 +58,12 @@ public:
 
     void recordStat ();
 
+    // get stat
+    StatType &getSendStat ();
+    StatType &getRecvStat ();
+
     // record per node per second transmission 
-    void recordStatPerSecond ();
+    //void recordStatPerSecond ();
 
     length_t getAOI ();
 
@@ -73,8 +77,8 @@ public:
     // get subscription ID
     Vast::id_t get_sub ();
     
-    size_t accumulated_send ();
-    size_t accumulated_recv ();
+    //size_t accumulated_send ();
+    //size_t accumulated_recv ();
 
     long min_aoi ();
 
@@ -84,9 +88,9 @@ public:
 
     float avg_CN ();
 
-    float avg_send ();
+    //float avg_send ();
 
-    float avg_recv ();
+    //float avg_recv ();
 
 	// distance to a point
     bool in_view (SimNode *remote_node);
@@ -109,7 +113,7 @@ public:
 
     VAST            *vnode;
     SimNodeState    state;
-    size_t          max_send_persec, max_recv_persec;
+    //size_t          max_send_persec, max_recv_persec;
 
 private:
     MovementGenerator   *_move_model;   // movement model (to provide a series of position updates)
@@ -133,16 +137,18 @@ private:
     // stat
     int         _steps;
     int         _steps_recorded;
-    int         _seconds_recorded;
+    
     long        _min_aoi, _total_aoi;    
     
     int         _max_CN, _total_CN;
 
-    size_t         _last_send;
-    size_t         _last_recv;
+    //int         _seconds_recorded;
 
-    size_t         _total_send;
-    size_t         _total_recv;
+    //size_t         _last_send;
+    //size_t         _last_recv;
+
+    //size_t         _total_send;
+    //size_t         _total_recv;
 
 };
 

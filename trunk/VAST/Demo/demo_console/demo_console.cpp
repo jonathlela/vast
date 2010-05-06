@@ -648,6 +648,9 @@ int main (int argc, char *argv[])
             
             if (self != NULL)
                 PrintNeighbors (curr_msec, self->id);
+
+            // just do some per second stat collection stuff
+            g_world->tickLogicalClock ();
         } 
         
         if (sleep_time > 0)

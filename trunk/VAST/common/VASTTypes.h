@@ -147,6 +147,10 @@ public:
 
     void addRecord (size_t value)
     {
+        // do not record empty values
+        if (value == 0)
+            return;
+
         total += value;
         if (value < minimum)
             minimum = value;

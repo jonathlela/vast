@@ -117,7 +117,7 @@ namespace Vast
         // NOTE: currently only (-1) would return
         int     tick (int time_budget = 0);
 
-        // move logical clock forward (for simulation only)
+        // move logical clock forward (mainly for simulation purpose, but also records per-second tasks)
         void    tickLogicalClock ();
 
         // stop operations on this node
@@ -137,8 +137,8 @@ namespace Vast
         int getConnectionSize ();
 
         // obtain the tranmission size by message type, default is to return all types
-        size_t  getSendSize (const msgtype_t msgtype = 0);
-        size_t  getReceiveSize (const msgtype_t msgtype = 0);
+        StatType &getSendStat (const msgtype_t msgtype = 0);
+        StatType &getReceiveStat (const msgtype_t msgtype = 0);
 
         // record nodeID on the same host
         void    recordLocalTarget (id_t target);
@@ -167,6 +167,15 @@ namespace Vast
 
         vector<Subscription> _vastinfo;     // info about a VASTNode to be created
         vector<IPaddr>      _entries;       // entry points for the overlay
+
+        // stat collection class
+        timestamp_t         _next_periodic; // next timestamp when per-second task is executed
+        StatType            _sendstat;      // stat on send size
+        StatType            _recvstat;      // stat on recv size
+        StatType            _connstat;      // stat on connection size
+
+        size_t              _lastsend;      // last accumulated send bytes
+        size_t              _lastrecv;      // last accumulated recv bytes
     };
 
 } // end namespace Vast
