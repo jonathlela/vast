@@ -419,7 +419,7 @@ namespace Vast
             printf ("[%llu] physical coord: (%.3f, %.3f)\n", handlers->net->getHostID (), physcoord->x, physcoord->y);
 
             // create (idle) 'matcher' instance
-            handlers->matcher = new VASTMatcher (_netpara.is_matcher, _netpara.overload_limit);
+            handlers->matcher = new VASTMatcher (_netpara.is_matcher, _netpara.overload_limit, _netpara.is_static, (_netpara.matcher_coord.isEmpty () ? NULL : &_netpara.matcher_coord));
             handlers->msgqueue->registerHandler (handlers->matcher);
 
             _logined = true;

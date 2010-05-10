@@ -172,6 +172,11 @@ namespace Vast
         // remove a client no longer connected
         void removeClient (id_t id);
 
+        // forward a message meant for client 'sub_id', to an actual client host
+        // if host_id is not provided then the message is simply removed
+        // returns the number of processed messages (forward or delete)
+        int forwardMessage (id_t sub_id, id_t host_id = NET_ID_UNASSIGNED);
+
         //
         //  physical coordinate discovery
         //
@@ -224,6 +229,9 @@ namespace Vast
         size_t          _client_limit;  // number of clients I can accomodate, could vary depending on load
 
         map<id_t, timestamp_t> _pending; // list of pending PING requests sent & sent time
+        
+        multimap<id_t, Message *> _queue;    // forward messages that can yet be sent (mapping not yet received)
+        map<id_t, timestamp_t> _queue_time;  // time a particular message is queued
 	};
 
 } // namespace Vast

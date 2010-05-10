@@ -141,7 +141,7 @@ public:
                     {
                         max_drift = drift;
 #ifdef DEBUG_DETAIL
-                        printf ("%4d - max drift updated: [%d] info on [%d] drift: %d\n", _steps+1, (int)_simnodes[i]->get_id (), (int)neighbor->id, (int)drift);
+                        printf ("%4d - max drift updated: [%d] info on [%d] drift: %d\n", _steps+1, (int)_simnodes[i]->getID (), (int)neighbor->id, (int)drift);
 #endif
                     }
                 }
@@ -229,8 +229,8 @@ public:
                 inconsistent_nodes++;
 
 #ifdef RECORD_INCONSISTENT_NODES
-                //pair<size_t, Vast::id_t> *in_node = new pair<size_t, Vast::id_t>(_steps, _simnodes[i]->get_id ());
-                _inconsistent_nodes.push_back (new pair<size_t, Vast::id_t>(_steps, _simnodes[i]->get_id ()));
+                //pair<size_t, Vast::id_t> *in_node = new pair<size_t, Vast::id_t>(_steps, _simnodes[i]->getID ());
+                _inconsistent_nodes.push_back (new pair<size_t, Vast::id_t>(_steps, _simnodes[i]->getID ()));
 #endif
                 // record the onset of an inconsistency
                 if (_last_consistent[i] == (_steps-1))
@@ -525,8 +525,8 @@ public:
             if (node->vnode == NULL)
                 continue;
 
-            Vast::id_t id = node->get_id ();
-            Vast::id_t sub = node->get_sub ();
+            Vast::id_t host_id = node->getHostID ();
+            Vast::id_t id = node->getID ();            
             char *str = node->vnode->getStat ();
 
             StatType &sendstat = node->getSendStat ();
@@ -534,7 +534,7 @@ public:
             sendstat.calculateAverage ();
             recvstat.calculateAverage ();
 
-            fprintf (_fp, "[%llu, %llu] %10u (%7u/%7u/%7u) %10u (%7u/%7u/%7u)\t%s\t", id, sub, sendstat.total, (size_t)sendstat.average, sendstat.maximum, sendstat.minimum, recvstat.total, (size_t)recvstat.average, recvstat.maximum, recvstat.minimum, str);
+            fprintf (_fp, "[%llu, %llu] %10u (%8u/%8u/%8u) %10u (%8u/%8u/%8u)\t%s\t", host_id, id, sendstat.total, (size_t)sendstat.average, sendstat.maximum, sendstat.minimum, recvstat.total, (size_t)recvstat.average, recvstat.maximum, recvstat.minimum, str);
 
             /*
             StatType *peersize = _simnodes[i]->vnode->getPeerStat ();

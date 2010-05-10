@@ -64,7 +64,8 @@ namespace Vast
 
         // constructor, passing in whether the node can be a matcher candidate, 
         // and what's the threshold considered as overload
-        VASTMatcher (bool is_matcher, int overload_limit);
+        // optionally a logical coordinate can be supplied as the initial join position
+        VASTMatcher (bool is_matcher, int overload_limit, bool is_static = false, Position *coord = NULL);
         ~VASTMatcher ();
         
         // join the Matcher overlay for a given world (gateway)
@@ -232,13 +233,14 @@ namespace Vast
         map<id_t, id_t>     _closest;           // mapping of subscription to closest alternative matcher
 
         bool                _is_matcher;        // whether the node can be a matcher candidate
+        bool                _is_static;         // whether the current matcher will never move
         int                 _overload_limit;    // # of subscriptions considered overload
         
         timestamp_t         _next_periodic;     // record for next time stamp to process periodic (per-second) tasks
 
         vector<Message *>   _queue;             // messages received but cannot yet processed before VSOpeer is joined
+            
 
-        
         //
         // stat collection
         //

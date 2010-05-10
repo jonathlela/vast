@@ -497,6 +497,11 @@ namespace Vast
                 in_msg.extract (sub_id);
 
                 _sub2client[sub_id] = in_msg.from;
+
+                // check if there are unprocessed forwarded messages due to this client
+                forwardMessage (sub_id, in_msg.from);
+
+                // NOTE: we'll periodically remove expired unforwarded messages
             }
             break;
         
@@ -535,11 +540,10 @@ namespace Vast
                 // store back app-specific message type
                 if (in_msg.msgtype == MESSAGE)
                     in_msg.msgtype = (app_msgtype << VAST_MSGTYPE_RESERVED) | MESSAGE;
-                                
-                in_msg.msggroup = MSG_GROUP_VAST_CLIENT;
-
+                                                
                 // translate targets to actual client hostID 
                 vector<id_t> clients;
+                vector<id_t> unknown_clients;
                 
                 for (size_t i=0; i < in_msg.targets.size (); i++)
                 {
@@ -549,14 +553,32 @@ namespace Vast
                         clients.push_back (_sub2client[target]);
                     else
                     {
+                        // record unresolved client targets
                         printf ("VASTRelay: cannot translate received subscriptionID [%llu] to clientID\n", target);
+                        unknown_clients.push_back (target);                        
                     }
                 }
 
+                // all forward messages are addressed to clients
+                in_msg.msggroup = MSG_GROUP_VAST_CLIENT;
+                
+                // store unknown clients
+                timestamp_t now = _net->getTimestamp ();                
+                for (size_t i=0; i < unknown_clients.size (); i++)
+                {
+                    in_msg.targets.clear ();
+                    in_msg.addTarget (unknown_clients[i]);
+
+                    // store a copy of the message into queue, also record the time
+                    _queue.insert (multimap<id_t, Message *>::value_type (unknown_clients[i], new Message (in_msg)));
+                    _queue_time[unknown_clients[i]] = now + (KEEPALIVE_RELAY * _net->getTimestampPerSecond ());
+                }
+                                
                 // use the converted client hostID
                 if (clients.size () > 0)
                 {
                     in_msg.targets = clients;
+                    
                     sendMessage (in_msg);
                 }
                 else
@@ -620,22 +642,7 @@ namespace Vast
 
                 // we only ping current relay once joined (to reduce PING traffic)
                 ping (isJoined ());
-                
-                /*
-                // if not yet joined, try to request more relays
-                if (_state != JOINED)
-                {
-                    Message msg (REQUEST);
-            
-                    // select a few (but not all relays)
-                    map<id_t, Node>::iterator it = _relays.begin ();
-                    for (; it != _relays.end (); it++)
-                        msg.addTarget (it->first);
-            
-                    sendRelay (msg);
-                }
-                */
-               
+                               
                 /*
                 else if (send_maintain)
                 {
@@ -643,6 +650,17 @@ namespace Vast
                         notifyPhysicalCoordinate ();
                 } 
                 */
+
+                // remove unforwarded messages that are expired
+                vector<id_t> remove_list;
+                map<id_t, timestamp_t>::iterator it = _queue_time.begin ();
+                for (; it != _queue_time.end (); it++)
+                    if (now > it->second)
+                        remove_list.push_back (it->first);
+
+                // remove each unforwarded messages
+                for (size_t i=0; i < remove_list.size (); i++)
+                    forwardMessage (remove_list[i]);
             }
         }
         
@@ -1121,6 +1139,38 @@ namespace Vast
 
         for (size_t i=0; i < remove_list.size (); i++)
             _sub2client.erase (remove_list[i]);
+    }
+
+    // forward a message meant for client 'sub_id', to an actual client host
+    // if host_id is not provided then the message is simply removed
+    int
+    VASTRelay::forwardMessage (id_t sub_id, id_t host_id)
+    {
+        multimap<id_t, Message *>::iterator it; 
+        int processed = 0;
+        
+        while ((it = _queue.find (sub_id)) != _queue.end ())
+        {
+            // if client host is provided, forward it
+            if (host_id != NET_ID_UNASSIGNED)
+            {
+                Message *msg = it->second;
+                msg->targets.clear ();
+                msg->addTarget (host_id);
+                msg->msggroup = MSG_GROUP_VAST_CLIENT;
+
+                sendMessage (*msg);
+            }
+
+            _queue_time.erase (sub_id);
+
+            delete it->second;                                        
+            _queue.erase (it);
+
+            processed++;
+        }
+
+        return processed;
     }
 
     // recalculate my physical coordinate estimation (using Vivaldi)

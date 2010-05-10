@@ -10,15 +10,20 @@ using namespace Vast;
 namespace Vast
 {   
 
-    VASTMatcher::VASTMatcher (bool is_matcher, int overload_limit)
+    VASTMatcher::VASTMatcher (bool is_matcher, int overload_limit, bool is_static, Position *coord)
             :MessageHandler (MSG_GROUP_VAST_MATCHER), 
              _state (ABSENT),
              _VSOpeer (NULL),
              _is_matcher (is_matcher),
+             _is_static (is_static),
              _overload_limit (overload_limit)
              //_tick (0)
     {
         _next_periodic = 0;
+        
+        // initialize initial join location
+        if (coord != NULL)
+            _self.aoi.center = *coord;            
     }
 
     VASTMatcher::~VASTMatcher ()
@@ -55,19 +60,18 @@ namespace Vast
        
         // NOTE: use a small default AOI length as we only need to know enclosing matchers
         //       also, it doesn't matter where our center is, as we will certainly
-        //       join at a different location as determined by the workload
-        _self.aoi.center = Position ();
+        //       join at a different location as determined by the workload        
         _self.aoi.radius = 5;
 
         // if we're gateway, then our VSOpeer also has to join
-        if (isGateway ())
+        if (isGateway () || _self.aoi.center.isEmpty () == false)
         {
             Node gateway;
             gateway.id = _gateway.host_id;
             gateway.addr = _gateway;
 
             // NOTE: no need to send in gateway address
-            _VSOpeer->join (_self.aoi, &gateway);            
+            _VSOpeer->join (_self.aoi, &gateway, _is_static);
         }
 
         // matcher is considered joined (initialized complete) once VSOpeer is created
@@ -242,6 +246,7 @@ namespace Vast
                 }
                 else
                 {
+                    // NOTE: if a matcher just departs, it's possible it will still receive messages from neighbor Matcher temporarily
                     printf ("[%llu] VASTMatcher::handleMessage () non-Matcher receives Matcher-specific message of type %d from [%llu]\n", _self.id, in_msg.msgtype, in_msg.from);
                     return false;
                 }
@@ -601,7 +606,8 @@ namespace Vast
             refreshMatcherList ();
         
             // check to call additional matchers for load sharing
-            checkOverload ();
+            if (_is_static == false)            
+                checkOverload ();
         
             // determine the AOI neighbors for each subscriber 
             refreshSubscriptionNeighbors ();

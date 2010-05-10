@@ -79,6 +79,9 @@ int InitPara (VAST_NetModel model, VASTPara_Net &netpara, SimPara &simpara, cons
     netpara.is_relay = true;
     netpara.is_matcher = true;
 
+    // dynamic load balancing is enabled by default
+    netpara.is_static = false;
+
     simpara.NODE_SIZE = 10;
 
     // which node to simulate, (0) means manual
@@ -372,8 +375,10 @@ bool CreateNode (bool wait_till_ready)
     if (g_para.STABLE_SIZE != 0 && (num_active >= (g_para.STABLE_SIZE * STABLE_SIZE_MULTIPLIER)))
         return false;
 
-    g_vastnetpara.is_relay = g_as_relay[i];
-    g_vastnetpara.is_matcher = g_as_matcher[i];
+    g_vastnetpara.is_relay      = g_as_relay[i];
+    g_vastnetpara.is_matcher    = g_as_matcher[i];
+    g_vastnetpara.is_static     = STATIC_PARTITIONING;
+
     SimNode *n = new SimNode (i+1, &g_move_model, g_gateway_addr, g_para, g_vastnetpara);
     g_nodes.push_back (n);
 
@@ -577,7 +582,7 @@ std::vector<Vast::id_t> *GetEnclosingNeighbors (int index, int level)
     if (v == NULL)
         return NULL;
 
-    return &v->get_en (g_nodes[index]->get_id (), level);
+    return &v->get_en (g_nodes[index]->getID (), level);
     */
 }
 

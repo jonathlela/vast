@@ -72,10 +72,10 @@ public:
     Node *getSelf ();
 
     // get unique ID
-    Vast::id_t get_id ();
+    Vast::id_t getID ();
 
     // get subscription ID
-    Vast::id_t get_sub ();
+    Vast::id_t getHostID ();
     
     //size_t accumulated_send ();
     //size_t accumulated_recv ();

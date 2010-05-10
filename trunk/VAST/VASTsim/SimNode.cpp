@@ -26,6 +26,29 @@
 
         _netpara.phys_coord   = _self.aoi.center;     // use our virtual coord as physical coordinate
 
+#ifdef PREASSIGNED_MATCHERS
+        if (_netpara.is_matcher)
+        {
+            // generate a joining coord based on how many to be generated
+            int no = id-1;
+            //int total = _para.NODE_SIZE;
+            int x_dim = _para.WORLD_WIDTH;
+            int y_dim = _para.WORLD_HEIGHT;
+
+            int side = (int) sqrt ((float)PREASSIGNED_MATCHERS);
+
+            int x_interval = x_dim / side;
+            int x_begin    = x_interval / 2;
+
+            int y_interval = y_dim / side;
+            int y_begin    = y_interval / 2;
+
+            //_netpara.matcher_coord = _self.aoi.center;    // use our virtual coord as physical coordinate
+            _netpara.matcher_coord.x = (coord_t)(x_begin + x_interval * (no % side));
+            _netpara.matcher_coord.y = (coord_t)(y_begin + y_interval * (no / side));
+        }
+#endif
+
         _simpara.fail_rate    = _para.FAIL_RATE;
         _simpara.loss_rate    = _para.LOSS_RATE;
 
@@ -268,15 +291,18 @@
         return &_self;
     }
 
-    Vast::id_t SimNode::get_id ()
+    Vast::id_t SimNode::getID ()
     {
         return _self.id;
     }
 
     // get subscription ID
-    Vast::id_t SimNode::get_sub ()
+    Vast::id_t SimNode::getHostID ()
     {
-        return _sub_no;
+        if (vnode != NULL && vnode->getSelf () != NULL)
+            return vnode->getSelf ()->id;
+        else
+            return 0;
     }
     
     /*
@@ -342,7 +368,7 @@
     Node *
     SimNode::knows (SimNode *node)
     {
-        Vast::id_t id = node->get_sub ();
+        Vast::id_t id = node->getID ();
         
         // see if 'node' is a known neighbor of me
         if (_neighbors.find (id) != _neighbors.end ())

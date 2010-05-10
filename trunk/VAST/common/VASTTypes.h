@@ -325,6 +325,11 @@ public:
         return (dx*dx + dy*dy + dz*dz);
     }
 
+    bool isEmpty ()
+    {
+        return (x == 0 && y == 0 && z == 0);
+    }
+
     // make current vector unit vector
     bool makeUnit ()
     {

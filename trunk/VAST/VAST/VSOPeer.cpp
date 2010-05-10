@@ -33,11 +33,12 @@ namespace Vast
 
     // perform joining the overlay
     void 
-    VSOPeer::join (Area &aoi, Node *gateway)
+    VSOPeer::join (Area &aoi, Node *gateway, bool is_static)
     {
         // NOTE: it's important to set newpos correctly so that self-adjust of center can be correct
         _newpos.aoi = aoi;
         VONPeer::join (aoi, gateway);
+        _is_static = is_static;
     }
 
     bool 
@@ -885,10 +886,11 @@ namespace Vast
             _next_periodic = now + _net->getTimestampPerSecond ();
 
             // move towards the center of load (subscriptions)
-            Position center;
-            if (getLoadCenter (center))
+            if (_is_static == false)
             {
-                _newpos.aoi.center += ((center - _newpos.aoi.center) * VSO_MOVEMENT_FRACTION);
+                Position center;
+                if (getLoadCenter (center))
+                    _newpos.aoi.center += ((center - _newpos.aoi.center) * VSO_MOVEMENT_FRACTION);
             }
 
             // remove obsolete objects (those unowned objects no longer being updated)

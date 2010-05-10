@@ -166,8 +166,8 @@ namespace Vast
         VSOPeer (id_t id, VONNetwork *net, VSOPolicy *policy, length_t aoi_buffer = AOI_DETECTION_BUFFER);        
         ~VSOPeer ();                        
 
-        // perform joining the overlay
-        void join (Area &aoi, Node *gateway);
+        // perform joining the overlay, indicate the joining position, AOI, contact gateway, also whether dynamic adjustment is enabled
+        void join (Area &aoi, Node *gateway, bool is_static = false);
 
         // returns whether the message was successfully handled
         bool handleMessage (Message &in_msg);
@@ -287,11 +287,10 @@ namespace Vast
         }
         
         
-        VSOPolicy *         _policy;            // various load balancing policies
-        
+        VSOPolicy *         _policy;            // various load balancing policies        
         NodeState           _vso_state;         // state of the VSOpeer
-
         Node                _newpos;            // new AOI & position to be updated due to load balancing
+        bool                _is_static;         // whether load balancing is turned off
                 
         // server data (Gateway node)       
         vector<Node>        _candidates;          // list of potential nodes      
