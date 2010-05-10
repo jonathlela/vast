@@ -36,8 +36,8 @@
 #define ACE_DISABLED_                        // we disable using ACE in emulation mode
 #define RECORD_INCONSISTENT_NODES_           // enable this will greatly reduce run speed
 
-#define PREASSIGNED_MATCHERS   9                // whether matchers join at beginning 
-const bool STATIC_PARTITIONING = true;          // whether dynamic load balancing is off
+#define PREASSIGNED_MATCHERS_   9                // whether matchers join at beginning 
+const bool STATIC_PARTITIONING = false;          // whether dynamic load balancing is off
 
 #include "VASTTypes.h"
 #include "Voronoi.h"

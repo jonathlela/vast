@@ -184,56 +184,65 @@ void checkJoin ()
         g_arbitrator = g_world->getArbitrator ();
 		g_agent = g_world->getAgent ();
 
-        g_state = JOINED;     
-		
-		if (g_agent != NULL) {
-			// record join time
-			time_t rawtime;          
-			time (&rawtime);
-
-			tm *timeinfo = gmtime (&rawtime);
-         
-			ACE_Time_Value startTime = ACE_OS::gettimeofday();
-			fprintf (g_position_log, "# Node joined, Position Log starts\n\n");
-			fprintf (g_neighbor_log, "# Node joined, Neighbor Log starts\n\n");
-
-			// node ID
-			Node *self = g_agent->getSelf ();
-			fprintf (g_position_log, "# node ID\n");
-			fprintf (g_position_log, "%d\n", (int)(self->id));
-			fprintf (g_neighbor_log, "# node ID\n");
-			fprintf (g_neighbor_log, "%d\n", (int)(self->id));
-		
-			fprintf (g_position_log, "# Start date/time\n"); 
-			fprintf (g_position_log, "# %s", asctime (timeinfo)); 
-			fprintf (g_position_log, "# GMT (hour:min:sec)\n%2d,%02d,%02d\n", 
-					timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
-			fprintf (g_position_log, "# second:millisec\n%d,%d\n", (int)startTime.sec (), (int)(startTime.usec () / 1000));      
-			fprintf (g_neighbor_log, "# Start date/time\n"); 
-			fprintf (g_neighbor_log, "#%s", asctime (timeinfo)); 
-			fprintf (g_neighbor_log, "# GMT (hour:min:sec)\n%2d,%02d,%02d\n", 
-					timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
-			fprintf (g_neighbor_log, "# second:millisec\n%d,%d\n", (int)startTime.sec (), (int)(startTime.usec () / 1000));        
-       
-			// simulating which node
-			fprintf (g_position_log, "# node path number simulated (-1 indicates manual control)\n");
-			fprintf (g_position_log, "%d\n", g_node_no);
-
-
-			// format
-			fprintf (g_position_log, "\n");
-			// fprintf (g_position_log, "# count,curr_sec (per second)\n"); 
-			fprintf (g_position_log, "# millisec,\"posX,posY\",elapsed (per step)\n\n");
-			fprintf (g_neighbor_log, "\n");
-			// fprintf (g_neighbor_log, "# count,curr_sec (per second)\n"); 
-			fprintf (g_neighbor_log, "# millisec,\"nodeID,posX,posY\", ... (per step)\n\n");
-
-			fflush (g_position_log); 
-			fflush (g_neighbor_log);
-		
-		}
+        g_state = JOINED;     		
 	}    
 #endif
+
+    if (g_state == JOINED && g_position_log != NULL)
+    {
+        Node *self;
+        id_t nodeID;
+
+#ifdef VAST_ONLY
+        self = g_self->getSelf ();
+        nodeID = g_self->getSubscriptionID ();
+#else
+        self = g_agent->getSelf ();
+        nodeID = self->id;
+#endif
+
+		// record join time
+		time_t rawtime;          
+		time (&rawtime);
+
+		tm *timeinfo = gmtime (&rawtime);
+        
+		ACE_Time_Value startTime = ACE_OS::gettimeofday();
+		fprintf (g_position_log, "# Node joined, Position Log starts\n\n");
+		fprintf (g_neighbor_log, "# Node joined, Neighbor Log starts\n\n");
+
+		// node ID
+		fprintf (g_position_log, "# node ID\n");
+		fprintf (g_position_log, "%llu\n", nodeID);
+		fprintf (g_neighbor_log, "# node ID\n");
+		fprintf (g_neighbor_log, "%llu\n", nodeID);
+		
+		fprintf (g_position_log, "# Start date/time\n"); 
+		fprintf (g_position_log, "# %s", asctime (timeinfo)); 
+		fprintf (g_position_log, "# GMT (hour:min:sec)\n%2d,%02d,%02d\n", 
+				timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
+		fprintf (g_position_log, "# second:millisec\n%d,%d\n", (int)startTime.sec (), (int)(startTime.usec () / 1000));      
+		fprintf (g_neighbor_log, "# Start date/time\n"); 
+		fprintf (g_neighbor_log, "#%s", asctime (timeinfo)); 
+		fprintf (g_neighbor_log, "# GMT (hour:min:sec)\n%2d,%02d,%02d\n", 
+				timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
+		fprintf (g_neighbor_log, "# second:millisec\n%d,%d\n", (int)startTime.sec (), (int)(startTime.usec () / 1000));        
+       
+		// simulating which node
+		fprintf (g_position_log, "# node path number simulated (-1 indicates manual control)\n");
+		fprintf (g_position_log, "%d\n", g_node_no);
+
+		// format
+		fprintf (g_position_log, "\n");
+		// fprintf (g_position_log, "# count,curr_sec (per second)\n"); 
+		fprintf (g_position_log, "# millisec,\"posX,posY\",elapsed (per step)\n\n");
+		fprintf (g_neighbor_log, "\n");
+		// fprintf (g_neighbor_log, "# count,curr_sec (per second)\n"); 
+		fprintf (g_neighbor_log, "# millisec,\"nodeID,posX,posY\", ... (per step)\n\n");
+
+		fflush (g_position_log); 
+		fflush (g_neighbor_log);	
+    }
 }
 
 void PrintNeighbors (long long curr_msec, Vast::id_t selfID)
@@ -247,7 +256,7 @@ void PrintNeighbors (long long curr_msec, Vast::id_t selfID)
 		printf ("Neighbors: ");
 
         if (g_neighbor_log != NULL)
-		    fprintf (g_neighbor_log, "%lld,%lld,", curr_msec, selfID);
+		    fprintf (g_neighbor_log, "%lld,%llu,", curr_msec, selfID);
 
 		for (size_t i = 0; i < neighbors.size (); i++)
 		{
@@ -646,8 +655,9 @@ int main (int argc, char *argv[])
             // per second neighbor list
             long long curr_msec = (long long) (start.sec () * 1000 + start.usec () / 1000);
             
-            if (self != NULL)
-                PrintNeighbors (curr_msec, self->id);
+            if (self != NULL)                
+                //PrintNeighbors (curr_msec, self->id);
+                PrintNeighbors (curr_msec, g_sub_no);
 
             // just do some per second stat collection stuff
             g_world->tickLogicalClock ();

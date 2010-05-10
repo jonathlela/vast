@@ -501,21 +501,24 @@ namespace Vast
             handlers->msgqueue->tick ();
            
         // perform per-second tasks
-        timestamp_t now = handlers->net->getTimestamp ();
-        if (now >= _next_periodic)
+        if (handlers->net != NULL)
         {
-            _next_periodic = now + handlers->net->getTimestampPerSecond ();
-        
-            // record network stat for this node
-            size_t size = handlers->net->getSendSize (0);            
-            _sendstat.addRecord (size - _lastsend);
-            _sendstat_interval.addRecord (size - _lastsend);
-            _lastsend = size;
-        
-            size = handlers->net->getReceiveSize (0);
-            _recvstat.addRecord (size - _lastrecv);
-            _recvstat_interval.addRecord (size - _lastrecv);
-            _lastrecv = size;
+            timestamp_t now = handlers->net->getTimestamp ();
+            if (now >= _next_periodic)
+            {
+                _next_periodic = now + handlers->net->getTimestampPerSecond ();
+            
+                // record network stat for this node
+                size_t size = handlers->net->getSendSize (0);            
+                _sendstat.addRecord (size - _lastsend);
+                _sendstat_interval.addRecord (size - _lastsend);
+                _lastsend = size;
+            
+                size = handlers->net->getReceiveSize (0);
+                _recvstat.addRecord (size - _lastrecv);
+                _recvstat_interval.addRecord (size - _lastrecv);
+                _lastrecv = size;
+            }
         }
 
         // right now there's always time available
