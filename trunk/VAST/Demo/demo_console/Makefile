@@ -17,10 +17,9 @@ CFLAGS      = -Wall -static
 
 INC_PATHS   = -I../../common -I../../VASTsim -I$(ACE_PATH) 
 
-LIB_PATHS   = -L../../lib -L../../Dependencies/lib/Release -L$(ACE_PATH)/lib -L$(ACE_PATH)/build/ace/.libs
+LIB_PATHS   = -L../../lib -L../../Dependencies/lib/Release -L$(ACE_PATH)/lib 
 
-LIBS = $(LIBS_COMMON) $(LIBS_ACE)
-#$(LIBS_THREAD) $(LIBS_DL)
+LIBS = $(LIBS_COMMON) $(LIBS_ACE) $(LIBS_THREAD) $(LIBS_DL)
 
 all: demo_console.cpp
 	g++ $(CFLAGS) $(INC_PATHS) $(LIB_PATHS) $< $(LIBS) \

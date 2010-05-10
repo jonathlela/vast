@@ -1003,7 +1003,7 @@ namespace Vast
                 rit++;
             }
 
-            printf ("[%llu] VASTRelay::cleanupRelays () remove %d relays\n", _self.id, remove_list.size ());
+            printf ("[%llu] VASTRelay::cleanupRelays () remove %lu relays\n", _self.id, remove_list.size ());
             for (size_t i=0; i < remove_list.size (); i++)  
                 removeRelay (remove_list[i]);
         }

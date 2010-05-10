@@ -9,7 +9,8 @@ ACE_ROOT = ../../ACE_wrappers
 
 #replace -fPIC with -static for static linking
 CFLAGS = -static -c -Wall -I$(ACE_ROOT) 
-#CFLAGS = -fPIC -c -Wall -I$(ACE_ROOT) -I../Dependencies/include
+#CFLAGS = -fPIC -c -Wall -I$(ACE_ROOT) 
+#-I../Dependencies/include
 
 sources_o = Compressor.cpp Errout.cpp \
             SectionedFile.cpp StdIO_SectionedFile.cpp \

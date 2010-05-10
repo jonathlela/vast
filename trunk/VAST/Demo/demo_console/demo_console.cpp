@@ -395,7 +395,7 @@ int main (int argc, char *argv[])
     srand (now.usec ());
     
     printf ("sizeof sizes:\n");
-    printf ("coord_t: %u Position: %u Area: %u IPaddr: %u Addr: %u Node: %u\n\n", 
+    printf ("coord_t: %lu Position: %lu Area: %lu IPaddr: %lu Addr: %lu Node: %lu\n\n", 
         sizeof (coord_t),
         sizeof (Position), 
         sizeof (Area),
@@ -405,7 +405,7 @@ int main (int argc, char *argv[])
 
     Position a; Area b; IPaddr c; Addr d; Node e;
     printf ("transfer sizes:\n");
-    printf ("coord_t: %u Position: %u Area: %u IPaddr: %u Addr: %u Node: %u\n\n", 
+    printf ("coord_t: %lu Position: %lu Area: %lu IPaddr: %lu Addr: %lu Node: %lu\n\n", 
         sizeof (coord_t),
         a.sizeOf (), 
         b.sizeOf (),
@@ -639,7 +639,7 @@ int main (int argc, char *argv[])
         if (start.sec () > curr_sec)
         {
             curr_sec = (long)start.sec ();
-            printf ("%ld s, tick %u, tick_persec %u, sleep: %lu us\n", 
+            printf ("%ld s, tick %lu, tick_persec %lu, sleep: %lu us\n", 
                      curr_sec, g_count, count_per_sec, (long) sleep_time);
             count_per_sec = 0;		
 

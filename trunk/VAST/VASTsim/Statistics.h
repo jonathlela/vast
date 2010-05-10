@@ -272,7 +272,7 @@ public:
         //
         fprintf (_fp, "Data Structure Sizes (in bytes)\n");
         fprintf (_fp, "-------------------------------\n");
-        fprintf (_fp, "id_t:%u length_t:%u msgtype_t:%u timestamp_t:%u Point:%u Node:%u Addr:%u\n\n\n", sizeof(Vast::id_t), sizeof(length_t), sizeof(msgtype_t), sizeof(timestamp_t), sizeof(Position), sizeof(Node), sizeof(Addr));
+        fprintf (_fp, "id_t:%lu length_t:%lu msgtype_t:%lu timestamp_t:%lu Point:%lu Node:%lu Addr:%lu\n\n\n", sizeof(Vast::id_t), sizeof(length_t), sizeof(msgtype_t), sizeof(timestamp_t), sizeof(Position), sizeof(Node), sizeof(Addr));
 
         fprintf (_fp, "Simulation Parameters\n");
         fprintf (_fp, "---------------------\n");
@@ -433,11 +433,11 @@ public:
         fprintf (_fp, "%3.4f%%\t", (float)consistency * 100);
 
         // Send / Recv
-        fprintf (_fp, "%8u %-8u  ", total_send/num_nodes, max_send_per_sec);
-        fprintf (_fp, "%8u %-8u  ", total_recv/num_nodes, max_recv_per_sec);
+        fprintf (_fp, "%8lu %-8lu  ", total_send/num_nodes, max_send_per_sec);
+        fprintf (_fp, "%8lu %-8lu  ", total_recv/num_nodes, max_recv_per_sec);
 
 		// RS
-        fprintf (_fp, "%3.3f %-3u  ", (_recovery_count > 0 ? (double)_recovery_steps/(double)_recovery_count : 0), _max_RS);
+        fprintf (_fp, "%3.3f %-3lu  ", (_recovery_count > 0 ? (double)_recovery_steps/(double)_recovery_count : 0), _max_RS);
 
         // drift distance
         fprintf (_fp, "%3.3f %-3d  ", (double)_total_drift / (double)_drift_nodes, (int)_max_drift);
@@ -449,20 +449,20 @@ public:
         fprintf (_fp, "%3.3f %-3d  ", (double)total_CN/(double)(num_nodes - CN_zero_count), max_CN);
 
         // AN
-        fprintf (_fp, "%3.3f %-3u  ", (double)_total_AN_visible/(double)num_samples, _max_AN);
+        fprintf (_fp, "%3.3f %-3lu  ", (double)_total_AN_visible/(double)num_samples, _max_AN);
 
         // RC
-        fprintf (_fp, "%3u %3u %3.2f%%  ", _recovery_count, _inconsistent_count, (_inconsistent_count > 0 ? ((double)_recovery_count/(double)_inconsistent_count*100): 0));
+        fprintf (_fp, "%3lu %3lu %3.2f%%  ", _recovery_count, _inconsistent_count, (_inconsistent_count > 0 ? ((double)_recovery_count/(double)_inconsistent_count*100): 0));
 
         // TC actual data
-        fprintf (_fp, " %7u %7u ", _total_AN_visible, _total_AN_actual);
+        fprintf (_fp, " %7lu %7lu ", _total_AN_visible, _total_AN_actual);
 
 #ifdef RECORD_LATENCY
         // latencies
         move_latency.calculateAverage ();
         publish_latency.calculateAverage ();
-        fprintf (_fp, "(%u %u %f) ", move_latency.minimum, move_latency.maximum, move_latency.average);
-        fprintf (_fp, "(%u %u %f) ", publish_latency.minimum, publish_latency.maximum, publish_latency.average);
+        fprintf (_fp, "(%lu %lu %f) ", move_latency.minimum, move_latency.maximum, move_latency.average);
+        fprintf (_fp, "(%lu %lu %f) ", publish_latency.minimum, publish_latency.maximum, publish_latency.average);
 #endif
 
         // end of line
@@ -503,7 +503,7 @@ public:
         printf ("writing summary..\n");
 
         fprintf (_fp, "\n\nSummary\n-------\n");
-        fprintf (_fp, "Total elapsed time (seconds): %d  stablized_steps: %u  run_steps: %u\n", (int)(time (NULL)-_starttime), _steps_stablized, _steps);
+        fprintf (_fp, "Total elapsed time (seconds): %d  stablized_steps: %lu  run_steps: %lu\n", (int)(time (NULL)-_starttime), _steps_stablized, _steps);
         fprintf (_fp, "Topology Consistency (overall):         %3.4f%%\n", consistency * 100);
         consistency = (double)(_AN_visible_accumulated-_AN_visible_first_interval) / (double)(_AN_actual_accumulated - _AN_actual_first_interval);
         fprintf (_fp, "Topology Consistency (after stablized): %3.4f%%\n\n", consistency * 100);
@@ -515,7 +515,7 @@ public:
         // transmission size stat
         //
 
-        fprintf (_fp, "\ntransmission size (total # of bytes over %u steps)\n\n", _steps);
+        fprintf (_fp, "\ntransmission size (total # of bytes over %lu steps)\n\n", _steps);
 		fprintf (_fp, "             send (avg/max/min)   recv (avg/max/min)   DISCONNCT       ID    QUERY    HELLO       EN     MOVE   MOVE_B     NODE  OVERCAP  PAYLOAD\n");
 
 		for (i=0; i<_simnodes.size (); i++)
@@ -534,7 +534,7 @@ public:
             sendstat.calculateAverage ();
             recvstat.calculateAverage ();
 
-            fprintf (_fp, "[%llu, %llu] %10u (%8u/%8u/%8u) %10u (%8u/%8u/%8u)\t%s\t", host_id, id, sendstat.total, (size_t)sendstat.average, sendstat.maximum, sendstat.minimum, recvstat.total, (size_t)recvstat.average, recvstat.maximum, recvstat.minimum, str);
+            fprintf (_fp, "[%llu, %llu] %10lu (%8lu/%8lu/%8lu) %10lu (%8lu/%8lu/%8lu)\t%s\t", host_id, id, sendstat.total, (size_t)sendstat.average, sendstat.maximum, sendstat.minimum, recvstat.total, (size_t)recvstat.average, recvstat.maximum, recvstat.minimum, str);
 
             /*
             StatType *peersize = _simnodes[i]->vnode->getPeerStat ();

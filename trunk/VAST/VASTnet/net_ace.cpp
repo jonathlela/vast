@@ -67,7 +67,7 @@ namespace Vast {
         ACE_Thread_Mutex mutex;
         _up_cond = new ACE_Condition<ACE_Thread_Mutex>(mutex);
         
-        printf ("ace_net::open (), before activate thread count: %d\n", this->thr_count ()); 
+        printf ("ace_net::open (), before activate thread count: %lu\n", this->thr_count ()); 
         
         // activate the ACE network layer as a thread
         // NOTE: _active should be set true by now, so that the loop in svc () may proceed correctly
@@ -81,7 +81,7 @@ namespace Vast {
         
         delete _up_cond;
         
-        printf ("ace_net::open (), after activate thread count: %d\n", this->thr_count ()); 
+        printf ("ace_net::open (), after activate thread count: %lu\n", this->thr_count ()); 
 
         return 0;
     }
@@ -96,7 +96,7 @@ namespace Vast {
             ACE_Thread_Mutex mutex;
             _down_cond = new ACE_Condition<ACE_Thread_Mutex>(mutex);
                    
-            printf ("ace_net::close () thread count: %d (before closing reactor)\n", this->thr_count ()); 
+            printf ("ace_net::close () thread count: %lu (before closing reactor)\n", this->thr_count ()); 
             
             // allow the reactor to leave its event handling loop
             _active = false;
@@ -109,7 +109,7 @@ namespace Vast {
             
             delete _down_cond;
 
-            printf ("ace_net::close (), thread count: %d (after closing reactor)\n", this->thr_count ()); 
+            printf ("ace_net::close (), thread count: %lu (after closing reactor)\n", this->thr_count ()); 
         }
 
         return 0;
