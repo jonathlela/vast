@@ -48,8 +48,8 @@ namespace Vast
     {
         VAST_NetModel   model;          // network model
         bool            is_entry;       // whether current node is an entry point to the overlay (assigns ID, determine physical coordinates)
-		bool			is_relay;       // whether this node should join as a relay (may not succeed depend on public IP is available)
-        bool			is_matcher;     // whether this node should join as a candidate matcher (need to be a relay as well)       
+	bool		is_relay;       // whether this node should join as a relay (may not succeed depend on public IP is available)
+        bool		is_matcher;     // whether this node should join as a candidate matcher (need to be a relay as well)       
         bool            is_static;      // whether static partitioning is used
         unsigned short  port;           // default port to use 
         Position        phys_coord;     // default physical coordinate (optional)

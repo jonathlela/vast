@@ -191,7 +191,7 @@ void checkJoin ()
     if (g_state == JOINED && g_position_log != NULL)
     {
         Node *self;
-        id_t nodeID;
+        Vast::id_t nodeID;
 
 #ifdef VAST_ONLY
         self = g_self->getSelf ();
@@ -545,6 +545,9 @@ int main (int argc, char *argv[])
         // record starting time of this cycle
         ACE_Time_Value start = ACE_OS::gettimeofday ();
 
+        // current time in millisecond 
+        long long curr_msec = (long long) (start.sec () * 1000 + start.usec () / 1000);
+
         g_count++;
         count_per_sec++;
 
@@ -561,7 +564,7 @@ int main (int argc, char *argv[])
 #else
         if (g_agent != NULL)
         {            
-		    self = g_agent->getSelf ();
+	    self = g_agent->getSelf ();
             id = self->id;
         }
 #endif
@@ -602,14 +605,14 @@ int main (int argc, char *argv[])
 				// only non-gateway nodes move
                 if (g_agent != NULL)
                 {
-					fprintf (g_position_log, "%lld,\"%d,%d,%d\",%lld [%u,%u]\n", curr_msec, (int)self->id,
-							(int)self->aoi.center.x, (int)self->aoi.center.y, elapsed,
-                            g_world->getSendSize (), g_world->getReceiveSize ());
-					fflush(g_position_log);
-
                     g_agent->move (g_aoi.center);
                 }
 #endif
+                fprintf (g_position_log, "%lld,\"%llu,%d,%d\",%lld [%lu,%lu]\n", curr_msec, id,
+                         (int)self->aoi.center.x, (int)self->aoi.center.y, elapsed,
+                         g_world->getSendStat ().total, g_world->getReceiveStat ().total);
+                fflush(g_position_log);
+
                 printf ("[%llu] moves to (%d, %d)\n", id, (int)g_aoi.center.x, (int)g_aoi.center.y); 
             }
 
@@ -653,7 +656,7 @@ int main (int argc, char *argv[])
             count_per_sec = 0;		
 
             // per second neighbor list
-            long long curr_msec = (long long) (start.sec () * 1000 + start.usec () / 1000);
+            //long long curr_msec = (long long) (start.sec () * 1000 + start.usec () / 1000);
             
             if (self != NULL)                
                 //PrintNeighbors (curr_msec, self->id);
