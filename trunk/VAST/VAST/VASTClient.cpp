@@ -103,6 +103,9 @@ namespace Vast
     bool
     VASTClient::subscribe (Area &area, layer_t layer)
     {
+        if (_net->getHostID () == 9151314447180627969)
+            printf ("here");
+
         // set timeout to re-try, necessary because it might take time for sending the subscription
         _timeout_subscribe = _net->getTimestamp () + (TIMEOUT_SUBSCRIBE * _net->getTimestampPerSecond ());
 
@@ -122,8 +125,9 @@ namespace Vast
         if (_state != JOINED || _relay->isJoined () == false)
             return false;
 
-        _sub.active = false;
-        _sub.relay  = _net->getAddress (_relay->getRelayID ());
+        _sub.host_id = _net->getHostID ();
+        _sub.active  = false;
+        _sub.relay   = _net->getAddress (_relay->getRelayID ());
 
         // send out subscription request
         Message msg (SUBSCRIBE);
@@ -515,7 +519,7 @@ namespace Vast
                 _self.aoi = _sub.aoi;
                                       
                 // notify network so incoming messages can be processed by this host
-                notifyMapping (sub_no, &_net->getHostAddress ());
+                //notifyMapping (sub_no, &_net->getHostAddress ());
 
                 // record new matcher, if different from existing one
                 if (matcher_addr.host_id != _matcher_id)
@@ -525,12 +529,14 @@ namespace Vast
                 }
 
                 // notify relay of my subscription
+                /*
                 Message msg (SUBSCRIBE_NOTIFY);
                 msg.priority = 1;
                 msg.msggroup = MSG_GROUP_VAST_RELAY;
                 msg.store (sub_no);
                 msg.addTarget (_relay->getRelayID ());
                 sendMessage (msg);
+                */
             }
             break;
 

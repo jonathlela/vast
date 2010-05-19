@@ -494,12 +494,16 @@ namespace Vast
         case SUBSCRIBE_NOTIFY:
             {
                 id_t sub_id;
+                id_t client_host_id;
                 in_msg.extract (sub_id);
+                in_msg.extract (client_host_id);
 
-                _sub2client[sub_id] = in_msg.from;
+                //_sub2client[sub_id] = in_msg.from;
+                _sub2client[sub_id] = client_host_id;
 
                 // check if there are unprocessed forwarded messages due to this client
-                forwardMessage (sub_id, in_msg.from);
+                //forwardMessage (sub_id, in_msg.from);
+                forwardMessage (sub_id, client_host_id);
 
                 // NOTE: we'll periodically remove expired unforwarded messages
             }

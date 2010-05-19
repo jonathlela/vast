@@ -647,6 +647,9 @@ namespace Vast
                 msg.store (transfers[i]);
 
                 obj_list.push_back (transfers[i].obj_id);
+                if (transfers[i].obj_id == 9151314447183986690)
+                    printf ("here");
+
                 num_transfer++;               
             }
         

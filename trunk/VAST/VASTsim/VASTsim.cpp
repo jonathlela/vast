@@ -371,8 +371,8 @@ bool CreateNode (bool wait_till_ready)
             num_active++;
     } 
 
-    // do not create beyond some multiple of stable size
-    if (g_para.STABLE_SIZE != 0 && (num_active >= (g_para.STABLE_SIZE * STABLE_SIZE_MULTIPLIER)))
+    // do not create beyond stable size
+    if (g_para.STABLE_SIZE != 0 && (num_active > g_para.STABLE_SIZE))
         return false;
 
     g_vastnetpara.is_relay      = g_as_relay[i];
@@ -438,9 +438,10 @@ int NextStep ()
         }
     }    
 
-    // fail a node if time has come    
+    // fail a node if time has come, but only within a certain time interval   
     if (g_para.FAIL_RATE > 0   && 
         num_active > g_para.STABLE_SIZE && 
+        g_steps > (g_para.TIME_STEPS / 3) && g_steps <= (2 * g_para.TIME_STEPS / 3) &&
         //num_active < (g_para.STABLE_SIZE * STABLE_SIZE_MULTIPLIER) &&
         g_steps % g_para.FAIL_RATE == 0)
     {
@@ -457,16 +458,22 @@ int NextStep ()
         // random fail
         case RANDOM:
             {
-                // NOTE: we assume there's definitely some node to fail, otherwise
-                //       will enter infinite loop
-                bool failed = false;
-                while (!failed)
+                if (num_active > 1)
                 {
-                    // do not fail gateway
-                    i = (rand () % (n-1))+1;
-                                    
-                    if (g_nodes[i]->isJoined ())
-                        break;
+                    // NOTE: we assume there's definitely some node to fail, otherwise
+                    //       will enter infinite loop
+                    bool failed = false;
+                    int tries = 0;
+                    while (!failed)
+                    {
+                        // do not fail gateway
+                        i = (rand () % (n-1))+1;
+                                        
+                        if (g_nodes[i]->isJoined () || tries > n)
+                            break;
+                
+                        tries++;
+                    }
                 }
             }
             break;

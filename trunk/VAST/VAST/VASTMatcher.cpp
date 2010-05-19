@@ -294,7 +294,7 @@ namespace Vast
                     closest == _self.id)
                 {
                     // store which host requests for the subscription
-                    sub.host_id = in_msg.from;
+                    //sub.host_id = in_msg.from;
 
                     // slight increase AOI radius to avoid client-side ghost objects
                     sub.aoi.radius += SUBSCRIPTION_AOI_BUFFER;
@@ -324,16 +324,40 @@ namespace Vast
                         updateSubscription (sub.id, sub.aoi, 0, &sub.relay, &is_owner);
                     }
 
-                    // send back acknowledgement of subscription to client
-                    Message msg (SUBSCRIBE_R);
+                    // notify relay of the client's subscription -> hostID mapping
+                    Message msg (SUBSCRIBE_NOTIFY);
+                    msg.priority = 1;
+                    msg.msggroup = MSG_GROUP_VAST_RELAY;
+                    msg.store (sub.id);
+                    msg.store (sub.host_id);
+                    msg.addTarget (sub.relay.host_id);
+                    sendMessage (msg);
+
+                    // send back acknowledgement of subscription to client via the relay
+                    // NOTE: acknowledge should be sent via relay in general,
+                    //       as the subscribe request could be forwarded many times
+                    msg.clear (SUBSCRIBE_R);
                     msg.priority = 1;
 
                     // store both the assigned subscription ID, and also this matcher's address
                     // (so the client may switch the current matcher)
                     msg.store (sub.id);
-                    msg.store (_self.addr);
+                    msg.store (_self.addr);                    
                     
-                    sendClientMessage (msg, in_msg.from);
+                    msg.addTarget (sub.id);
+                    sendClientMessage (msg);
+
+                    /*
+                    // if the client connects directly to me, send reply directly
+                    if (sub.host_id == in_msg.from)
+                        sendClientMessage (msg, in_msg.from);
+                    //otherwise send via its relay
+                    else
+                    {
+                        msg.addTarget (sub.id);
+                        sendClientMessage (msg);
+                    }
+                    */
 
                     // erase closest matcher record, so that the subscribing client will be notified again
                     // this occurs when the client is re-subscribing to a substitute matcher in case of its current matcher's failure
@@ -347,6 +371,7 @@ namespace Vast
                     // forward the message to neighbor closest to the subscribed point
                     in_msg.reset ();
                     in_msg.targets.clear ();
+                    //in_msg.from = _self.id;
                     in_msg.addTarget (closest);                         
 
                     sendMessage (in_msg);

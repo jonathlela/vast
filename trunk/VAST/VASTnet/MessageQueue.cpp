@@ -49,6 +49,9 @@ namespace Vast
         _id2host[nodeID] = addr->host_id;
         _net->storeMapping (*addr);
 
+        if (nodeID == 9151314447179857922 && _net->getHostID () == 9151314447179841537)
+            printf ("here");
+
         return true;
     }
 
