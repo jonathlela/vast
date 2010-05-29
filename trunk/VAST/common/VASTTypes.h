@@ -59,6 +59,8 @@ namespace Vast
 #define UNIQUE_ID(x,y) ((y << (32 - VAST_ID_PRIVATE_BITS)) | x)
 */
 
+#define VAST_EXTRACT_ASSIGNED_ID(host_id) (host_id & (0xFFFF >> 2))
+
 typedef unsigned long long  id_t;           // hostID (globally unique) or nodeID (unique within each world)
 typedef unsigned long       timestamp_t;    // timestamp type, stores the timestamp obtained from system
                                             // NOTE: that current net_ace time is millisecond accuracy since program start (so up to 50 days since execution)

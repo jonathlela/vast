@@ -443,7 +443,9 @@ int main (int argc, char *argv[])
 
     // store default gateway address
     string str ("127.0.0.1:1037");
-    g_gateway = *VASTVerse::translateAddress (str);
+    //g_gateway = *VASTVerse::translateAddress (str);
+    g_gateway.fromString (str);
+    g_gateway.host_id = ((id_t)g_gateway.publicIP.host << 32) | ((id_t)g_gateway.publicIP.port << 16) | NET_ID_RELAY;
 
     // initialize parameters
     SimPara simpara;
@@ -608,10 +610,14 @@ int main (int argc, char *argv[])
                     g_agent->move (g_aoi.center);
                 }
 #endif
-                fprintf (g_position_log, "%lld,\"%llu,%d,%d\",%lld [%lu,%lu]\n", curr_msec, id,
-                         (int)self->aoi.center.x, (int)self->aoi.center.y, elapsed,
-                         g_world->getSendStat ().total, g_world->getReceiveStat ().total);
-                fflush(g_position_log);
+                // if I'm not gateway & need to record position
+                if (g_position_log != NULL)
+                {
+                    fprintf (g_position_log, "%lld,\"%llu,%d,%d\",%lld [%lu,%lu]\n", curr_msec, id,
+                             (int)self->aoi.center.x, (int)self->aoi.center.y, elapsed,
+                             g_world->getSendStat ().total, g_world->getReceiveStat ().total);
+                    fflush(g_position_log);
+                }
 
                 printf ("[%llu] moves to (%d, %d)\n", id, (int)g_aoi.center.x, (int)g_aoi.center.y); 
             }

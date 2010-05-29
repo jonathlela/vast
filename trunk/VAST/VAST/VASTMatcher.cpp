@@ -281,6 +281,7 @@ namespace Vast
                 // NOTE: we allow sending SUBSCRIBE for existing subscription if
                 //       the subscription has updated (for example, the relay has changed)
 
+                printf ("VASTMatcher [%llu] request from [%llu] received\n", _self.id, in_msg.from);
                 Subscription sub;
                 in_msg.extract (sub);
 
@@ -371,7 +372,6 @@ namespace Vast
                     // forward the message to neighbor closest to the subscribed point
                     in_msg.reset ();
                     in_msg.targets.clear ();
-                    //in_msg.from = _self.id;
                     in_msg.addTarget (closest);                         
 
                     sendMessage (in_msg);
@@ -682,6 +682,8 @@ namespace Vast
         _VSOpeer->insertSharedObject (sub.id, sub.aoi, is_owner, &it->second);
         
         // notify network layer of the subscriberID -> relay hostID mapping
+        // also register the relay
+        notifyMapping (sub.relay.host_id, &sub.relay);
         notifyMapping (sub.id, &sub.relay);
 
         return true;

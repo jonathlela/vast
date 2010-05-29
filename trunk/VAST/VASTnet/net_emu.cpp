@@ -226,6 +226,7 @@ namespace Vast
             if (qmsg->recvtime == 0 || time > qmsg->recvtime)
             {
                 _msgqueue.erase (it);
+
                 return qmsg;
             }
         }
@@ -237,7 +238,7 @@ namespace Vast
     // returns success or not
     bool 
     net_emu::store (QMSG *qmsg)
-    {
+    {        
         // we store message according to message priority
         _msgqueue.insert (std::multimap<byte_t, QMSG *>::value_type (qmsg->msg->priority, qmsg));        
 

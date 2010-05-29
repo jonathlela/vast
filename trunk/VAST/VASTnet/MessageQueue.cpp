@@ -49,9 +49,6 @@ namespace Vast
         _id2host[nodeID] = addr->host_id;
         _net->storeMapping (*addr);
 
-        if (nodeID == 9151314447179857922 && _net->getHostID () == 9151314447179841537)
-            printf ("here");
-
         return true;
     }
 
@@ -81,19 +78,7 @@ namespace Vast
             if (_id2host.find (target) != _id2host.end ())
                 host_id = _id2host[target];
             else                
-            {
-                /*
-                // for newly joined nodes (without unique ID)
-                if (_id2newhost.find (target) != _id2newhost.end ())
-                {
-                    host_id = _id2newhost[target];
-                    _id2newhost.erase (target);
-                                      
-                    targets[i] = target = NET_ID_UNASSIGNED;                   
-                }
-                else
-                */
-                    
+            {                    
                 // route to default host if mapping is not found
                 host_id = _default_host;
             }            
@@ -226,7 +211,8 @@ namespace Vast
 
             // check if we should process or forward the message 
             else if (recvmsg->from != NET_ID_UNASSIGNED) 
-            {                
+            {             
+                
                 // record a copy of the fromID to hostID mapping (to send reply messages)
                 // NOTE that 'from' cannot be self, otherwise all messages to self could be
                 //      routed to a foreign host
@@ -235,17 +221,22 @@ namespace Vast
                 {
 
                     // NOTE: 'from' and 'fromhost' can differ if the following condition exists:
-                    //       1) 'from' is a logical ID (not hostID, but a VONpeer ID, for example)
+                    //       1) 'from' is a logical ID (not host, but a VONpeer, for example)
                     //       2) 'from' is a hostID but the message has been forwarded by 'fromhost' (for example, for QUERY message)
                     // in such case, a forward mapping may be built for a certain hostID
-                    // but this may causes issues in some cases (then explicit notifyMapping () is required to notify network layer of the correct hostID mapping)
-                    _id2host[recvmsg->from] = fromhost;
+                    // but this may causes issues in some cases 
+                    // (e.g. explicit notifyMapping () is required to notify network layer of the correct hostID mapping)
+
+                    // record mapping if this is not a relayed message
+                    if (recvmsg->from == fromhost)
+                        _id2host[recvmsg->from] = fromhost;
                 }
+                
                 
                 //
                 // go through each target
                 //
-                vector<id_t> forward_targets;       // targets handled by remote hosts
+                //vector<id_t> forward_targets;       // targets handled by remote hosts
                 vector<id_t> local_targets;         // targets handled by local host
 
                 map<id_t, id_t>::iterator it;
@@ -253,13 +244,20 @@ namespace Vast
                 {
                     id_t target = recvmsg->targets[i];
 
-                    // determine if we should forward it
+                    it = _id2host.find (target);
+
+                    // if we should process this message, either addressed to us, or mapping not found
+                    // NOTE: reason why we should process it if mapping not found is that
+                    //       before the initial notification for my subscriptionID is processed, this node would not know what it is
                     if (target == _net->getHostID () ||
-                        (it = _id2host.find (target)) == _id2host.end () ||
+                        it == _id2host.end () || 
                         it->second == _net->getHostID ())
-                        local_targets.push_back (target);                        
+                        local_targets.push_back (target);
                     else
-                        forward_targets.push_back (target);
+                    {
+                        printf ("MessageQueue::processMessages () [%llu] received target [%llu] not for me\n", _net->getHostID (), target);
+                        //forward_targets.push_back (target);
+                    }                        
                 }
 
                 // if the target is for local host or no mapping can be found 
@@ -280,12 +278,14 @@ namespace Vast
                         num_msg++;                          
                 }
 
+                /*
                 // if there are still targets left, assume they're for forwarding
                 if (forward_targets.size () > 0)
                 {
                     recvmsg->targets = forward_targets;
                     sendMessage (*recvmsg);
                 }
+                */
             }
         }
 

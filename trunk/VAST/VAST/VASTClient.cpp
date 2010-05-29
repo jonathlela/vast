@@ -103,9 +103,6 @@ namespace Vast
     bool
     VASTClient::subscribe (Area &area, layer_t layer)
     {
-        if (_net->getHostID () == 9151314447180627969)
-            printf ("here");
-
         // set timeout to re-try, necessary because it might take time for sending the subscription
         _timeout_subscribe = _net->getTimestamp () + (TIMEOUT_SUBSCRIBE * _net->getTimestampPerSecond ());
 
@@ -278,8 +275,14 @@ namespace Vast
         if (_state != JOINED)
             return 0;
 
+        // prepare message to send to matcher
         Message msg (message);
         msg.msggroup = MSG_GROUP_VAST_MATCHER;
+
+        // record my subscription ID as the default 'from' field, if not already specified
+        // NOTE: this is to allow the recipiant to properly identify me and send reply back
+        if (msg.from == 0)
+            msg.from = _sub.id;
 
 #ifdef VAST_RECORD_LATENCY
         msg.store (_net->getTimestamp ());  // store sendtime for latency calculation
@@ -527,16 +530,6 @@ namespace Vast
                     _matcher_id = matcher_addr.host_id;
                     notifyMapping (matcher_addr.host_id, &matcher_addr);
                 }
-
-                // notify relay of my subscription
-                /*
-                Message msg (SUBSCRIBE_NOTIFY);
-                msg.priority = 1;
-                msg.msggroup = MSG_GROUP_VAST_RELAY;
-                msg.store (sub_no);
-                msg.addTarget (_relay->getRelayID ());
-                sendMessage (msg);
-                */
             }
             break;
 

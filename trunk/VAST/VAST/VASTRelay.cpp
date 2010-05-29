@@ -490,7 +490,7 @@ namespace Vast
             }
             break;
 
-        // getting a notice from client about its subscribion ID
+        // notification from matcher about mapping from subscription ID to host ID
         case SUBSCRIBE_NOTIFY:
             {
                 id_t sub_id;
@@ -1140,9 +1140,11 @@ namespace Vast
         for (; itr != _sub2client.end (); itr++)
             if (itr->second == id)
                 remove_list.push_back (itr->first);
-
+        
         for (size_t i=0; i < remove_list.size (); i++)
+        {
             _sub2client.erase (remove_list[i]);
+        }
     }
 
     // forward a message meant for client 'sub_id', to an actual client host

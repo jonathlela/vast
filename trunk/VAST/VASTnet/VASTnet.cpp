@@ -713,7 +713,8 @@ namespace Vast
     VASTnet::resolveAssignedID (id_t host_id)
     {
         // last 16 bits are assigned ID + ID group (2 bits)
-        return (host_id & (0xFFFF >> 2));
+        //return (host_id & (0xFFFF >> 2));
+        return VAST_EXTRACT_ASSIGNED_ID (host_id);
     }
 
     // obtain the port portion of the ID

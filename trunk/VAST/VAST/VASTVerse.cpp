@@ -323,6 +323,7 @@ namespace Vast
         // create the VAST node
         if (_state == ABSENT)
         {            
+            printf ("state = ABSENT\n");
             if ((createClient (info.relay.publicIP)) != NULL)
             {                            
                 printf ("VASTVerse::getVASTNode () client created\n");
@@ -331,6 +332,7 @@ namespace Vast
         }
         else if (_state == JOINING)
         {
+            printf ("state = JOINING\n");
             if (handlers->client->isJoined ())
             {
                 printf ("VASTVerse::getVASTNode () subscribing ... \n");
@@ -340,6 +342,7 @@ namespace Vast
         }
         else if (_state == JOINING_2)
         {
+            printf ("state = JOINING_2\n");
             if (handlers->client->getSubscriptionID () != NET_ID_UNASSIGNED)
             {
                 printf ("VASTVerse::getVASTNode () ID obtained, joined\n");
@@ -348,7 +351,10 @@ namespace Vast
         }
 
         if (_state == JOINED)
+        {
+            printf ("state = JOINED\n");
             return handlers->client;
+        }
         else
             return NULL;
     }
