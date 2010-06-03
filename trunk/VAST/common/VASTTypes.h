@@ -71,17 +71,18 @@ namespace Vast
 
 typedef uint64_t    id_t;           // hostID (globally unique) or nodeID (unique within each world)
 typedef uint32_t    timestamp_t;    // timestamp type, stores the timestamp obtained from system
-                                            // NOTE: that current net_ace time is millisecond accuracy since program start (so up to 50 days since execution)
+                                    // NOTE: that current net_ace time is millisecond accuracy since program start (so up to 50 days since execution)
 typedef uint8_t     byte_t;
 typedef uint16_t    word_t;
+typedef uint32_t    vsize_t;        // size_t used in VAST
 
 typedef float       coord_t;        // type of coordinates
 typedef uint16_t    length_t;       // type for a length, for radius or rectangle length
 
-typedef int16_t     msgtype_t;          // the types of messages (0 - 65535)
-typedef int16_t     layer_t;            // the number of layers in the overlay (0 - 255)
+typedef int16_t     msgtype_t;      // the types of messages (0 - 65535)
+typedef int16_t     layer_t;        // the number of layers in the overlay (0 - 255)
 
-typedef uint8_t     listsize_t;         // size of a list sent over network
+typedef uint8_t     listsize_t;     // size of a list sent over network
 
 #define VAST_MSGTYPE_RESERVED 8                         // 8 bits for reserved message type
 #define VAST_MSGTYPE(x) (0x0FF & x)                     // mask off app-specific message types
@@ -1178,22 +1179,22 @@ public:
 
     // store an item to this message, record_size indicates whether this is
     // a fixed-size item or variable-size item (needs to records its size)
-    bool store (const char *p, size_t item_size, bool record_size = false)
+    bool store (const char *p, vsize_t item_size, bool record_size = false)
     {
         // if no internal allocation, then cannot store new data
         if (_alloc == false)
             return false;
 
         // check available space
-        expand ((record_size ? (item_size + sizeof(size_t)) : item_size));
+        expand ((record_size ? (item_size + sizeof (vsize_t)) : item_size));
 
         // always store at end
         _curr = data + size;
 
         if (record_size)
         {
-            memcpy (_curr, &item_size, sizeof (size_t));
-            addSize (sizeof (size_t));
+            memcpy (_curr, &item_size, sizeof (vsize_t));
+            addSize (sizeof (vsize_t));
         }
 
         // copy data and adjust pointer & size
@@ -1206,7 +1207,7 @@ public:
     bool store (const Serializable &obj)
     {
         // first make sure we've got enough space
-        size_t item_size = obj.serialize (NULL);
+        vsize_t item_size = obj.serialize (NULL);
         this->expand (item_size);
 
         _curr = data + size;
@@ -1249,7 +1250,7 @@ public:
     // extract an item from this message
     // item_size == 0 indicates a variable size item, item_size > 0 means fixed-size item
     // NOTE: the destination pointer is assumed to have enough space
-    size_t extract (char *p, size_t item_size, bool from_end = false)
+    size_t extract (char *p, vsize_t item_size, bool from_end = false)
     {
         // extract "item size" first, if not specified
         if (item_size == 0)
@@ -1258,10 +1259,10 @@ public:
             if (from_end == true)
                 return 0;
 
-            if ((size_t)((_curr + sizeof(size_t)) - data) <= size)
+            if ((size_t)((_curr + sizeof (vsize_t)) - data) <= size)
             {
-                memcpy (&item_size, _curr, sizeof (size_t));
-                _curr += sizeof (size_t);
+                memcpy (&item_size, _curr, sizeof (vsize_t));
+                _curr += sizeof (vsize_t);
             }
         }
 
@@ -1291,7 +1292,7 @@ public:
     // extract to a serializable object
     size_t extract (Serializable &obj, bool from_end = false)
     {
-        size_t item_size = obj.serialize (NULL);
+        vsize_t item_size = obj.serialize (NULL);
 
         // see if we still have something to extract
         if ((size_t)((_curr + item_size) - data) > size)
@@ -1381,8 +1382,8 @@ public:
             memcpy (p, &from, sizeof (id_t));
             p += sizeof (id_t);
 
-            memcpy (p, &size, sizeof (size_t));
-            p += sizeof (size_t);
+            memcpy (p, &size, sizeof (vsize_t));
+            p += sizeof (vsize_t);
             
             memcpy (p, &msgtype, sizeof (msgtype_t));
             p += sizeof (msgtype_t);
@@ -1434,13 +1435,14 @@ public:
             // restore header part first
             // sender, size, type, group, priority, reliablity
             size_t header_size = sizeof (id_t) + 
-                                 sizeof (size_t) +
+                                 sizeof (vsize_t) +
                                  sizeof (msgtype_t) + 
                                  sizeof (byte_t) +
                                  sizeof (byte_t) +
                                  sizeof (bool) + 
                                  sizeof (listsize_t);
-printf ("deserialize header: %lu, received size: %lu size_t: %lu\n", header_size, size, sizeof (size_t));
+
+            printf ("deserialize header: %lu, received size: %lu vsize_t: %lu\n", header_size, size, sizeof (vsize_t));
 
             // size check
             if (size < header_size)
@@ -1452,8 +1454,8 @@ printf ("deserialize header: %lu, received size: %lu size_t: %lu\n", header_size
             p += sizeof (id_t);
 
             // restore message size
-            memcpy (&size_restored, p, sizeof (size_t));
-            p += sizeof (size_t);
+            memcpy (&size_restored, p, sizeof (vsize_t));
+            p += sizeof (vsize_t);
 
             // restore message type, priority, message size 
             memcpy (&msgtype, p, sizeof (msgtype_t));            
@@ -1515,7 +1517,7 @@ printf ("deserialize header: %lu, received size: %lu size_t: %lu\n", header_size
 
     // add a specified size to the current valid message size
     // returns the adjusted _curr pointer
-    inline char *addSize (size_t item_size)
+    inline char *addSize (vsize_t item_size)
     {
         _curr += item_size;
         _free -= item_size;
@@ -1529,7 +1531,7 @@ printf ("deserialize header: %lu, received size: %lu size_t: %lu\n", header_size
     size_t sizeOf () const
     {        
         return (sizeof (id_t) +                     // sender (from)    
-                sizeof (size_t) +                   // msg size
+                sizeof (vsize_t) +                   // msg size
                 sizeof (msgtype_t) +                // msgtype
                 sizeof (byte_t) +                   // msggroup                 
                 sizeof (byte_t) +                   // priority
