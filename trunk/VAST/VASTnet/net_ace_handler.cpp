@@ -99,7 +99,7 @@ namespace Vast {
                 ACE_ERROR_RETURN ((LM_DEBUG, "(%5t) [tcp-size] remote close (fd = %d)\n", this->get_handle() ), -1);
             }
             
-            //ACE_DEBUG( (LM_DEBUG, "(%5t) handle_input: msgsize: %d\n", msg_size ) );
+            ACE_DEBUG( (LM_DEBUG, "(%5t) handle_input: header.msgsize: %d, bytes_transferred: %u\n", header.msg_size, bytes_transferred) );
             
             // check buffer size
             _buf.reserve (header.msg_size);
@@ -116,8 +116,8 @@ namespace Vast {
                 if (n != header.msg_size)
                     ACE_ERROR_RETURN ((LM_ERROR, "(%5t) [tcp-body] size mismatch (expected:%u actual:%u)\n", header.msg_size, n), -1);
             }
-                   
-            //if (processmsg (header, _buf.data) == (-1))
+           
+            printf ("msgsize: %lu bytes_transferred: %lu\n", n, bytes_transferred);        
             
             // handle raw message
             id_t id = ((VASTnet *)_msghandler)->processRawMessage (header, _buf.data, _remote_id, &_remote_IP, this);

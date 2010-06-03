@@ -342,6 +342,8 @@ namespace Vast
             return NET_ID_UNASSIGNED;
         }
 
+        printf ("header.type=%d\n", (int)header.type);
+
         switch (header.type)
         {
         case ID_REQUEST:
@@ -362,6 +364,7 @@ namespace Vast
                         register_conn (remote_id, handler);
                 
                         // send back reply to ID request
+                        printf ("send back ID_ASSIGN\n");
                         sendMessage (remote_id, *msg, true, ID_ASSIGN);
                     } 
                 }
@@ -804,7 +807,11 @@ namespace Vast
         //id_t port = VASTnet::resolvePort (id);
 
         // debug msg
-        //printf ("[%lld] ID request from: %lld (%s:%d) actual address (%s:%d)\n", _host. addr.host_id, IP_sent, addr.publicIP.port, IP_actual, actual_addr.publicIP.port);
+        char ip[40], ip2[40];
+        detectedIP.getString (ip);
+        actualIP->getString (ip2);
+        
+        printf ("[%llu] ID request from: %llu (%s) actual address (%s)\n", _id, id, ip, ip2); 
         
         // we assume the remote host has public IP
         // if actual IP is provided, we perform a more accurate check

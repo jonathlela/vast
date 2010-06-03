@@ -445,7 +445,7 @@ int main (int argc, char *argv[])
     string str ("127.0.0.1:1037");
     //g_gateway = *VASTVerse::translateAddress (str);
     g_gateway.fromString (str);
-    g_gateway.host_id = ((id_t)g_gateway.publicIP.host << 32) | ((id_t)g_gateway.publicIP.port << 16) | NET_ID_RELAY;
+    g_gateway.host_id = ((Vast::id_t)g_gateway.publicIP.host << 32) | ((Vast::id_t)g_gateway.publicIP.port << 16) | NET_ID_RELAY;
 
     // initialize parameters
     SimPara simpara;
