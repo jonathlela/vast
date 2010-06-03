@@ -117,7 +117,7 @@ namespace Vast {
                     ACE_ERROR_RETURN ((LM_ERROR, "(%5t) [tcp-body] size mismatch (expected:%u actual:%u)\n", header.msg_size, n), -1);
             }
            
-            printf ("msgsize: %lu bytes_transferred: %lu\n", n, bytes_transferred);        
+            //printf ("msgsize: %lu bytes_transferred: %lu\n", n, bytes_transferred);        
             
             // handle raw message
             id_t id = ((VASTnet *)_msghandler)->processRawMessage (header, _buf.data, _remote_id, &_remote_IP, this);

@@ -1442,7 +1442,7 @@ public:
                                  sizeof (bool) + 
                                  sizeof (listsize_t);
 
-            printf ("deserialize header: %lu, received size: %lu vsize_t: %lu\n", header_size, size, sizeof (vsize_t));
+            //printf ("deserialize header: %lu, received size: %lu vsize_t: %lu\n", header_size, size, sizeof (vsize_t));
 
             // size check
             if (size < header_size)

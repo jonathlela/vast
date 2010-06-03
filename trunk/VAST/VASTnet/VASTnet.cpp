@@ -325,7 +325,7 @@ namespace Vast
             return NET_ID_UNASSIGNED;
         }
 
-        printf ("header.type=%d\n", (int)header.type);
+        //printf ("header.type=%d\n", (int)header.type);
 
         switch (header.type)
         {
