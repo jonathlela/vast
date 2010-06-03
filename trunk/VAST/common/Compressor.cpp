@@ -30,7 +30,7 @@ namespace Vast
 
 
 // deflate data from source buffer to destination buffer
-size_t Compressor::compress (unsigned char *source, unsigned char *dest, size_t size)
+size_t Compressor::compress (uint8_t *source, uint8_t *dest, size_t size)
 {	
     int ret;
     size_t have;

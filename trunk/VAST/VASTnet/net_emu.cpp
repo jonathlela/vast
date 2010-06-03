@@ -40,7 +40,7 @@ namespace Vast
         //gateway = *VASTVerse::translateAddress (str);
 
         // store IP:port for this host
-        _addr.setPublic (2130706433, (unsigned short)(1037 + id - 1));
+        _addr.setPublic (2130706433, (uint16_t)(1037 + id - 1));
 
         // translate our ID
         id_t new_id = VASTnet::resolveHostID (&_addr.publicIP);

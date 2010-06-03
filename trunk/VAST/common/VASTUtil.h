@@ -87,8 +87,8 @@ public:
     }
 
     virtual bool open    (const std::string & file_name, SFOpenMode mode) = 0;
-    virtual int  read    (unsigned int section_id, void * buffer, int record_size, int record_count) = 0;
-    virtual int  write   (unsigned int section_id, void * buffer, int record_size, int record_count) = 0;
+    virtual int  read    (uint32_t section_id, void * buffer, int record_size, int record_count) = 0;
+    virtual int  write   (uint32_t section_id, void * buffer, int record_size, int record_count) = 0;
     virtual bool close   () = 0;
     virtual bool refresh () = 0;
 };
@@ -128,22 +128,22 @@ public:
     }
 
     bool open  (const string & filename, SFOpenMode mode);
-    int  read  (unsigned int section_id, void * buffer, int record_size, int record_count);
-    int  write (unsigned int section_id, void * buffer, int record_size, int record_count);
+    int  read  (uint32_t section_id, void * buffer, int record_size, int record_count);
+    int  write (uint32_t section_id, void * buffer, int record_size, int record_count);
     bool close ();
     bool refresh ();
     void error (const char * msg);
 
 private:
     FILE * _fp;
-    map<unsigned int,vector<unsigned char> > section;
+    map<uint32_t,vector<uint8_t> > section;
     SFOpenMode _mode;
 };
 
 class EXPORT Compressor
 {
 public:
-    size_t compress (unsigned char *source, unsigned char *dest, size_t size);
+    size_t compress (uint8_t *source, uint8_t *dest, size_t size);
 };
 
 class EXPORT LogFileManager

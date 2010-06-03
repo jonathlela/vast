@@ -25,7 +25,7 @@
 namespace Vast {
 
     // constructor
-    net_ace::net_ace (unsigned short port)
+    net_ace::net_ace (uint16_t port)
         :_port_self (port), 
          _up_cond (NULL), 
          _down_cond (NULL), 
@@ -44,8 +44,8 @@ namespace Vast {
         //       is set in svc ()
         //       reason is that when VASTVerse is created, it needs to find out / resolve
         //       actual address for gateway whose IP is "127.0.0.1"
-        _addr.setPublic ((unsigned long)addr.get_ip_address (), 
-                         (unsigned short)addr.get_port_number ());
+        _addr.setPublic ((uint32_t)addr.get_ip_address (), 
+                         (uint16_t)addr.get_port_number ());
 
         // set the conversion rate between seconds and timestamp unit
         // for net_ace it's 1000 timestamp units = 1 second
@@ -151,8 +151,8 @@ namespace Vast {
 
         // TODO: this should really be the private IP, public should be obtained from a server
         // register my own address        
-        _addr.setPublic ((unsigned long)addr.get_ip_address (), 
-                          (unsigned short)addr.get_port_number ());
+        _addr.setPublic ((uint32_t)addr.get_ip_address (), 
+                          (uint16_t)addr.get_port_number ());
          
         // wait a bit to avoid signalling before the main thread tries to wait
         ACE_Time_Value tv (0, 200000);

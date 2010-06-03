@@ -194,7 +194,7 @@ namespace Vast
 		std::map<id_t, netmsg *>::const_iterator end_it = _sendqueue.end();
 		
 		// each target peer's max quota per step
-		const unsigned int max_peer_quota = mycap/ (min(myconns, sendTarget)); 
+		const uint32_t max_peer_quota = mycap/ (min(myconns, sendTarget)); 
         if (max_peer_quota <= 0)
             return 0;
 

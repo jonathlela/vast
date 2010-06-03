@@ -170,7 +170,7 @@ int InitPara (VAST_NetModel model, VASTPara_Net &netpara, SimPara &simpara, cons
 
         // command line radius takes precedence than INI radius
         if (aoi.radius == (length_t)DEFAULT_AOI)
-            aoi.radius             = simpara.AOI_RADIUS;        
+            aoi.radius = (length_t)simpara.AOI_RADIUS;        
     }
     else  
     {

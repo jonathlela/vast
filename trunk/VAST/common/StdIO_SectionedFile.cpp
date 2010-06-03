@@ -58,19 +58,19 @@ bool StdIO_SectionedFile::open  (const string & filename, SFOpenMode mode)
 
     if (mode == SFMode_Read)
     {
-        unsigned int section_count;
-        vector<unsigned int> section_id;
-        vector<unsigned int> section_size;
-        if (fread (&section_count, sizeof (unsigned int), 1, _fp) != 1)
+        uint32_t section_count;
+        vector<uint32_t> section_id;
+        vector<uint32_t> section_size;
+        if (fread (&section_count, sizeof (uint32_t), 1, _fp) != 1)
         {
             error ("StdIO_SectionedFile: open (): reading section count error.\n");
             return false;
         }
 
-        for (unsigned int sci = 0; sci < section_count; sci ++)
+        for (uint32_t sci = 0; sci < section_count; sci ++)
         {
-            unsigned int i[2];
-            if (fread (&i, sizeof (unsigned int), 2, _fp) != 2)
+            uint32_t i[2];
+            if (fread (&i, sizeof (uint32_t), 2, _fp) != 2)
             {
                 error ("StdIO_SectionedFile: open (): reading section id&size error.\n");
                 return false;
@@ -80,7 +80,7 @@ bool StdIO_SectionedFile::open  (const string & filename, SFOpenMode mode)
             section_size.push_back (i[1]);
         }
 
-        for (unsigned int scii = 0; scii < section_count; scii ++)
+        for (uint32_t scii = 0; scii < section_count; scii ++)
         {
             section[section_id[scii]].insert (section[section_id[scii]].end (), section_size[scii], 0);
             if (fread (&(section[section_id[scii]][0]), section_size[scii], 1, _fp) != 1)
@@ -95,17 +95,17 @@ bool StdIO_SectionedFile::open  (const string & filename, SFOpenMode mode)
     return true;
 }
 
-int  StdIO_SectionedFile::read  (unsigned int section_id, void * buffer, int record_size, int record_count)
+int  StdIO_SectionedFile::read  (uint32_t section_id, void * buffer, int record_size, int record_count)
 {
     if (_mode != SFMode_Read)
         return 0;
 
-    unsigned int actually_readed = 0;
+    uint32_t actually_readed = 0;
     int record_readed = 0;
 
     while ((section[section_id].size () >= static_cast<size_t>(record_size)) && (record_readed < record_count))
     {
-        unsigned char * buffer_c = static_cast<unsigned char *>(buffer);
+        uint8_t * buffer_c = static_cast<uint8_t *>(buffer);
         memcpy (&buffer_c[actually_readed], &(section[section_id][actually_readed]), (size_t) record_size);
         record_readed ++;
         actually_readed += record_size;
@@ -115,11 +115,11 @@ int  StdIO_SectionedFile::read  (unsigned int section_id, void * buffer, int rec
     return record_readed;
 }
 
-int  StdIO_SectionedFile::write (unsigned int section_id, void * buffer, int record_size, int record_count)
+int  StdIO_SectionedFile::write (uint32_t section_id, void * buffer, int record_size, int record_count)
 {
     if (_mode != SFMode_Write)
         return 0;
-    section[section_id].insert (section[section_id].end (), static_cast<unsigned char *>(buffer), static_cast<unsigned char *>(buffer) + (record_size * record_count));
+    section[section_id].insert (section[section_id].end (), static_cast<uint8_t *>(buffer), static_cast<uint8_t *>(buffer) + (record_size * record_count));
     return record_count;
 }
 
@@ -138,20 +138,20 @@ bool StdIO_SectionedFile::refresh ()
 {
     if ((_fp != NULL) && (_mode == SFMode_Write))
     {
-        unsigned int record_count = static_cast<unsigned int>(section.size ());
-        vector<unsigned char> buffer;
-        buffer.reserve (record_count * sizeof (unsigned int) * 2);
+        uint32_t record_count = static_cast<uint32_t>(section.size ());
+        vector<uint8_t> buffer;
+        buffer.reserve (record_count * sizeof (uint32_t) * 2);
 
-        map<unsigned int,vector<unsigned char> >::iterator sit = section.begin ();
+        map<uint32_t,vector<uint8_t> >::iterator sit = section.begin ();
         for (; sit != section.end (); sit ++)
         {
-            unsigned int id = sit->first;
-            unsigned int size = (unsigned int) sit->second.size ();
-            buffer.insert (buffer.end (), reinterpret_cast<unsigned char *>(&id), reinterpret_cast<unsigned char *>(&id + 1));
-            buffer.insert (buffer.end (), reinterpret_cast<unsigned char *>(&size), reinterpret_cast<unsigned char *>(&size + 1));
+            uint32_t id = sit->first;
+            uint32_t size = (uint32_t) sit->second.size ();
+            buffer.insert (buffer.end (), reinterpret_cast<uint8_t *>(&id), reinterpret_cast<uint8_t *>(&id + 1));
+            buffer.insert (buffer.end (), reinterpret_cast<uint8_t *>(&size), reinterpret_cast<uint8_t *>(&size + 1));
         }
 
-        if (fwrite (&record_count, sizeof(unsigned int), 1, _fp) != 1)
+        if (fwrite (&record_count, sizeof(uint32_t), 1, _fp) != 1)
         {
             error ("StdIO_SectionedFile: refresh (): writing record count to file error.\n");
             return false;
@@ -163,7 +163,7 @@ bool StdIO_SectionedFile::refresh ()
             return false;
         }
 
-        map<unsigned int,vector<unsigned char > >::iterator sbit = section.begin ();
+        map<uint32_t,vector<uint8_t > >::iterator sbit = section.begin ();
         for (; sbit != section.end (); sbit ++)
         {
             if (fwrite (&(sbit->second[0]), sbit->second.size (), 1, _fp) != 1)

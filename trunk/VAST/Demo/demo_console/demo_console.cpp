@@ -388,7 +388,7 @@ void TestSerialization ()
 */
 
 int main (int argc, char *argv[])
-{        
+{      
     ACE::init ();
 
     // check correctness of parameter serialization
@@ -404,9 +404,13 @@ int main (int argc, char *argv[])
     srand (now.usec ());
     
     printf ("sizeof sizes:\n");
-    printf ("coord_t: %lu Position: %lu Area: %lu IPaddr: %lu Addr: %lu Node: %lu\n\n", 
+    printf ("VASTheader: %lu id_t: %lu timestamp_t: %lu length_t: %lu coord_t: %lu\nPosition: %lu Area: %lu IPaddr: %lu Addr: %lu Node: %lu\n\n",
+        sizeof (VASTHeader),
+        sizeof (Vast::id_t),
+        sizeof (timestamp_t),
+        sizeof (length_t),
         sizeof (coord_t),
-        sizeof (Position), 
+        sizeof (Position),
         sizeof (Area),
         sizeof (IPaddr),
         sizeof (Addr),
@@ -414,13 +418,15 @@ int main (int argc, char *argv[])
 
     Position a; Area b; IPaddr c; Addr d; Node e;
     printf ("transfer sizes:\n");
-    printf ("coord_t: %lu Position: %lu Area: %lu IPaddr: %lu Addr: %lu Node: %lu\n\n", 
+    printf ("VASTheader: %lu coord_t: %lu Position: %lu Area: %lu IPaddr: %lu Addr: %lu Node: %lu\n\n",
+        sizeof (VASTHeader),
         sizeof (coord_t),
-        a.sizeOf (), 
+        a.sizeOf (),
         b.sizeOf (),
         c.sizeOf (),
         d.sizeOf (),
         e.sizeOf ());
+
 
     // set default values
 #ifndef VAST_ONLY

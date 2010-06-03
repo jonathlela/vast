@@ -78,8 +78,8 @@ namespace Vast {
     // header used by all VAST messages
     typedef struct 
     {
-        unsigned long type : 2;     // type of message (0: ID request; 1: ID assignment; 3: handshake; 4: regular) 
-        unsigned long msg_size : 30;    // size of message
+        uint32_t type     : 2;     // type of message (0: ID request; 1: ID assignment; 3: handshake; 4: regular) 
+        uint32_t msg_size : 30;    // size of message
     } VASTHeader;
 
     // common message types

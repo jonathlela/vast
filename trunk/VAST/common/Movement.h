@@ -128,7 +128,7 @@ public:
 
 // specific movement model-only coordinates,
 // content is adjustable based on needs
-typedef unsigned short movecoord_t;
+typedef uint16_t movecoord_t;
 
 class MoveCoord
 {

@@ -193,23 +193,6 @@ namespace Vast
           
                 sendMessage (target, msg, true, ID_REQUEST);
                 printf ("VASTnet::isJoined () sending ID_REQUEST to gateway [%llu]\n", target);
-
-                /*
-                // create & send ID request message, consists of
-                //   1) NET_ID_UNASSIGNED  2) determined hostID and 3) detected IP
-                const size_t total_size = sizeof (id_t) + sizeof (id_t) + sizeof (unsigned long);
-                char msg[sizeof (size_t) + total_size];
-
-                char *p = msg;
-
-                memcpy (p, (char *)&total_size, sizeof (size_t));       p += sizeof (size_t);
-                memcpy (p, (char *)&_id, sizeof (id_t));                p += sizeof (id_t);
-                memcpy (p, (char *)&id, sizeof (id_t));                 p += sizeof (id_t);
-                memcpy (p, (char *)&host, sizeof (unsigned long));
-
-                validateConnection (target);
-                send (target, msg, sizeof (size_t) + total_size);
-                */
             }
         }
 

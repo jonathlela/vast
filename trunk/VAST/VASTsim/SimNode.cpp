@@ -14,10 +14,11 @@
     {                     
         _self.id = NET_ID_UNASSIGNED;
         _nodeindex = id;
+        
         if (_para.AOI_RADIUS < 0)
-            _self.aoi.radius = (-1)*_para.AOI_RADIUS + (rand () % 3-1) * (rand () % _para.AOI_RADIUS);
+            _self.aoi.radius = (length_t)((-1)*_para.AOI_RADIUS + (rand () % 3-1) * (rand () % _para.AOI_RADIUS));
         else
-            _self.aoi.radius = _para.AOI_RADIUS;
+            _self.aoi.radius = (length_t)_para.AOI_RADIUS;
 
         // obtain initial position
         _steps = 0;
@@ -177,7 +178,7 @@
             // change sign for multiplier
             radius_delta *= -1;
         }
-        _self.aoi.radius += radius_delta;
+        _self.aoi.radius += (length_t)radius_delta;
 
         if (_self.aoi.radius < 5)    
             _self.aoi.radius = 5;

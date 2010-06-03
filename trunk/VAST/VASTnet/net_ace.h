@@ -67,7 +67,7 @@ namespace Vast {
 
     public:
         
-        net_ace (unsigned short port);
+        net_ace (uint16_t port);
 
         ~net_ace ()
         {          
@@ -143,7 +143,7 @@ namespace Vast {
         id_t unregister_conn (id_t id);
         //id_t update_conn (id_t prev_id, id_t curr_id);
 
-        unsigned short              _port_self;
+        uint16_t              _port_self;
 
 
 

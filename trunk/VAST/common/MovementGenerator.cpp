@@ -106,7 +106,7 @@ MovementGenerator::initModel (int model, SectionedFile *record, bool replay,
                               int num_nodes, int num_steps, double speed)
 {
     errout eo;
-    srand ((unsigned int) time (NULL));
+    srand ((uint32_t) time (NULL));
     
     map<int, vector<MoveCoord> > &_pos_list = *__pos_list;
 

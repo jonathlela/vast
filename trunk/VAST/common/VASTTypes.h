@@ -59,21 +59,23 @@ namespace Vast
 #define UNIQUE_ID(x,y) ((y << (32 - VAST_ID_PRIVATE_BITS)) | x)
 */
 
+#include "stdint.h"     // compiler-independent integer types
+
 #define VAST_EXTRACT_ASSIGNED_ID(host_id) (host_id & (0xFFFF >> 2))
 
-typedef unsigned long long  id_t;           // hostID (globally unique) or nodeID (unique within each world)
-typedef unsigned long       timestamp_t;    // timestamp type, stores the timestamp obtained from system
+typedef uint64_t    id_t;           // hostID (globally unique) or nodeID (unique within each world)
+typedef uint32_t    timestamp_t;    // timestamp type, stores the timestamp obtained from system
                                             // NOTE: that current net_ace time is millisecond accuracy since program start (so up to 50 days since execution)
-typedef unsigned char       byte_t;
-typedef unsigned short      word_t;
+typedef uint8_t     byte_t;
+typedef uint16_t    word_t;
 
-typedef float               coord_t;        // type of coordinates
-typedef unsigned long       length_t;       // type for a length, for radius or rectangle length
+typedef float       coord_t;        // type of coordinates
+typedef uint16_t    length_t;       // type for a length, for radius or rectangle length
 
-typedef unsigned short  msgtype_t;          // the types of messages (0 - 65535)
-typedef unsigned short  layer_t;            // the number of layers in the overlay (0 - 255)
+typedef int16_t     msgtype_t;          // the types of messages (0 - 65535)
+typedef int16_t     layer_t;            // the number of layers in the overlay (0 - 255)
 
-typedef unsigned char   listsize_t;         // size of a list sent over network
+typedef uint8_t     listsize_t;         // size of a list sent over network
 
 #define VAST_MSGTYPE_RESERVED 8                         // 8 bits for reserved message type
 #define VAST_MSGTYPE(x) (0x0FF & x)                     // mask off app-specific message types
@@ -497,9 +499,9 @@ public:
         return 0;
     }
 
-    Position    center;
     length_t    radius;         
     length_t    height;     // if height is available then radius acts as width in a rectangle
+    Position    center;
     //length_t    width;
 };
 
@@ -512,22 +514,22 @@ public:
     {
     }
     
-    IPaddr (unsigned long i, unsigned short p)
+    IPaddr (uint32_t i, uint16_t p)
     {
         host = i;
         port = p;
     }
     
-    IPaddr (const char *ip_string, unsigned short p)
+    IPaddr (const char *ip_string, uint16_t p)
     {
-        unsigned long i = 0;
+        uint32_t i = 0;
 
         if (ip_string != NULL)
         {
             int j=0;
             char c;
             
-            unsigned long t = 0;
+            uint32_t t = 0;
             while ((c = ip_string[j++]) != '\0')
             {
                 if (c >= '0' && c <= '9')
@@ -574,14 +576,14 @@ public:
     {
         size_t port_part;
 
-        if ((port_part = instr.find (":")) == ((unsigned)(-1)))
+        if ((port_part = instr.find (":")) == ((size_t)(-1)))
             return -1;
 
         int port = atoi (instr.substr (port_part + 1).c_str ());
         if (port <= 0 || port >= 65535)
             return -1;
 
-        addr = IPaddr (instr.substr (0, port_part).c_str (), (unsigned short)port);
+        addr = IPaddr (instr.substr (0, port_part).c_str (), (uint16_t)port);
         return 0;
     }
 
@@ -593,16 +595,16 @@ public:
     // size of this class
     size_t sizeOf () const
     {
-        return sizeof (unsigned long) + sizeof (unsigned short) * 2;
+        return sizeof (uint32_t) + sizeof (uint16_t) * 2;
     }
 
     size_t serialize (char *p) const
     {
         if (p != NULL)
         {
-            memcpy (p, &host, sizeof (unsigned long));  p += sizeof (unsigned long);            
-            memcpy (p, &port, sizeof (unsigned short)); p += sizeof (unsigned short);
-            memcpy (p, &pad, sizeof (unsigned short)); 
+            memcpy (p, &host, sizeof (uint32_t));  p += sizeof (uint32_t);            
+            memcpy (p, &port, sizeof (uint16_t)); p += sizeof (uint16_t);
+            memcpy (p, &pad, sizeof (uint16_t)); 
         }
         return sizeOf ();
     }
@@ -611,9 +613,9 @@ public:
     {        
         if (p != NULL && size >= sizeOf ())
         {
-            memcpy (&host, p, sizeof (unsigned long));  p += sizeof (unsigned long);            
-            memcpy (&port, p, sizeof (unsigned short)); p += sizeof (unsigned short);
-            memcpy (&pad, p, sizeof (unsigned short));
+            memcpy (&host, p, sizeof (uint32_t));  p += sizeof (uint32_t);            
+            memcpy (&port, p, sizeof (uint16_t)); p += sizeof (uint16_t);
+            memcpy (&pad, p, sizeof (uint16_t));
             return sizeOf ();
         }
         return 0;        
@@ -623,9 +625,9 @@ public:
     // see VASTNode::addPeer (). do not change it without also modifying VASTATE
     // TODO: cleaner way?
 
-    unsigned long       host;
-    unsigned short      port;   
-    unsigned short      pad;        
+    uint32_t      host;
+    uint16_t      port;   
+    uint16_t      pad;        
     
 };
 
@@ -674,14 +676,14 @@ public:
         //privateIP.port = 0;
     }
 
-    void setPublic (unsigned long i, unsigned short p)
+    void setPublic (uint32_t i, uint16_t p)
     {
         publicIP.host = i;
         publicIP.port = p;
     }
     
 /*
-    void setPrivate (unsigned long i, unsigned short p)
+    void setPrivate (uint32_t i, uint16_t p)
     {
         privateIP.host = i;
         privateIP.port = p;
@@ -1799,7 +1801,7 @@ public:
 	point2d vertex[4];
 	line2d  lines[4];
 
-	rect (point2d& c, unsigned int w, unsigned int h)
+	rect (point2d& c, uint32_t w, uint32_t h)
 		:center (c), width (w), height(h)
 	{
 		calculateVertex();
@@ -1823,23 +1825,23 @@ public:
 		return center;
 	}
 
-	unsigned int getWidth()
+	uint32_t getWidth()
 	{
 		return width;
 	}
 	
-	unsigned int getHeight()
+	uint32_t getHeight()
 	{
 		return height;
 	}
 
-	void setWidth (unsigned int nw)
+	void setWidth (uint32_t nw)
 	{
 		width = nw;
 		calculateVertex();
 	}
 
-	void setHeight (unsigned int nh)
+	void setHeight (uint32_t nh)
 	{
 		height = nh;
 		calculateVertex();
