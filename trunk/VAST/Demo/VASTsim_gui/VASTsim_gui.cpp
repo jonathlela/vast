@@ -255,6 +255,15 @@ VOID Render (HWND hWnd)
                 {
                     //sprintf (str, "%d", (int)VASTnet::resolvePort (nodes[j]->addr.host_id)-GATEWAY_DEFAULT_PORT+1);
                     id_t neighbor_id = nodes[j]->id;
+
+                    /*
+                    int strip = (int)(0x000000000000FFFF & neighbor_id);
+                    strip = (int)(0x00000000FFFF0000 & neighbor_id);
+                    strip = (int)((0x0000FFFF00000000 & neighbor_id) >> 32);
+                    strip = (int)((0xFFFF000000000000 & neighbor_id) >> 32);
+                    strip = (int)((0x0000FFFFFFFF0000 & neighbor_id) >> 16);
+                    */
+
                     int index = (g_id2index.find (neighbor_id) == g_id2index.end () ? 0 : g_id2index[neighbor_id]);
 
                     sprintf (str, "%d", index + 1);
