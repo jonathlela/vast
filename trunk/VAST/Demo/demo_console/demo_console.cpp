@@ -51,6 +51,7 @@ using namespace std;
 // target game cycles per second
 const int FRAMES_PER_SECOND      = 40;
 
+
 // global
 Area        g_aoi;              // my AOI (with center as current position)
 Area        g_prev_aoi;         // my AOI (with center as current position)

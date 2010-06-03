@@ -36,6 +36,13 @@
 #include <math.h>       // abs ()
 #include <stdlib.h>     // atoi
 
+// include standard integer depending on compiler used
+#ifdef _WIN32
+#include "../Dependencies/include/stdint.h"
+#else
+#include <stdint.h>
+#endif
+
 #include <string>
 #include <sstream>
 #include <vector>
@@ -59,7 +66,6 @@ namespace Vast
 #define UNIQUE_ID(x,y) ((y << (32 - VAST_ID_PRIVATE_BITS)) | x)
 */
 
-#include "stdint.h"     // compiler-independent integer types
 
 #define VAST_EXTRACT_ASSIGNED_ID(host_id) (host_id & (0xFFFF >> 2))
 
@@ -499,9 +505,9 @@ public:
         return 0;
     }
 
+    Position    center;
     length_t    radius;         
     length_t    height;     // if height is available then radius acts as width in a rectangle
-    Position    center;
     //length_t    width;
 };
 
@@ -1434,6 +1440,7 @@ public:
                                  sizeof (byte_t) +
                                  sizeof (bool) + 
                                  sizeof (listsize_t);
+printf ("deserialize header: %lu, received size: %lu size_t: %lu\n", header_size, size, sizeof (size_t));
 
             // size check
             if (size < header_size)
