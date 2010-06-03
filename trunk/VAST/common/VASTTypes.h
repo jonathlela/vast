@@ -38,7 +38,7 @@
 
 // include standard integer depending on compiler used
 #ifdef _WIN32
-#include "../Dependencies/include/stdint.h"
+#include "./standard/stdint.h"
 #else
 #include <stdint.h>
 #endif

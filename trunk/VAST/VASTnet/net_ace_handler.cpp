@@ -99,7 +99,7 @@ namespace Vast {
                 ACE_ERROR_RETURN ((LM_DEBUG, "(%5t) [tcp-size] remote close (fd = %d)\n", this->get_handle() ), -1);
             }
             
-            ACE_DEBUG( (LM_DEBUG, "(%5t) handle_input: header.msgsize: %d, bytes_transferred: %u\n", header.msg_size, bytes_transferred) );
+            //ACE_DEBUG( (LM_DEBUG, "(%5t) handle_input: header.msgsize: %d, bytes_transferred: %u\n", header.msg_size, bytes_transferred) );
             
             // check buffer size
             _buf.reserve (header.msg_size);
