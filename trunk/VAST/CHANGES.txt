@@ -1,5 +1,23 @@
 
 
+VAST C++ 0.4.5  (Linux-tested, VAST Firefox plugin added)
+--------------
+2010/06/08      VAST Firefox plugin (npvast) added 
+                
+
+
+VAST C++ 0.4.4  (Voronoi Self-organizing Overlay, VSOPeer added)
+--------------
+2010/04/26      This is a major re-structure of VAST, where VON is no longer used directly, but only 
+                between certain super-peers. Spatial Publish Subscribe (SPS) functions are still supported,
+                so the main features of VAST remain unchanged. The basic mechanism of VAST now is divided 
+                between the roles of Clients (users), Relays (super-peers that receive and forward messages
+                to Clients), and Matchers (super-peers that manage the subscription info of Clients, and 
+                match up publications with subscribers). The regions managed by Matchers would dynamically
+                adjust themselves via a self-organizing mechanism (called Voronoi Self-Organization, or VSO)
+
+
+
 VAST C++ 0.4.2  (1st functional VASTATE, supporting state management)
 --------------
 2010/01/15      add first functional version of VASTATE, which provides the

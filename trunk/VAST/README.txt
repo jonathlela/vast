@@ -13,6 +13,7 @@ see "LICENSE.txt" for more information.
 This release has been compiled and tested with the following compilers:
 
     - Visual C++ 2008 Express
+    - g++ (Ubuntu 4.4.3-4ubuntu5) 4.4.3
 
 For instructions on how to build VAST, please refer to the URL:
 http://vast.sourceforge.net/docs
