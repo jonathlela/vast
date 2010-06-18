@@ -2,7 +2,11 @@
 
 VAST C++ 0.4.5  (Linux-tested, VAST Firefox plugin added)
 --------------
-2010/06/08      VAST Firefox plugin (npvast) added 
+2010/06/08      VAST Firefox plugin (npvast) to work with 0.4.5
+
+2010/06/03      modify basic types in /common/VASTTypes.h to specify explicitly number of bytes used
+                so that Win32 and Linux build may communicate across network correctly
+
                 
 
 

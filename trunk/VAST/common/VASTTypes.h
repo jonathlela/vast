@@ -79,10 +79,10 @@ typedef uint32_t    vsize_t;        // size_t used in VAST
 typedef float       coord_t;        // type of coordinates
 typedef uint16_t    length_t;       // type for a length, for radius or rectangle length
 
-typedef int16_t     msgtype_t;      // the types of messages (0 - 65535)
-typedef int16_t     layer_t;        // the number of layers in the overlay (0 - 255)
+typedef uint16_t    msgtype_t;      // the types of messages (0 - 65535)
+typedef uint16_t    layer_t;        // the number of layers in the overlay (0 - 65535)
 
-typedef uint8_t     listsize_t;     // size of a list sent over network
+typedef uint8_t     listsize_t;     // size of a list sent over network (0 - 255)
 
 #define VAST_MSGTYPE_RESERVED 8                         // 8 bits for reserved message type
 #define VAST_MSGTYPE(x) (0x0FF & x)                     // mask off app-specific message types

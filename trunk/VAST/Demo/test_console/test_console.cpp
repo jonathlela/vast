@@ -1,8 +1,8 @@
 
 /*
- *  demo_console    a console-based minimal VAST application 
+ *  test_console    a VAST experimental node
  *  
- *  version:    2009/06/12      init
+ *  version:    2010/06/15  init - adopted from demo_console
  *
  */
 
@@ -16,6 +16,7 @@
 
 #include <stdio.h>
 
+// for getting keyboard inputs
 #ifdef WIN32
 #include <windows.h>
 #include <conio.h>
@@ -23,19 +24,10 @@
 
 #include "Movement.h"
 
-#define VAST_ONLY
-
-#ifdef VAST_ONLY
 // use VAST for functions
 #include "VASTVerse.h"
-#include "VASTsim.h"
-#else
-// use VASTATE for main functions
-#include "VASTATE.h"
-#include "VASTATEsim.h"       
-#endif
-
 #include "VASTUtil.h"
+#include "VASTsim.h"
 
 #define VAST_EVENT_LAYER    1                   // layer ID for sending events 
 #define VAST_UPDATE_LAYER   2                   // layer ID for sending updates
@@ -47,14 +39,13 @@ using namespace std;
 #error "ACE needs to be enabled to build demo_console, please modify /common/Config.h"
 #endif
 
-
 // target game cycles per second
 const int FRAMES_PER_SECOND      = 40;
 
 
 // global
 Area        g_aoi;              // my AOI (with center as current position)
-Area        g_prev_aoi;         // my AOI (with center as current position)
+Area        g_prev_aoi;         // previous AOI (to detect if AOI has changed)
 Addr        g_gateway;          // address for gateway
 bool        g_finished = false; // whether we're done for this program execution
 NodeState   g_state = ABSENT;   // the join state of this node
@@ -66,30 +57,13 @@ int         g_node_no = (-1);   // which node to simulate (-1 indicates none, ma
 VASTPara_Net g_netpara;         // network parameters
 
 MovementGenerator g_movement;
-FILE       *g_position_log = NULL;       // logfile for node positions
+FILE       *g_position_log = NULL;     // logfile for node positions
 FILE	   *g_neighbor_log = NULL;	   // logfile for node neighbors
 
-
-
-
-
-#ifdef VAST_ONLY
-
-    // VAST-specific variables
-    VASTVerse *     g_world = NULL;
-    VAST *          g_self  = NULL;    
-    Vast::id_t      g_sub_no = 0;        // subscription # for my client (peer)
-  
-#else
-    
-    // VASTATE-specific variables
-    VASTATE *       g_world = NULL;
-    SimAgent *      g_self  = NULL;
-    SimArbitrator * g_arbitratorlogic = NULL;
-    Agent *         g_agent = NULL;
-    Arbitrator *    g_arbitrator = NULL;
-
-#endif
+// VAST-specific variables
+VASTVerse *     g_world = NULL;
+VAST *          g_self  = NULL;
+Vast::id_t      g_sub_no = 0;        // subscription # for my client (peer)  
 
 #ifdef WIN32
 void getInput ()
@@ -146,9 +120,7 @@ void getInput ()
 #endif
 
 void checkJoin ()
-{
-#ifdef VAST_ONLY
-    
+{    
     // create the VAST node
     switch (g_state)
     {
@@ -163,44 +135,14 @@ void checkJoin ()
     default:
         break;
     }
-#else
-
-    // created the agent & arbitrator
-    if (g_state == ABSENT)
-    {
-        string password ("abc\0");
-
-        // do not create agent for gateway node
-        if (g_netpara.is_gateway)
-            g_world->createNode (g_aoi, g_arbitratorlogic, NULL, password, &g_aoi.center);
-        else
-            g_world->createNode (g_aoi, g_arbitratorlogic, g_self, password, NULL);
-
-        g_state = JOINING;
-    }
-            
-    // check if our agent & arbitrator have properly joined the network
-    else if (g_state == JOINING && g_world->isLogined ())
-    {
-        g_arbitrator = g_world->getArbitrator ();
-		g_agent = g_world->getAgent ();
-
-        g_state = JOINED;     		
-	}    
-#endif
 
     if (g_state == JOINED && g_position_log != NULL)
     {
         Node *self;
         Vast::id_t nodeID;
 
-#ifdef VAST_ONLY
         self = g_self->getSelf ();
         nodeID = g_self->getSubscriptionID ();
-#else
-        self = g_agent->getSelf ();
-        nodeID = self->id;
-#endif
 
 		// record join time
 		time_t rawtime;          
@@ -283,117 +225,9 @@ void PrintNeighbors (long long curr_msec, Vast::id_t selfID)
 	}
 }
 
-/*
-void TestSerialization ()
-{
-    // test data       
-    AttributesImpl a;
-
-    a.add (true);
-    a.add ((int)32767);
-    a.add (112343.14159269777f);       string s("abcdefg ");
-    a.add (s);      Position c; c.x = 382.573829f; c.y = 2349.2431f; c.z = 5382.34234f;
-    a.add (c);
-    a.add (true);
-    //a.add (19);
-    
-    bool   v1 = false;
-    int    v2 = 777;
-    float  v3 = 0.0;
-    string v4 = "abc good";
-    Position v5;
-
-    a.get (0, v1);        printf ("bool: %d\n", v1);        
-    a.get (1, v2);        printf ("int: %d\n", v2);        
-    a.get (2, v3);        printf ("float: %f\n", v3);
-    a.get (3, v4);        printf ("str: (%s)\n", v4.c_str ());        
-    a.get (4, v5);        printf ("vec3: (%f, %f, %f)\n", v5.x, v5.y, v5.z);        
-    a.get (5, v1);        printf ("bool: %d\n", v1);       
-    //a.get (6, v2);        printf ("int: %d\n", v2); 
-            
-    
-    char buf[VASTATE_BUFSIZ];
-    char *p = buf;
-    int size = a.pack (&p);
-    
-    string str;
-    string str1;
-    string str2;
-    
-    for (int k=0; k<size; k++)
-    {
-        str1 += buf[k];
-        str2 += buf[k];
-    }
-    str += str1;
-    str += str2;
-
-    printf ("packsize: %d string size: %d\n", size, str.size());
-    
-
-    printf ("\ntransferring to another attribute (pack size: %d)\n\n", size);
-    
-    AttributesImpl b;   
-    
-    b.unpack (buf);
-    
-    b.get (0, v1);        printf ("bool: %d\n", v1);        
-    b.get (1, v2);        printf ("int: %d\n", v2);        
-    b.get (2, v3);        printf ("float: %f\n", v3);
-    b.get (3, v4);        printf ("str: (%s)\n", v4.c_str ());        
-    b.get (4, v5);        printf ("vec3: (%f, %f, %f)\n", v5.x, v5.y, v5.z);        
-    b.get (5, v1);        printf ("bool: %d\n", v1);
-    //b.get (6, v2);        printf ("int: %d\n", v2); 
-    
-    printf ("\nresetting values in a\n\n");
-    
-    a.resetDirty();
-
-    a.add (19);
-
-    a.set (0, false);
-    a.set (1, (int)512);
-    a.set (2, (float)3.14159269f);  
-    string s2("abcdefg   ");
-    a.set (3, s2);               
-    Position c2; c2.x = 5.0; c2.y = 6.0; c2.z = 7.0;
-    //a.set (4, c2);
-    a.set (5, false);
-    
-    a.get (0, v1);        printf ("bool: %d\n", v1);        
-    a.get (1, v2);        printf ("int: %d\n", v2);        
-    a.get (2, v3);        printf ("float: %f\n", v3);
-    a.get (3, v4);        printf ("str: (%s)\n", v4.c_str ());        
-    a.get (4, v5);        printf ("vec3: (%f, %f, %f)\n", v5.x, v5.y, v5.z);        
-    a.get (5, v1);        printf ("bool: %d\n", v1);       
-    a.get (6, v2);        printf ("int: %d\n", v2);                 
-    
-    p = buf;
-    size = a.pack (&p, true);
-    
-    printf ("\npacking to b again, size: %d\n\n", size);
-    
-    b.unpack (buf);
-    
-    int vv;
-    b.get (0, v1);        printf ("bool: %d\n", v1);        
-    b.get (1, vv);        printf ("int: %d\n", vv);        
-    b.get (2, v3);        printf ("float: %f\n", v3);
-    b.get (3, v4);        printf ("str: (%s)\n", v4.c_str ());        
-    b.get (4, v5);        printf ("vec3: (%f, %f, %f)\n", v5.x, v5.y, v5.z);        
-    b.get (5, v1);        printf ("bool: %d\n", v1);       
-    b.get (6, v2);        printf ("int: %d\n", v2);  
-    
-    printf ("\n\n");
-}
-*/
-
 int main (int argc, char *argv[])
 {      
     ACE::init ();
-
-    // check correctness of parameter serialization
-    //TestSerialization ();
 
     // initialize seed
     //srand ((unsigned int)time (NULL));
@@ -428,16 +262,6 @@ int main (int argc, char *argv[])
         d.sizeOf (),
         e.sizeOf ());
 
-
-    // set default values
-#ifndef VAST_ONLY
-    VASTATEPara para;
-    para.default_aoi    = DEFAULT_AOI;
-    para.world_height   = DIM_Y;
-    para.world_width    = DIM_X;
-    para.overload_limit = 0;
-#endif
-
     // initialize parameters
     char cmd[255];
     cmd[0] = 0;
@@ -465,36 +289,18 @@ int main (int argc, char *argv[])
         exit (0);
 
     bool simulate_behavior = (g_node_no > 0);
-
-    /*
-    // valid node number begin from 0, use assigned node # or a random one
-    if (node_no == 0)
-        node_no = rand () % simpara.NODE_SIZE;
-    */
     
     // make backup of AOI
     g_prev_aoi = g_aoi;
-
-#ifdef VAST_ONLY
 
     // create VAST node factory    
     g_world = new VASTVerse (entries, &g_netpara, NULL);
     g_world->createVASTNode (g_gateway.publicIP, g_aoi, VAST_EVENT_LAYER);
 
-#else
-
-    g_world = new VASTATE (para, g_netpara, NULL);    
-    g_self  = CreateSimAgent ();
-    g_arbitratorlogic = CreateSimArbitrator ();
-
-#endif
 
     // for simulated behavior, we will use position log to move the nodes
     if (simulate_behavior)
     {
-        // create movement model
-        //g_move_model = new MovementGenerator;
-    
         // create / open position log file
         char filename[80];
         sprintf (filename, VAST_POSFILE_FORMAT, simpara.NODE_SIZE, simpara.WORLD_WIDTH, simpara.WORLD_HEIGHT, simpara.TIME_STEPS);
@@ -525,15 +331,7 @@ int main (int argc, char *argv[])
 		    char poslog[] = "position";
 		    char neilog[] = "neighbor";
 		    g_position_log = LogFileManager::open (poslog);
-		    g_neighbor_log = LogFileManager::open (neilog);
-    
-            /*
-		    // sleep for a random time to avoid concurrent connection
-            size_t sleep_time = g_node_no * time_offset;		    
-            ACE_Time_Value duration (sleep_time, 0);
-            printf ("Node no: %u, Sleep for %u sec...\n", g_node_no, sleep_time);
-            ACE_OS::sleep (duration);
-            */
+		    g_neighbor_log = LogFileManager::open (neilog);    
         }
     }
 
@@ -564,19 +362,11 @@ int main (int argc, char *argv[])
         Node *self = NULL;
         Vast::id_t id = 0;
 
-#ifdef VAST_ONLY
         if (g_self != NULL)
         {
             self = g_self->getSelf ();
             id = g_sub_no;
         }
-#else
-        if (g_agent != NULL)
-        {            
-	    self = g_agent->getSelf ();
-            id = self->id;
-        }
-#endif
 
         if (g_state != JOINED)
             checkJoin ();
@@ -608,15 +398,8 @@ int main (int argc, char *argv[])
             if (!(g_prev_aoi == g_aoi))
             {
                 g_prev_aoi = g_aoi;               
-#ifdef VAST_ONLY
                 g_self->move (g_sub_no, g_aoi);
-#else
-				// only non-gateway nodes move
-                if (g_agent != NULL)
-                {
-                    g_agent->move (g_aoi.center);
-                }
-#endif
+
                 // if I'm not gateway & need to record position
                 if (g_position_log != NULL)
                 {
@@ -628,26 +411,6 @@ int main (int argc, char *argv[])
 
                 printf ("[%llu] moves to (%d, %d)\n", id, (int)g_aoi.center.x, (int)g_aoi.center.y); 
             }
-
-#ifndef VAST_ONLY
-            // send out other commands
-            if (g_lastcommand != 0)
-            {
-                switch (g_lastcommand)
-                {
-                // create new objects
-                case 'c':
-                    SimPeerAction action = CREATE_OBJ;
-                    if (g_agent != NULL)
-                    {
-                        Event *e = g_agent->createEvent ((msgtype_t)action);
-                        g_agent->act (e);
-                    }
-                    break;
-                }
-                g_lastcommand = 0;
-            }
-#endif
 
         }
 
@@ -688,30 +451,9 @@ int main (int argc, char *argv[])
     }
 
     // depart
-#ifdef VAST_ONLY
+
     g_self->leave ();
     g_world->destroyVASTNode (g_self);
-#else
-    if (g_agent != NULL)
-    {
-        g_agent->leave ();
-        g_agent->logout ();
-    }
-
-    g_world->tick ((size_t)0);
-    
-    ACE_Time_Value tv (1, 0);
-    ACE_OS::sleep (tv);
-
-    g_world->destroyNode ();
-
-    if (g_self != NULL)
-        DestroySimAgent (g_self);
-
-    if (g_arbitratorlogic != NULL)
-        DestroySimArbitrator (g_arbitratorlogic);
-
-#endif
             
     delete g_world;        
 
