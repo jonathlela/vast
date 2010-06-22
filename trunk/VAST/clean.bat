@@ -12,4 +12,6 @@ del /S  .\*.user
 del /S  .\*.obj
 del /S  .\*.o
 del /S  .\*.plg
+cd Wrappers
+call ./clean.bat
 

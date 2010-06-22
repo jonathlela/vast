@@ -1,5 +1,12 @@
 
 
+VAST C++ 0.4.6
+--------------
+2010/06/22      C# sample program added (calling C wrapper class VASTWrapperC)
+2010/06/18      C wrapper class (VASTWrapperC) and test program (demo_console_C) added
+
+
+
 VAST C++ 0.4.5  (Linux-tested, VAST Firefox plugin added)
 --------------
 2010/06/08      VAST Firefox plugin (npvast) to work with 0.4.5
@@ -8,8 +15,6 @@ VAST C++ 0.4.5  (Linux-tested, VAST Firefox plugin added)
                 so that Win32 and Linux build may communicate across network correctly
 
                 
-
-
 VAST C++ 0.4.4  (Voronoi Self-organizing Overlay, VSOPeer added)
 --------------
 2010/04/26      This is a major re-structure of VAST, where VON is no longer used directly, but only 

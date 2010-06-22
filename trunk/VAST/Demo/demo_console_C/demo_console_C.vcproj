@@ -41,7 +41,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="..\..\Wrappers\VASTWrapperC, ..\..\Dependencies\include"
+				AdditionalIncludeDirectories="..\..\Dependencies\include;..\..\Wrappers\VASTwrapperC"
 				PreprocessorDefinitions="WIN32;_DEBUG;_CONSOLE"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
@@ -118,7 +118,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				EnableIntrinsicFunctions="true"
-				AdditionalIncludeDirectories="..\..\Wrappers\VASTWrapperC, ..\..\Dependencies\include"
+				AdditionalIncludeDirectories="..\..\Dependencies\include;..\..\Wrappers\VASTwrapperC"
 				PreprocessorDefinitions="WIN32;NDEBUG;_CONSOLE"
 				RuntimeLibrary="2"
 				EnableFunctionLevelLinking="true"
@@ -166,6 +166,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
+				CommandLine="copy &quot;$(SolutionDir)\lib\*.dll&quot; &quot;$(SolutionDir)\bin&quot;&#x0D;&#x0A;copy &quot;$(SolutionDir)\Dependencies\lib\$(ConfigurationName)\*.dll&quot; &quot;$(SolutionDir)\bin&quot;"
 			/>
 		</Configuration>
 	</Configurations>

@@ -132,7 +132,7 @@ int main (int argc, char *argv[])
     //g_vastnetpara.phys_coord = g_aoi.center;    
 
     // translate gateway string to Addr object
-    InitVAST (is_gateway, port);
+    InitVAST (is_gateway, GWstr);
 
     g_x = (float)(rand () % 100);
     g_y = (float)(rand () % 100);
@@ -149,12 +149,24 @@ int main (int argc, char *argv[])
         VASTMove (g_x, g_y);
 
         // check for any received message & print it out
+        /*
         VAST_C_Msg *msg;
         while ((msg = VASTReceive ()) != NULL)
         {
             char str[80];
             strcpy (str, msg->msg);
             printf ("received from: %llu msg: %s\n", msg->from, str);
+        }
+        */
+
+        const char *msg = NULL;
+        size_t size;
+        uint64_t from;
+
+        while ((msg = VASTReceive (&size, &from)) != NULL)
+        //while (VASTReceive (&msg, &size, &from) == true)
+        {
+            printf ("received from: %llu size: %u msg: %s\n", from, size, msg);
         }
 
         // sleep a little

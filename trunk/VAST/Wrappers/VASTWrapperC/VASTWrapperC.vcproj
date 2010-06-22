@@ -2,7 +2,7 @@
 <VisualStudioProject
 	ProjectType="Visual C++"
 	Version="9.00"
-	Name="VASTWrapperC"
+	Name="VASTwrapperC"
 	ProjectGUID="{EBAEAEB0-11A4-44EA-BA0C-F50B454E9566}"
 	RootNamespace="VASTWrapperC"
 	Keyword="Win32Proj"
@@ -62,6 +62,7 @@
 			<Tool
 				Name="VCLinkerTool"
 				AdditionalDependencies="aced.lib"
+				OutputFile="$(OutDir)\$(ProjectName)d.dll"
 				LinkIncremental="2"
 				AdditionalLibraryDirectories="&quot;$(SolutionDir)\Dependencies\lib\$(ConfigurationName)&quot;"
 				GenerateDebugInformation="true"
@@ -177,7 +178,7 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
-				RelativePath=".\VASTWrapperC.cpp"
+				RelativePath=".\VASTwrapperC.cpp"
 				>
 			</File>
 		</Filter>
@@ -187,7 +188,7 @@
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}"
 			>
 			<File
-				RelativePath=".\VASTWrapperC.h"
+				RelativePath=".\VASTwrapperC.h"
 				>
 			</File>
 		</Filter>

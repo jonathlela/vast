@@ -31,7 +31,7 @@
 #include "ace/OS.h"
 
 //#include "Config.h"             // define EXPORT
-#include "VASTWrapperC.h"
+#include "VASTwrapperC.h"
 
 
 #ifdef ACE_DISABLED
@@ -68,7 +68,7 @@ bool        g_init = false;     // whether VASTInit is called
 // basic init of VAST
 //
 
-void checkVASTJoin ()
+EXPORT void checkVASTJoin ()
 {    
     // create the VAST node
     switch (g_state)
@@ -88,12 +88,17 @@ void checkVASTJoin ()
 
 
 // initialize the VAST library
-int InitVAST (bool is_gateway, uint16_t port)
+EXPORT int VAST_CALL InitVAST (bool is_gateway, const char *gateway)
 {
     ACE::init ();
+    
+    //uint16_t port = 1037;
 
     // store default gateway address
-    string str ("127.0.0.1:1037");
+    string str (gateway);
+
+    printf ("InitVAST called, gateway: %s, is_gateway: %s\n", gateway, (is_gateway ? "true" : "false"));
+
     g_gateway = *VASTVerse::translateAddress (str);
     
     //g_gateway.fromString (str);
@@ -111,7 +116,7 @@ int InitVAST (bool is_gateway, uint16_t port)
     g_netpara.overload_limit = 0;
     g_netpara.conn_limit     = 0;        
 
-    g_netpara.port           = port;
+    g_netpara.port           = g_gateway.publicIP.port;
     g_netpara.step_persec    = 10;
     g_netpara.recv_quota     = 0;
     g_netpara.recv_quota     = 0;
@@ -130,7 +135,7 @@ int InitVAST (bool is_gateway, uint16_t port)
 }
 
 // close down the VAST library
-int ShutVAST ()
+EXPORT int VAST_CALL ShutVAST ()
 {
     if (g_self)
     {
@@ -155,18 +160,18 @@ int ShutVAST ()
 //
 
 // obtain a unique & unused layer (preferred layer # as input)
-void VASTReserveLayer (uint32_t layer)
+EXPORT void VAST_CALL VASTReserveLayer (uint32_t layer)
 {
 }
 
 // get the currently reserved layer, 0 for not yet reserved
-uint32_t VASTGetLayer ()
+EXPORT uint32_t VAST_CALL VASTGetLayer ()
 {
     return 0;
 }
 
 // release back the layer
-bool VASTReleaseLayer ()
+EXPORT bool VAST_CALL VASTReleaseLayer ()
 {
     return true;
 }
@@ -176,7 +181,7 @@ bool VASTReleaseLayer ()
 //
 
 // join at location on a partcular layer
-bool VASTJoin (float x, float y, uint16_t radius)
+EXPORT bool VAST_CALL VASTJoin (float x, float y, uint16_t radius)
 {
     // store AOI
     g_aoi.center.x = x;
@@ -196,7 +201,7 @@ bool VASTJoin (float x, float y, uint16_t radius)
 }
 
 // leave the overlay
-bool VASTLeave ()
+EXPORT bool VAST_CALL VASTLeave ()
 {
     if (g_self->isJoined ())
     {
@@ -208,7 +213,7 @@ bool VASTLeave ()
 }
 
 // move to a new position
-bool VASTMove (float x, float y)
+EXPORT bool VAST_CALL VASTMove (float x, float y)
 {
     // store new AOI
     g_aoi.center.x = x;
@@ -224,8 +229,10 @@ bool VASTMove (float x, float y)
     return true;
 }
 
+
+
 // do routine processing & logical clock progression
-size_t VASTTick (size_t time_budget)
+EXPORT size_t VAST_CALL VASTTick (size_t time_budget)
 {
     // record last time performing per-second task
     static ACE_Time_Value last_persec = ACE_OS::gettimeofday ();
@@ -243,14 +250,16 @@ size_t VASTTick (size_t time_budget)
     timestamp_t elapsed = (timestamp_t)(now.sec () - last_persec.sec ()) * 1000 + (now.usec () - last_persec.usec ()) / 1000;
           
     // execute tick while obtaining time left
+    
     size_t sleep_time = g_world->tick (time_budget) * 1000;
+    //printf ("sleep: %lu\n", sleep_time);
     
     // do per-second things / checks
     // NOTE: we assume this takes little time and does not currently count in as time spent in cycle       
     if (elapsed > 1000)
     {
         time_t curr_sec = last_persec.sec ();
-        printf ("%ld s, tick %lu, tick_persec %lu, sleep: %lu ms\n", curr_sec, tick_count, g_netpara.step_persec, sleep_time);
+        printf ("%llu s, tick_count: %u, tick_persec: %d, sleep: %lu ms\n",  curr_sec, tick_count, g_netpara.step_persec, sleep_time);
         //count_per_sec = 0;		
         
         // just do some per second stat collection stuff
@@ -275,7 +284,7 @@ size_t VASTTick (size_t time_budget)
 }
 
 // publish a message to current layer at current location, with optional radius
-bool VASTPublish (const char *msg, size_t size, uint16_t radius)
+EXPORT bool VAST_CALL VASTPublish (const char *msg, size_t size, uint16_t radius)
 {
     if (isVASTJoined () == false)
         return false;
@@ -290,10 +299,13 @@ bool VASTPublish (const char *msg, size_t size, uint16_t radius)
 }
 
 // receive any message received
-VAST_C_Msg * VASTReceive ()
+//EXPORT VAST_C_Msg * VAST_CALL VASTReceive ()
+EXPORT const char * VAST_CALL VASTReceive (size_t *ret_size, uint64_t *ret_from)
+//EXPORT bool VAST_CALL VASTReceive (char **ret_msg, size_t *ret_size, uint64_t *ret_from)
 {
     if (isVASTJoined () == false)
-        return false;
+        //return false;
+        return NULL;
 
     static char recv_buf[VAST_BUFSIZ];
     static VAST_C_Msg recvmsg;
@@ -316,10 +328,26 @@ VAST_C_Msg * VASTReceive ()
         recvmsg.msg = recv_buf;
         recvmsg.size = size;
 
-        return &recvmsg;
+        //return &recvmsg;
+
+        *ret_size = recvmsg.size;
+        *ret_from = recvmsg.from;
+        //*ret_msg = (char *)recvmsg.msg;
+
+        //printf ("VASTReceive () returns string of size: %d from %llu\n", size, msg->from);
+
+        return recvmsg.msg;
+        
+        //return true;
     }
     else
+    {
+        *ret_size = 0;
+        *ret_from = 0;
+
         return NULL;
+        //return false;
+    }
 }
 
 //
@@ -327,20 +355,20 @@ VAST_C_Msg * VASTReceive ()
 //
 
 // is initialized done (ready to join)
-bool isVASTInit ()
+EXPORT bool VAST_CALL isVASTInit ()
 {
     return g_init;
 }
 
 // whether the join is successful
-bool isVASTJoined ()
+EXPORT bool VAST_CALL isVASTJoined ()
 {
     return (g_state == JOINED);
 }
 
 
 // obtain an ID of self
-uint64_t GetSelfID ()
+EXPORT uint64_t VAST_CALL VASTGetSelfID ()
 {
     if (isVASTJoined () == true)
         return g_self->getSelf ()->id;

@@ -664,7 +664,7 @@ int main (int argc, char *argv[])
         if (start.sec () > curr_sec)
         {
             curr_sec = (long)start.sec ();
-            printf ("%ld s, tick %lu, tick_persec %lu, sleep: %lu us\n", 
+            printf ("%ld s, tick %lu, tick_persecc %lu, sleep: %lu us\n", 
                      curr_sec, g_count, count_per_sec, (long) sleep_time);
             count_per_sec = 0;		
 
