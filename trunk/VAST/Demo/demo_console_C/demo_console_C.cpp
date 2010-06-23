@@ -41,9 +41,22 @@ char        g_GWstr[80];
 
 void Speak ()
 {
-    char str[]="Hello World!\0";
-
+    char str[80];
+    sprintf (str, "Hello World! %d", rand ());
+    printf ("publish: %s\n", str);
     VASTPublish (str, strlen (str), 0);
+
+    /*
+    // To say something mighty :)
+
+#define BUF_SIZE 1000000
+
+    char str[BUF_SIZE]; 
+    memset (str, 'A', BUF_SIZE-1);
+    str[BUF_SIZE-1] = 0;
+
+    VASTPublish (str, BUF_SIZE, 0);   
+    */
 }
 
 void getInput ()
@@ -191,8 +204,8 @@ int main (int argc, char *argv[])
         Loop ();
         
         // we don't shutdown gateway
-        if (!g_is_gateway)
-            Shutdown ();
+        //if (!g_is_gateway)
+        //    Shutdown ();
     }
 
     Shutdown ();

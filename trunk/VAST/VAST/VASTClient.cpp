@@ -406,7 +406,6 @@ namespace Vast
         return &_self;
     }
 
-
     bool 
     VASTClient::isJoined ()
     {         

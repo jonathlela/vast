@@ -56,7 +56,7 @@ VASTPara_Net g_netpara;         // network parameters
 // VAST-specific variables
 VASTVerse * g_world = NULL;
 VAST *      g_self  = NULL;
-Vast::id_t  g_sub_no = 0;        // subscription # for my client (peer)  
+Vast::id_t  g_sub_no = 0;       // subscription # for my client (peer)  
 layer_t     g_layer;
 
 bool        g_init = false;     // whether VASTInit is called
@@ -328,31 +328,34 @@ EXPORT const char * VAST_CALL VASTReceive (size_t *ret_size, uint64_t *ret_from)
     if (isVASTJoined () == false)
         return NULL;
 
-    static char recv_buf[VAST_BUFSIZ];
     static VAST_C_Msg recvmsg;
+    static VASTBuffer recv_buf;
 
-    // check and store any incoming string messages    
-    size_t size = 0;
-    
+    recv_buf.clear ();
+       
     Message *msg = NULL;
     if ((msg = g_self->receive ()) != NULL)
     {
-        size = msg->extract (recv_buf, 0);
-        recv_buf[size]=0;
+        //reserve buffer, also reserve a null at end
+        recv_buf.reserve (msg->size + 1);        
+        recv_buf.size = msg->extract (recv_buf.data, 0);
+
+        // put 0 at end
+        recv_buf.data[recv_buf.size] = 0;
     }
     else
-        size = 0;
+        recv_buf.size = 0;
 
-    if (size > 0)
+    if (recv_buf.size > 0)
     {
         recvmsg.from = msg->from;
-        recvmsg.msg = recv_buf;
-        recvmsg.size = size;
+        recvmsg.msg  = recv_buf.data;
+        recvmsg.size = recv_buf.size;
 
         //return &recvmsg;
 
-        *ret_size = recvmsg.size;
         *ret_from = recvmsg.from;
+        *ret_size = recvmsg.size;        
         //*ret_msg = (char *)recvmsg.msg;
 
         //printf ("VASTReceive () returns string of size: %d from %llu\n", size, msg->from);

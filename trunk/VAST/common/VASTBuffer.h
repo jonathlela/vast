@@ -88,6 +88,9 @@ namespace Vast
         void clear ()
         {
             size = 0;
+
+            // this will clear the memory to avoid left-over, however, may introduce cost
+            //memset (data, 0, _bufsize);            
         }
 
         bool add (void *stuff, size_t len)
