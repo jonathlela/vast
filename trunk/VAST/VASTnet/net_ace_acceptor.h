@@ -105,8 +105,11 @@ protected:
     // if handle_input() returns -1, reactor would call handle_close()
     int handle_close (ACE_HANDLE, ACE_Reactor_Mask mask)
     {
+        // IMPORTANT: close socket so port can be re-use
+        _acceptor.close ();
+
         _reactor->remove_handler (this, mask | ACE_Event_Handler::DONT_CALL);
-             
+                     
         ACE_DEBUG ((LM_DEBUG, "(%5t) acceptor handle_close()\n"));
         delete this;
         return 0;

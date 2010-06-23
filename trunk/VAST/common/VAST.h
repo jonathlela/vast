@@ -126,8 +126,9 @@ namespace Vast
         virtual Area *      move (id_t subID, Area &aoi, bool update_only = false) = 0;
 
         // send a custom message to a particular VAST node (ID obtained from list ())
-        // returns the number of successful send, optionally obtains the failed targets
-        virtual int         send (Message &message, vector<id_t> *failed = NULL) = 0;
+        // returns the number of successful send, 
+        // optionally obtains the failed targets, and indicate if the send should be 'directly' (end-to-end, without relays)
+        virtual int         send (Message &message, vector<id_t> *failed = NULL, bool direct = false) = 0;
 
         // obtain a list of subscribers with an area
         virtual vector<Node *>& list (Area *area = NULL) = 0;

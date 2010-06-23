@@ -42,7 +42,6 @@ namespace Vast {
         if (remote_id != NET_ID_UNASSIGNED)
             _remote_id = ((net_ace *)_msghandler)->register_conn (remote_id, this);
         
-
         // obtain remote host's detected IP for public IP check                                            
         ACE_INET_Addr remote_addr;
         this->_stream.get_remote_addr (remote_addr);
@@ -195,7 +194,7 @@ namespace Vast {
         if (_remote_id != NET_ID_UNASSIGNED)
             ((net_ace *)_msghandler)->unregister_conn (_remote_id);
 
-        // close the socket
+        // IMPORTANT: close the socket so port can be released for re-use
         _stream.close();
      
         ACE_DEBUG ((LM_DEBUG, "(%5t) handle_close (): [%d]\n", _remote_id));

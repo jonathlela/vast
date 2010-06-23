@@ -178,8 +178,12 @@ namespace Vast {
         //       event handlers
         if (_reactor != NULL)
         {
+            _reactor->close ();
             delete _reactor;
-            _reactor = NULL;
+            _reactor = NULL;            
+
+            // NOTE: acceptor is self deleted when its handle_close () is called by reactor, 
+            //       so no need to delete again here
             _acceptor = NULL;
         }
 

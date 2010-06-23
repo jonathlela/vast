@@ -32,6 +32,11 @@ float g_y = 100;
 int   g_radius = 200;
 char  g_lastcommand = 0;
 
+uint16_t    g_port = 1037;
+bool        g_is_gateway = false;
+char        g_GWstr[80];
+
+
 #ifdef WIN32
 
 void Speak ()
@@ -100,84 +105,98 @@ void getInput ()
 
 #endif
 
+
+void Init ()
+{    
+            
+    // if physical coordinate is not supplied, VAST will need to obtain it itself
+    //g_vastnetpara.phys_coord = g_aoi.center;    
+
+    // translate gateway string to Addr object
+    InitVAST (g_is_gateway, g_GWstr);
+
+    g_x = (float)(rand () % 100);
+    g_y = (float)(rand () % 100);
+
+    VASTJoin (g_x, g_y, g_radius);
+}
+
+void Loop ()
+{
+    size_t tick_count = 0;
+
+    while (tick_count <= 50)
+    {
+        tick_count++;
+
+        // perform tick and process for as long as necessary
+        VASTTick (0);
+    
+        getInput ();
+    
+        VASTMove (g_x, g_y);
+    
+        // check for any received message & print it out
+        const char *msg = NULL;
+        size_t size;
+        uint64_t from;
+    
+        while ((msg = VASTReceive (&size, &from)) != NULL)
+        {
+            printf ("received from: %llu size: %u msg: %s\n", from, size, msg);
+        }
+    
+        // sleep a little
+        // NOTE the 2nd parameter is specified in microseconds (us) not milliseconds
+        ACE_Time_Value duration (0, 100000);            
+        ACE_OS::sleep (duration); 
+    }
+}
+
+void Shutdown ()
+{
+    VASTLeave ();
+    ShutVAST ();
+}
+
 int main (int argc, char *argv[])
 {
-    uint16_t port = 1037;
-    bool is_gateway = false;
-
-    char GWstr[80];
-    GWstr[0] = 0;
+    // read command line parameters
+    g_GWstr[0] = 0;
 
     // get default port
     if (argc >= 2)
     {
-        port = (unsigned short)atoi (argv[1]);        
+        g_port = (unsigned short)atoi (argv[1]);        
     }
     
     // get gateway IP
     if (argc >= 3)
     {
         if (argv[2][0] != '0')
-            sprintf (GWstr, "%s:%d", argv[2], port);
+            sprintf (g_GWstr, "%s:%d", argv[2], g_port);
     }
 
     // default gateway set to localhost
-    if (GWstr[0] == 0)
+    if (g_GWstr[0] == 0)
     {
-        is_gateway = true;        
-        sprintf (GWstr, "127.0.0.1:%d", port);
-    }        
-        
-    // if physical coordinate is not supplied, VAST will need to obtain it itself
-    //g_vastnetpara.phys_coord = g_aoi.center;    
-
-    // translate gateway string to Addr object
-    InitVAST (is_gateway, GWstr);
-
-    g_x = (float)(rand () % 100);
-    g_y = (float)(rand () % 100);
-
-    VASTJoin (g_x, g_y, g_radius);
+        g_is_gateway = true;        
+        sprintf (g_GWstr, "127.0.0.1:%d", g_port);
+    }    
 
     while (!g_finished)
     {
-        // perform tick and process for as long as necessary
-        VASTTick (0);
+        Init ();
 
-        getInput ();
-
-        VASTMove (g_x, g_y);
-
-        // check for any received message & print it out
-        /*
-        VAST_C_Msg *msg;
-        while ((msg = VASTReceive ()) != NULL)
-        {
-            char str[80];
-            strcpy (str, msg->msg);
-            printf ("received from: %llu msg: %s\n", msg->from, str);
-        }
-        */
-
-        const char *msg = NULL;
-        size_t size;
-        uint64_t from;
-
-        while ((msg = VASTReceive (&size, &from)) != NULL)
-        //while (VASTReceive (&msg, &size, &from) == true)
-        {
-            printf ("received from: %llu size: %u msg: %s\n", from, size, msg);
-        }
-
-        // sleep a little
-        // NOTE the 2nd parameter is specified in microseconds (us) not milliseconds
-        ACE_Time_Value duration (0, 100000);            
-        ACE_OS::sleep (duration); 
+        Loop ();
+        
+        // we don't shutdown gateway
+        if (!g_is_gateway)
+            Shutdown ();
     }
 
-    VASTLeave ();
-    ShutVAST ();
-    
+    Shutdown ();
+   
     return 0;
 }
 

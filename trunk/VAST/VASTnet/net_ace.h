@@ -71,6 +71,7 @@ namespace Vast {
 
         ~net_ace ()
         {          
+            ACE::fini ();
         }
 
         //

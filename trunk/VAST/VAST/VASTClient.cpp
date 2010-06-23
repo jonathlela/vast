@@ -270,7 +270,7 @@ namespace Vast
 
     // send a custom message to a particular node
     int     
-    VASTClient::send (Message &message, vector<id_t> *failed)
+    VASTClient::send (Message &message, vector<id_t> *failed, bool direct)
     {
         if (_state != JOINED)
             return 0;

@@ -90,7 +90,7 @@ namespace Vast
 
         // send a custom message to a particular node
         // returns the number of successful send targets
-        int        send (Message &message, vector<id_t> *failed = NULL);
+        int        send (Message &message, vector<id_t> *failed = NULL, bool direct = false);
 
         // obtain a list of subscribers at the same layer with an area
         vector<Node *>& list (Area *area = NULL);

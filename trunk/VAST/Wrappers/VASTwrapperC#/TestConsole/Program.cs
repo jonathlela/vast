@@ -37,7 +37,6 @@ namespace ConsoleApplication1
         public static extern bool VASTPublish (String msg, uint size, ushort radius);
 
         [DllImport("VASTwrapperC")]
-        //public static extern bool VASTReceive (ref String msg, ref uint size, ref UInt64 from);
         public static extern IntPtr VASTReceive(ref uint size, ref UInt64 from);
 
         [DllImport("VASTwrapperC")]
@@ -49,9 +48,14 @@ namespace ConsoleApplication1
         [DllImport("VASTwrapperC")]
         public static extern ulong VASTGetSelfID();
 
-        public static void Main(string[] args)
+
+        static public float  g_x, g_y;
+        static public bool   g_is_gateway = true;
+        static public string g_gateway;
+
+        static public void init()
         {
-            Console.WriteLine("hello world");
+            Console.WriteLine("init called");
 
             // Ensure current directory is exe directory
             //Environment.CurrentDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
@@ -59,37 +63,11 @@ namespace ConsoleApplication1
             //string dllPath = Path.GetFullPath(@".\VASTwrapperC.dll");
             //LoadLibrary(dllPath);
 
-            //Console.WriteLine(MyFunc(5));
-
-            // set default
-            string IP = "127.0.0.1";
-            float g_x, g_y;
             g_x = g_y = 100;
-            //ushort port = 1037;
-            string port = "1037";
-
-            bool is_gateway = true;
-
-            // read parameters
-            if (args.Length >= 1)
-            {
-                //port = Convert.ToUInt16(args[1]);
-                port = args[0];
-            }
-            if (args.Length >= 2)
-            {
-                IP = args[1];
-                is_gateway = false;
-            }
-
-            string gateway = IP + ":" + port;
-
-            Console.WriteLine("gateway: " + gateway);
 
             try
             {
-                InitVAST(is_gateway, gateway);
-
+                InitVAST(g_is_gateway, g_gateway);
                 VASTJoin(g_x, g_y, 200);
             }
             catch (DllNotFoundException e)
@@ -100,12 +78,15 @@ namespace ConsoleApplication1
             {
                 Console.WriteLine(e.ToString());
             }
+        }
 
-            bool g_finished = false;
+        static public void loop()
+        {
+            //bool g_finished = false;
             uint tick_count = 0;
 
             // infinite loop to do chat
-            while (!g_finished)
+            while (tick_count <50)
             {
                 tick_count++;
 
@@ -139,13 +120,53 @@ namespace ConsoleApplication1
                 if (tick_count % 10 == 0)
                 {
                     ulong id = VASTGetSelfID();
-                    string msg = id + ": How are you world?";
+                    string msg = id + " :message test";
                     VASTPublish(msg, (uint)msg.Length, 0);
                 }
             }
+        }
 
-            VASTLeave ();
-            ShutVAST ();
+        static public void shutdown()
+        {
+            VASTLeave();
+            ShutVAST();
+        }
+
+        public static void Main(string[] args)
+        {
+            // set default
+            string IP = "127.0.0.1";
+            string port = "1037";
+                        
+            // read parameters
+            if (args.Length >= 1)
+            {
+                //port = Convert.ToUInt16(args[1]);
+                port = args[0];
+            }
+            if (args.Length >= 2)
+            {
+                IP = args[1];
+                g_is_gateway = false;
+            }
+
+            g_gateway = IP + ":" + port;
+            Console.WriteLine("gateway: " + g_gateway);
+
+            while (true)
+            {
+                init();
+                loop();
+
+                // only shutdown non-gateway
+                if (g_is_gateway == false)
+                {
+                    shutdown();
+
+                    // some delay is needed so certain network resources can be released properly
+                    System.Threading.Thread.Sleep(2000);
+                }
+            }
         }
     }
 }

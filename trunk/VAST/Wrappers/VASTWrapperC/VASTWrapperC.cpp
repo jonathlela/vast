@@ -70,6 +70,9 @@ bool        g_init = false;     // whether VASTInit is called
 
 EXPORT void checkVASTJoin ()
 {    
+    if (g_world == NULL)
+        return;
+
     // create the VAST node
     switch (g_state)
     {
@@ -90,10 +93,9 @@ EXPORT void checkVASTJoin ()
 // initialize the VAST library
 EXPORT int VAST_CALL InitVAST (bool is_gateway, const char *gateway)
 {
-    ACE::init ();
+    if (g_init == true)
+        return 0;
     
-    //uint16_t port = 1037;
-
     // store default gateway address
     string str (gateway);
 
@@ -105,6 +107,7 @@ EXPORT int VAST_CALL InitVAST (bool is_gateway, const char *gateway)
     //g_gateway.host_id = ((Vast::id_t)g_gateway.publicIP.host << 32) | ((Vast::id_t)g_gateway.publicIP.port << 16) | NET_ID_RELAY;
 
     // NOTE: the very first node does not know other existing relays
+    g_entries.clear ();
     if (is_gateway == false)
     {
         g_entries.push_back (g_gateway.publicIP);
@@ -127,7 +130,11 @@ EXPORT int VAST_CALL InitVAST (bool is_gateway, const char *gateway)
     g_netpara.is_static      = false;
     g_netpara.model          = VAST_NET_ACE;
 
-    // read configuration from INI file
+    // TODO: read configuration from INI file
+
+
+    // create VAST node factory    
+    g_world = new VASTVerse (g_entries, &g_netpara, NULL);
 
     g_init = true;    
 
@@ -137,11 +144,8 @@ EXPORT int VAST_CALL InitVAST (bool is_gateway, const char *gateway)
 // close down the VAST library
 EXPORT int VAST_CALL ShutVAST ()
 {
-    if (g_self)
-    {
-        g_world->destroyVASTNode (g_self);
-        g_self = NULL;
-    }
+    // make sure VAST node is left already
+    VASTLeave ();
             
     if (g_world)
     {
@@ -150,6 +154,7 @@ EXPORT int VAST_CALL ShutVAST ()
     }
 
     g_init = false;
+    g_entries.clear ();
 
     return 0;
 }
@@ -180,9 +185,12 @@ EXPORT bool VAST_CALL VASTReleaseLayer ()
 // main join / move / publish functions
 //
 
-// join at location on a partcular layer
+// join at location on a partcular layer, create a VAST node
 EXPORT bool VAST_CALL VASTJoin (float x, float y, uint16_t radius)
 {
+    if (g_self != NULL)
+        return false;
+
     // store AOI
     g_aoi.center.x = x;
     g_aoi.center.y = y;
@@ -193,28 +201,38 @@ EXPORT bool VAST_CALL VASTJoin (float x, float y, uint16_t radius)
 
     g_layer = VAST_EVENT_LAYER;
    
-    // create VAST node factory    
-    g_world = new VASTVerse (g_entries, &g_netpara, NULL);
     g_world->createVASTNode (g_gateway.publicIP, g_aoi, g_layer);
 
     return true;
 }
 
-// leave the overlay
+// leave the overlay, destroy VAST node
 EXPORT bool VAST_CALL VASTLeave ()
 {
+    if (g_self == NULL)
+        return false;
+
+    // leave overlay if still exists
     if (g_self->isJoined ())
     {
         g_self->leave ();
-        return true;
+        g_world->tick (0);
     }
-    else
-        return false;
+
+    g_world->destroyVASTNode (g_self);
+    g_self = NULL;
+
+    g_state = ABSENT;
+
+    return true;    
 }
 
 // move to a new position
 EXPORT bool VAST_CALL VASTMove (float x, float y)
 {
+    if (isVASTJoined () == false)
+        return false;
+
     // store new AOI
     g_aoi.center.x = x;
     g_aoi.center.y = y;
@@ -234,10 +252,14 @@ EXPORT bool VAST_CALL VASTMove (float x, float y)
 // do routine processing & logical clock progression
 EXPORT size_t VAST_CALL VASTTick (size_t time_budget)
 {
+    // tick can only happen if VAST factory exists
+    if (g_world == NULL)
+        return 0;
+
     // record last time performing per-second task
     static ACE_Time_Value last_persec = ACE_OS::gettimeofday ();
     static size_t tick_count = 0;
-        
+ 
     tick_count++;
 
     // check if we've joined
@@ -300,11 +322,10 @@ EXPORT bool VAST_CALL VASTPublish (const char *msg, size_t size, uint16_t radius
 
 // receive any message received
 //EXPORT VAST_C_Msg * VAST_CALL VASTReceive ()
-EXPORT const char * VAST_CALL VASTReceive (size_t *ret_size, uint64_t *ret_from)
 //EXPORT bool VAST_CALL VASTReceive (char **ret_msg, size_t *ret_size, uint64_t *ret_from)
+EXPORT const char * VAST_CALL VASTReceive (size_t *ret_size, uint64_t *ret_from)
 {
     if (isVASTJoined () == false)
-        //return false;
         return NULL;
 
     static char recv_buf[VAST_BUFSIZ];
