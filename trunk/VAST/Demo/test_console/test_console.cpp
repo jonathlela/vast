@@ -440,8 +440,8 @@ int main (int argc, char *argv[])
                     StatType sendstat, recvstat;
 
                     // send size
-                    msg->extract ((char *)&sendstat, sizeof (StatType));                    
-                    msg->extract ((char *)&recvstat, sizeof (StatType));
+                    msg->extract (sendstat);                    
+                    msg->extract (recvstat);
 
                     LogManager::instance ()->writeLogFile ("[%llu] send avg: %f recv avg: %f", msg->from, (float)sendstat.average, (float)recvstat.average);
                 }
@@ -481,12 +481,9 @@ int main (int argc, char *argv[])
                 Message msg (1);
                 StatType sendstat = g_world->getSendStat (true);
                 StatType recvstat = g_world->getReceiveStat (true);
-            
-                sendstat.calculateAverage ();
-                recvstat.calculateAverage ();
-            
-                msg.store ((char *)&sendstat, sizeof (StatType));
-                msg.store ((char *)&recvstat, sizeof (StatType));
+                        
+                msg.store (sendstat);
+                msg.store (recvstat);
             
                 g_self->report (msg);
             

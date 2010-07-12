@@ -138,8 +138,34 @@ typedef enum
 
 } bandwidth_t;
 
+
+// virtual interface that a class should implement to become
+// serializable into a bytestring sendable over network
+class EXPORT Serializable 
+{
+public:
+    Serializable () {}
+    virtual ~Serializable () {}
+
+    // size of this class, must be implemented
+    virtual size_t sizeOf () const = 0;
+
+    // store into a buffer (assuming the buffer has enough space)
+    // buffer can be NULL (simply to query the total size)
+    // returns the total size of the packed class
+    virtual size_t serialize (char *buffer) const = 0;
+
+    // restores a buffer into the object
+    // returns number of bytes restored (should be > 0 if correct)
+    virtual size_t deserialize (const char *buffer, size_t size) = 0;
+};
+
+
+//
 // a particular stat record for certain data
-class EXPORT StatType
+//
+
+class EXPORT StatType : public Serializable  
 {
 public:
     StatType ()
@@ -150,7 +176,7 @@ public:
     void calculateAverage ()
     {
         if (num_records > 0)
-            average = ((double)total / (double)num_records);
+            average = (float)((double)total / (double)num_records);
 
 		if (minimum == (size_t)(-1))
 			minimum = 0;
@@ -177,35 +203,52 @@ public:
         minimum = (size_t)(-1);
     }
 
+    // size of this class
+    inline size_t sizeOf () const
+    {
+        return sizeof (vsize_t)*4;
+    }
+
+    size_t serialize (char *p) const
+    {
+        // NOTE: average is not sent
+        if (p != NULL)
+        {
+            memcpy (p, &minimum,    sizeof (vsize_t));   p += sizeof (vsize_t);
+            memcpy (p, &maximum,    sizeof (vsize_t));   p += sizeof (vsize_t);
+            memcpy (p, &total,      sizeof (vsize_t));   p += sizeof (vsize_t);
+            memcpy (p, &num_records,sizeof (vsize_t));   
+        }
+        return sizeOf ();
+    }
+
+    size_t deserialize (const char *p, size_t size)
+    {
+        // perform size check        
+        if (p != NULL && size >= sizeOf ())
+        {
+            memcpy (&minimum, p, sizeof (vsize_t));   p += sizeof (vsize_t);
+            memcpy (&maximum, p, sizeof (vsize_t));   p += sizeof (vsize_t);
+            memcpy (&total,   p, sizeof (vsize_t));   p += sizeof (vsize_t);
+            memcpy (&num_records, p, sizeof (vsize_t));  
+
+            // re-calculate average
+            calculateAverage ();
+
+            return sizeOf ();
+        }
+        return 0;
+    }
+
     size_t  minimum;        // minimum single record
     size_t  maximum;        // maximum single record    
 
     size_t  total;          // total collected value
     size_t  num_records;    // total # of records
 
-    double  average;        // average = total / num_records
+    float   average;        // average = total / num_records
 };
 
-// virtual interface that a class should implement to become
-// serializable into a bytestring sendable over network
-class EXPORT Serializable 
-{
-public:
-    Serializable () {}
-    virtual ~Serializable () {}
-
-    // size of this class, must be implemented
-    virtual size_t sizeOf () const = 0;
-
-    // store into a buffer (assuming the buffer has enough space)
-    // buffer can be NULL (simply to query the total size)
-    // returns the total size of the packed class
-    virtual size_t serialize (char *buffer) const = 0;
-
-    // restores a buffer into the object
-    // returns number of bytes restored (should be > 0 if correct)
-    virtual size_t deserialize (const char *buffer, size_t size) = 0;
-};
 
 //
 // a spot location in the virtual world
