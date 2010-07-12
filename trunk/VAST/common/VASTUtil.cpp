@@ -86,7 +86,10 @@ bool LogManager::writeLogFile (const char *format, ...)
     va_end (args);
 
     if (_logfile)
+    {
         fprintf (_logfile, "\n");
+        fflush (_logfile);
+    }
     fprintf (stdout, "\n");
 
     return true;
