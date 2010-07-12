@@ -22,11 +22,11 @@ LIB_PATHS   = -L../../lib -L../../Dependencies/lib/Release -L$(ACE_PATH)/lib
 LIBS = $(LIBS_COMMON) $(LIBS_ACE) $(LIBS_THREAD) $(LIBS_DL)
 
 all: test_console.cpp
-        g++ $(CFLAGS) $(INC_PATHS) $(LIB_PATHS) $< $(LIBS) \
-        -o $(test_console)
+	g++ $(CFLAGS) $(INC_PATHS) $(LIB_PATHS) $< $(LIBS) \
+	-o $(test_console)
 
 noace:
-        make TARGET=noace
+	make TARGET=noace
 
 clean:
-        rm -f $(test_console)
+	rm -f $(test_console)
