@@ -524,8 +524,8 @@ int main (int argc, char *argv[])
         {
 		    char poslog[] = "position";
 		    char neilog[] = "neighbor";
-		    g_position_log = LogFileManager::open (poslog);
-		    g_neighbor_log = LogFileManager::open (neilog);
+		    g_position_log = LogManager::open (poslog);
+		    g_neighbor_log = LogManager::open (neilog);
     
             /*
 		    // sleep for a random time to avoid concurrent connection
@@ -717,8 +717,8 @@ int main (int argc, char *argv[])
 
     if (simulate_behavior && !is_gateway) 
     {
-		LogFileManager::close (g_position_log);
-		LogFileManager::close (g_neighbor_log);
+		LogManager::close (g_position_log);
+		LogManager::close (g_neighbor_log);
 	}
 
     return 0;
