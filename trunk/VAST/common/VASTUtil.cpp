@@ -64,16 +64,16 @@ bool LogManager::writeLogFile (const char *format, ...)
     */
 
     // print time
-	time_t rawtime;          
+	time_t rawtime;
 	time (&rawtime);
 	tm *timeinfo = gmtime (&rawtime);
-        
+
     if (_logfile)
     {
         // print formatted date/time in string
         //fprintf (_logfile, "%s: ", asctime (timeinfo)); 
         // time only
-        fprintf (_logfile, "[GMT %02d:%02d:%02d] ", timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
+        fprintf (_logfile, "[GMT %04d/%02d/%02d %02d:%02d:%02d] ", timeinfo->tm_year+1900, timeinfo->tm_mon+1, timeinfo->tm_mday, timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
     }
 
     va_list args;

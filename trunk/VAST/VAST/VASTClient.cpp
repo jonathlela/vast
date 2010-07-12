@@ -70,16 +70,6 @@ namespace Vast
         // gateway is the initial matcher
         _matcher_id = _gateway.host_id; 
 
-        // let gateway know I'm joining (to record stat)
-        Message msg (STAT);
-        msg.priority = 1;
-        msg.msggroup = MSG_GROUP_VAST_MATCHER;
-        msg.addTarget (_gateway.host_id);
-
-        layer_t type = 1;   // type 1 = JOIN
-        msg.store (type);
-        sendMessage (msg);
-
         // specifying the gateway to contact is considered joined
         _state = JOINED;
 
@@ -102,8 +92,10 @@ namespace Vast
         sendMessage (msg);
 
         // let gateway know I'm leaving (to record stat)
+        // NOTE we use subscription ID
         msg.clear (STAT);
         msg.priority = 1;
+        msg.from = _sub.id;
         msg.msggroup = MSG_GROUP_VAST_MATCHER;
         msg.addTarget (_gateway.host_id);
 
@@ -581,6 +573,17 @@ namespace Vast
                     _matcher_id = matcher_addr.host_id;
                     notifyMapping (matcher_addr.host_id, &matcher_addr);
                 }
+
+                // let gateway know I'm joining (to record stat)
+                Message msg (STAT);
+                msg.priority = 1;
+                msg.from = _sub.id;
+                msg.msggroup = MSG_GROUP_VAST_MATCHER;
+                msg.addTarget (_gateway.host_id);
+        
+                layer_t type = 1;   // type 1 = JOIN
+                msg.store (type);
+                sendMessage (msg);
             }
             break;
 
