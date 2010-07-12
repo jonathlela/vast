@@ -76,12 +76,17 @@ bool LogManager::writeLogFile (const char *format, ...)
         fprintf (_logfile, "[GMT %04d/%02d/%02d %02d:%02d:%02d] ", timeinfo->tm_year+1900, timeinfo->tm_mon+1, timeinfo->tm_mday, timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
     }
 
-    va_list args;
-    //fprintf (stderr, "Error: ");
-    va_start (args, format);
     if (_logfile)
+    {
+        va_list args;
+        va_start (args, format);
         vfprintf (_logfile, format, args);
-    // print to stdout
+        va_end (args);
+    }
+
+    // print to stdout    
+    va_list args;
+    va_start (args, format);
     vfprintf (stdout, format, args);
     va_end (args);
 
