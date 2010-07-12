@@ -53,24 +53,6 @@ bool LogManager::setLogFile(FILE *fp)
     return true;
 }
 
-/*
-bool LogManager::writeLogFile (const char *str)
-{
-    if (_logfile == NULL)
-        return false;
-
-    // print time
-	time_t rawtime;          
-	time (&rawtime);
-	tm *timeinfo = gmtime (&rawtime);
-    //fprintf (_logfile, "%s: ", asctime (timeinfo)); 
-    fprintf (_logfile, "[GMT %02d:%02d:%02d] ", timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
-
-    // print content
-    fprintf (_logfile, str);
-    return true;
-}
-*/
 
 // example from:
 // http://www.ozzu.com/cpp-tutorials/tutorial-writing-custom-printf-wrapper-function-t89166.html
@@ -85,10 +67,14 @@ bool LogManager::writeLogFile (const char *format, ...)
 	time_t rawtime;          
 	time (&rawtime);
 	tm *timeinfo = gmtime (&rawtime);
-    // print formatted date/time in string
-    //fprintf (_logfile, "%s: ", asctime (timeinfo)); 
+        
     if (_logfile)
+    {
+        // print formatted date/time in string
+        //fprintf (_logfile, "%s: ", asctime (timeinfo)); 
+        // time only
         fprintf (_logfile, "[GMT %02d:%02d:%02d] ", timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
+    }
 
     va_list args;
     //fprintf (stderr, "Error: ");
@@ -101,6 +87,7 @@ bool LogManager::writeLogFile (const char *format, ...)
 
     if (_logfile)
         fprintf (_logfile, "\n");
+    fprintf (stdout, "\n");
 
     return true;
 }

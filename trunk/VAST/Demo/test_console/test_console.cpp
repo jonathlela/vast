@@ -3,6 +3,7 @@
  *  test_console    a VAST experimental node
  *  
  *  version:    2010/06/15  init - adopted from demo_console
+ *              2010/07/12  added bandwidth stat reporting to gateway
  *
  */
 
@@ -388,6 +389,7 @@ int main (int argc, char *argv[])
 
         else 
         {
+            // generate movement (either from input or from movement model, for simulated behavior)
 #ifdef WIN32
             getInput ();
 #endif
@@ -409,7 +411,7 @@ int main (int argc, char *argv[])
                 num_moves++;      
             }
            
-            // move only if position changes
+            // perform movements, but move only if position changes
             if (!(g_prev_aoi == g_aoi))
             {
                 g_prev_aoi = g_aoi;               
@@ -427,11 +429,30 @@ int main (int argc, char *argv[])
                 printf ("[%llu] moves to (%d, %d)\n", id, (int)g_aoi.center.x, (int)g_aoi.center.y); 
             }
 
+            // process input messages, if any
+            Message *msg;
+
+            while ((msg = g_self->receive ()) != NULL)
+            {
+                // right now we only recognize msgtype = 1 (bandwidth report)
+                if (msg->msgtype == 1)
+                {
+                    StatType sendstat, recvstat;
+
+                    // send size
+                    msg->extract ((char *)&sendstat, sizeof (StatType));                    
+                    msg->extract ((char *)&recvstat, sizeof (StatType));
+
+                    LogManager::instance ()->writeLogFile ("[%llu] send avg: %f recv avg: %f", msg->from, (float)sendstat.average, (float)recvstat.average);
+                }
+            }
+
         }
 
+        // perform ticking (under available time budget)
         ACE_Time_Value now = ACE_OS::gettimeofday();
 
-        // elapsed time in microseconds
+        // find elapsed time in microseconds
         long long elapsed = (long long)(now.sec () - start.sec ()) * 1000000 + (now.usec () - start.usec ());
               
         // execute tick while obtaining time left
@@ -445,9 +466,6 @@ int main (int argc, char *argv[])
             printf ("%ld s, tick %lu, tick_persecc %lu, sleep: %lu us\n", 
                      curr_sec, g_count, count_per_sec, (long) sleep_time);
             count_per_sec = 0;		
-
-            // per second neighbor list
-            //long long curr_msec = (long long) (start.sec () * 1000 + start.usec () / 1000);
             
             if (self != NULL)                
                 //printNeighbors (curr_msec, self->id);
@@ -455,6 +473,26 @@ int main (int argc, char *argv[])
 
             // just do some per second stat collection stuff
             g_world->tickLogicalClock ();
+
+            if (g_self)
+            {
+                // report bandwidth usage stat to gateway
+                // message type 1 = bandwidth
+                Message msg (1);
+                StatType sendstat = g_world->getSendStat (true);
+                StatType recvstat = g_world->getReceiveStat (true);
+            
+                sendstat.calculateAverage ();
+                recvstat.calculateAverage ();
+            
+                msg.store ((char *)&sendstat, sizeof (StatType));
+                msg.store ((char *)&recvstat, sizeof (StatType));
+            
+                g_self->report (msg);
+            
+                // reset stat collection (interval as per second)
+                g_world->clearStat ();
+            }
         } 
         
         if (sleep_time > 0)
@@ -465,8 +503,7 @@ int main (int argc, char *argv[])
         }   
     }
 
-    // depart
-
+    // depart & clean up
     g_self->leave ();
     g_world->destroyVASTNode (g_self);
             

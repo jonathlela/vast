@@ -62,6 +62,8 @@ namespace Vast
         SEND,                           // send a particular message to certain targets        
         MESSAGE,                        // deliver a message to a node
         SUBSCRIBE_NOTIFY,               // client notifying a relay of its subscription
+        STAT,                           // sending statistics for gateway to record
+        REPORT,                         // sending app-specific message to gateway
 
         // Relay-specific messages
         REQUEST,                // request for relays
@@ -141,6 +143,9 @@ namespace Vast
 
         // get a message from the network queue
         virtual Message *   receive () = 0;
+
+        // report some message to gateway (to be processed or recorded)
+        virtual bool        report (Message &message) = 0;
     
         // get current statistics about this node (a NULL-terminated string)
         virtual char * getStat (bool clear = false) = 0;

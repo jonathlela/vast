@@ -104,6 +104,9 @@ namespace Vast
         // get a message from the network queue
         Message *   receive ();
 
+        // report some message to gateway (to be processed or recorded)
+        bool        report (Message &message);
+
         // get current statistics about this node (a NULL-terminated string)
         char * getStat (bool clear = false);
         

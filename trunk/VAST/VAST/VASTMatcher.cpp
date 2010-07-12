@@ -579,6 +579,39 @@ namespace Vast
             }
             break;
 
+        case STAT:
+            {
+                if (isGateway () == false)
+                {
+                    LogManager::instance ()->writeLogFile ("VASTMatcher::handleMessage STAT only gateway can record stat (I'm not...)\n");
+                    break;
+                }
+
+                layer_t type;
+                
+                // extract message type
+                in_msg.extract (type);
+
+                switch (type)
+                {
+                // JOIN
+                case 1:
+                    LogManager::instance ()->writeLogFile ("GW-STAT: [%llu] joins\n", in_msg.from);
+                    break;
+        
+                // LEAVE
+                case 2:
+                    LogManager::instance ()->writeLogFile ("GW-STAT: [%llu] leaves\n", in_msg.from);
+                    break;
+
+                // message type unrecognized
+                default:
+                    LogManager::instance ()->writeLogFile ("VASTMatcher::handleMessage STAT unrecognized type: %d\n", (int)type);
+                    break;
+                }
+            }
+            break;
+
         // process universal VASTnet message, msgtype = 0
         case DISCONNECT:
             {   

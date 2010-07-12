@@ -70,6 +70,16 @@ namespace Vast
         // gateway is the initial matcher
         _matcher_id = _gateway.host_id; 
 
+        // let gateway know I'm joining (to record stat)
+        Message msg (STAT);
+        msg.priority = 1;
+        msg.msggroup = MSG_GROUP_VAST_MATCHER;
+        msg.addTarget (_gateway.host_id);
+
+        layer_t type = 1;   // type 1 = JOIN
+        msg.store (type);
+        sendMessage (msg);
+
         // specifying the gateway to contact is considered joined
         _state = JOINED;
 
@@ -91,6 +101,16 @@ namespace Vast
         msg.addTarget (_matcher_id);
         sendMessage (msg);
 
+        // let gateway know I'm leaving (to record stat)
+        msg.clear (STAT);
+        msg.priority = 1;
+        msg.msggroup = MSG_GROUP_VAST_MATCHER;
+        msg.addTarget (_gateway.host_id);
+
+        layer_t type = 2;   // type 2 = LEAVE
+        msg.store (type);
+        sendMessage (msg);
+        
         // important to set it to 0, so that auto-subscribe check would not happen 
         // in postHandling ()
         _timeout_subscribe = 0;
@@ -390,6 +410,38 @@ namespace Vast
 
         return _lastmsg;
     }
+
+    // report some message to gateway (to be processed or recorded)
+    // NOTE: works similar as send () but only to gateway
+    bool
+    VASTClient::report (Message &message)
+    {
+        if (_state != JOINED)
+            return 0;
+
+        // prepare message to send to matcher
+        Message msg (message);
+        msg.msggroup = MSG_GROUP_VAST_CLIENT;
+
+        // record my subscription ID as the default 'from' field, if not already specified
+        // NOTE: this is to allow the recipiant to properly identify me and send reply back
+        if (msg.from == 0)
+            msg.from = _sub.id;
+
+        // we clear out the targets field to send to matcher first for processing
+        msg.targets.clear ();
+        msg.addTarget (_gateway.host_id);
+
+        // modify the msgtype to indicate this is an app-specific message
+        msg.msgtype = (msg.msgtype << VAST_MSGTYPE_RESERVED) | MESSAGE;
+
+        vector<id_t> failed;
+        sendMessage (msg, &failed);
+
+        // if message is sent out successfully
+        return (failed.size () == 0);
+    }
+
 
     // get current statistics about this node (a NULL-terminated string)
     char *
@@ -739,7 +791,8 @@ namespace Vast
         if (now >= _next_periodic)
         {
             _next_periodic = now + _net->getTimestampPerSecond ();
-        
+                    
+            // remove ghost neighbors (those no longer updating)
             removeGhosts ();
         }
     }

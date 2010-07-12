@@ -298,6 +298,9 @@ namespace Vast
     bool 
     VASTVerse::destroyVASTNode (VAST *node)
     {
+        // send unsent messages
+        this->tick ();
+
         if (_vastinfo.size () == 0)
             return false;
 
@@ -531,7 +534,7 @@ namespace Vast
         return time_budget;
     }
 
-    // move logical clock forward
+    // move logical clock forward (perform periodic stuff here)
     void  
     VASTVerse::tickLogicalClock ()
     {
