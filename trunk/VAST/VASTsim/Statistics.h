@@ -59,7 +59,7 @@ public:
     {
         _last_consistent.clear ();
 
-        LogFileManager::close (_fp);
+        LogManager::close (_fp);
 
         // remove memory allocated
         for (size_t i=0; i < _inconsistent_nodes.size (); i++)
@@ -92,7 +92,7 @@ public:
         // open output file, and avoid overwrite existing log files
         char filename[80];
         sprintf (filename, "N%04d_S%d_A%d_C%02d_V%02d_L%03d_F%03d", _para.NODE_SIZE, _para.TIME_STEPS, _para.AOI_RADIUS, _para.CONNECT_LIMIT, _para.VELOCITY, _para.LOSS_RATE, _para.FAIL_RATE);
-        _fp = LogFileManager::open (filename);
+        _fp = LogManager::open (filename);
 
         print_header ();
         init_variables ();

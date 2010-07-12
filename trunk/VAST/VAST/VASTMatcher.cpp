@@ -4,6 +4,8 @@
 #include "VASTMatcher.h"
 #include "MessageQueue.h"
 
+#include "VASTUtil.h"   // LogManager
+
 
 using namespace Vast;
 
@@ -365,7 +367,8 @@ namespace Vast
                     if (_closest.find (sub.id) != _closest.end ())
                         _closest.erase (sub.id);
 
-                    printf ("VASTMatcher: SUBSCRIBE request from [%llu] success\n", in_msg.from);
+                    // record the subscription request                    
+                    LogManager::instance ()->writeLogFile ("VASTMatcher: SUBSCRIBE request from [%llu] success\n", in_msg.from);
                 }
                 else
                 {

@@ -146,9 +146,21 @@ public:
     size_t compress (uint8_t *source, uint8_t *dest, size_t size);
 };
 
-class EXPORT LogFileManager
+// refer to: http://www.yolinux.com/TUTORIALS/C++Singleton.html
+class EXPORT LogManager
 {
+
 public:
+
+	static LogManager* instance ();
+
+	bool setLogFile (FILE *fp);
+	//bool writeLogFile (const char *str);
+    bool writeLogFile (const char *format, ...);
+	bool unsetLogFile ();
+
+
+    // open a file, appending a numerical postfix 
 	static FILE *open (char *prefix)
     {
         // prefix too long
@@ -193,7 +205,23 @@ public:
         else 
             return false;
     }
+
+private:
+    // Private so that it can  not be called
+	LogManager ()
+    {
+        _logfile = NULL;
+    };    
+
+	//LogManager (LogManager const&){};             // copy constructor is private
+	//LogManager& operator=(LogManager const&){};  // assignment operator is private
+    FILE *_logfile;          // pointer to logfile
+
+    // global instance for supporting singleton
+	static LogManager* _instance;
 };
+
+ 
 
 //
 // A helper class that allows the registeration and query of time budget left

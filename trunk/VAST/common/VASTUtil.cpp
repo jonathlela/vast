@@ -28,8 +28,92 @@
 #include "ace/ACE.h"        // ACE_OS::gettimeofday () for TimeMonitor
 #include "ace/OS.h"
 
+#include "stdarg.h"         // taking variable arguments in writeLogFile
+
 namespace Vast
 {  
+
+// Global static pointer used to ensure a single instance of the class.
+LogManager* LogManager::_instance = NULL; 
+
+LogManager* LogManager::instance()
+{
+   if (!_instance)   // Only allow one instance of class to be generated.
+      _instance = new LogManager;
+ 
+   return _instance;
+}
+ 
+bool LogManager::setLogFile(FILE *fp)
+{
+    if (_logfile)
+        return false;
+
+    _logfile = fp;
+    return true;
+}
+
+/*
+bool LogManager::writeLogFile (const char *str)
+{
+    if (_logfile == NULL)
+        return false;
+
+    // print time
+	time_t rawtime;          
+	time (&rawtime);
+	tm *timeinfo = gmtime (&rawtime);
+    //fprintf (_logfile, "%s: ", asctime (timeinfo)); 
+    fprintf (_logfile, "[GMT %02d:%02d:%02d] ", timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
+
+    // print content
+    fprintf (_logfile, str);
+    return true;
+}
+*/
+
+// example from:
+// http://www.ozzu.com/cpp-tutorials/tutorial-writing-custom-printf-wrapper-function-t89166.html
+bool LogManager::writeLogFile (const char *format, ...)
+{
+    /*
+    if (_logfile == NULL)
+        return false;
+    */
+
+    // print time
+	time_t rawtime;          
+	time (&rawtime);
+	tm *timeinfo = gmtime (&rawtime);
+    // print formatted date/time in string
+    //fprintf (_logfile, "%s: ", asctime (timeinfo)); 
+    if (_logfile)
+        fprintf (_logfile, "[GMT %02d:%02d:%02d] ", timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
+
+    va_list args;
+    //fprintf (stderr, "Error: ");
+    va_start (args, format);
+    if (_logfile)
+        vfprintf (_logfile, format, args);
+    // print to stdout
+    vfprintf (stdout, format, args);
+    va_end (args);
+
+    if (_logfile)
+        fprintf (_logfile, "\n");
+
+    return true;
+}
+
+
+bool LogManager::unsetLogFile ()
+{
+    if (_logfile == NULL)
+        return false;
+
+    _logfile = NULL;
+    return true;
+}
 
 //TimeMonitor gTimeMonitor;
 TimeMonitor TimeMonitor::_instance;

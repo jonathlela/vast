@@ -11,7 +11,7 @@
 #pragma warning(disable: 4996)
 #endif
 
-#include "ace/ACE.h"
+#include "ace/ACE.h"    // for sleep functions
 #include "ace/OS.h"
 
 #include <stdio.h>
@@ -51,7 +51,6 @@ bool        g_finished = false; // whether we're done for this program execution
 NodeState   g_state = ABSENT;   // the join state of this node
 char        g_lastcommand = 0;  // last keyboard character typed 
 size_t      g_count = 0;        // # of ticks so far (# of times the main loop has run)
-size_t      time_offset = 2;     
 int         g_node_no = (-1);   // which node to simulate (-1 indicates none, manual control)
 
 VASTPara_Net g_netpara;         // network parameters
@@ -59,6 +58,7 @@ VASTPara_Net g_netpara;         // network parameters
 MovementGenerator g_movement;
 FILE       *g_position_log = NULL;     // logfile for node positions
 FILE	   *g_neighbor_log = NULL;	   // logfile for node neighbors
+FILE	   *g_gateway_log  = NULL;	   // logfile for gateway
 
 // VAST-specific variables
 VASTVerse *     g_world = NULL;
@@ -119,6 +119,33 @@ void getInput ()
 }
 #endif
 
+bool recordJoinTime (FILE *fp, Vast::id_t nodeID)
+{
+    if (fp == NULL || nodeID == 0)
+        return false;
+
+	// record join time
+	time_t rawtime;          
+	time (&rawtime);
+
+	tm *timeinfo = gmtime (&rawtime);
+    
+	ACE_Time_Value startTime = ACE_OS::gettimeofday();
+	fprintf (fp, "# Node joined, Log starts\n\n");
+
+	// node ID
+	fprintf (fp, "# node ID\n");
+	fprintf (fp, "%llu\n", nodeID);
+	
+	fprintf (fp, "# Start date/time\n"); 
+	fprintf (fp, "# %s", asctime (timeinfo)); 
+	fprintf (fp, "# GMT (hour:min:sec)\n%2d,%02d,%02d\n", timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
+	fprintf (fp, "# second:millisec\n%d,%d\n", (int)startTime.sec (), (int)(startTime.usec () / 1000));      
+    fflush (fp);
+
+    return true;
+}
+
 void checkJoin ()
 {    
     // create the VAST node
@@ -136,7 +163,7 @@ void checkJoin ()
         break;
     }
 
-    if (g_state == JOINED && g_position_log != NULL)
+    if (g_state == JOINED)
     {
         Node *self;
         Vast::id_t nodeID;
@@ -144,51 +171,34 @@ void checkJoin ()
         self = g_self->getSelf ();
         nodeID = g_self->getSubscriptionID ();
 
-		// record join time
-		time_t rawtime;          
-		time (&rawtime);
-
-		tm *timeinfo = gmtime (&rawtime);
-        
-		ACE_Time_Value startTime = ACE_OS::gettimeofday();
-		fprintf (g_position_log, "# Node joined, Position Log starts\n\n");
-		fprintf (g_neighbor_log, "# Node joined, Neighbor Log starts\n\n");
-
-		// node ID
-		fprintf (g_position_log, "# node ID\n");
-		fprintf (g_position_log, "%llu\n", nodeID);
-		fprintf (g_neighbor_log, "# node ID\n");
-		fprintf (g_neighbor_log, "%llu\n", nodeID);
-		
-		fprintf (g_position_log, "# Start date/time\n"); 
-		fprintf (g_position_log, "# %s", asctime (timeinfo)); 
-		fprintf (g_position_log, "# GMT (hour:min:sec)\n%2d,%02d,%02d\n", 
-				timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
-		fprintf (g_position_log, "# second:millisec\n%d,%d\n", (int)startTime.sec (), (int)(startTime.usec () / 1000));      
-		fprintf (g_neighbor_log, "# Start date/time\n"); 
-		fprintf (g_neighbor_log, "#%s", asctime (timeinfo)); 
-		fprintf (g_neighbor_log, "# GMT (hour:min:sec)\n%2d,%02d,%02d\n", 
-				timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec);
-		fprintf (g_neighbor_log, "# second:millisec\n%d,%d\n", (int)startTime.sec (), (int)(startTime.usec () / 1000));        
+        recordJoinTime (g_position_log, nodeID);
+        recordJoinTime (g_neighbor_log, nodeID);
+        recordJoinTime (g_gateway_log, nodeID);
        
-		// simulating which node
-		fprintf (g_position_log, "# node path number simulated (-1 indicates manual control)\n");
-		fprintf (g_position_log, "%d\n", g_node_no);
+        if (g_position_log)
+        {
+		    // simulating which node
+			fprintf (g_position_log, "# node path number simulated (-1 indicates manual control)\n");
+			fprintf (g_position_log, "%d\n", g_node_no);
+        
+			// format
+			fprintf (g_position_log, "\n");
+			// fprintf (g_position_log, "# count,curr_sec (per second)\n"); 
+			fprintf (g_position_log, "# millisec,\"posX,posY\",elapsed (per step)\n\n");
+            fflush (g_position_log); 
+        }
 
-		// format
-		fprintf (g_position_log, "\n");
-		// fprintf (g_position_log, "# count,curr_sec (per second)\n"); 
-		fprintf (g_position_log, "# millisec,\"posX,posY\",elapsed (per step)\n\n");
-		fprintf (g_neighbor_log, "\n");
-		// fprintf (g_neighbor_log, "# count,curr_sec (per second)\n"); 
-		fprintf (g_neighbor_log, "# millisec,\"nodeID,posX,posY\", ... (per step)\n\n");
-
-		fflush (g_position_log); 
-		fflush (g_neighbor_log);	
+        if (g_neighbor_log)
+        {
+			fprintf (g_neighbor_log, "\n");
+			// fprintf (g_neighbor_log, "# count,curr_sec (per second)\n"); 
+			fprintf (g_neighbor_log, "# millisec,\"nodeID,posX,posY\", ... (per step)\n\n");		
+			fflush (g_neighbor_log);	
+        }
     }
 }
 
-void PrintNeighbors (long long curr_msec, Vast::id_t selfID)
+void printNeighbors (long long curr_msec, Vast::id_t selfID)
 {
     // record neighbor position to log if joined
     if (g_state == JOINED)
@@ -299,7 +309,7 @@ int main (int argc, char *argv[])
 
 
     // for simulated behavior, we will use position log to move the nodes
-    if (simulate_behavior)
+    if (simulate_behavior && is_gateway == false)
     {
         // create / open position log file
         char filename[80];
@@ -326,13 +336,18 @@ int main (int argc, char *argv[])
         g_aoi.center = *g_movement.getPos (g_node_no, 0);
 
         // create logfile to record neighbors at each step
-        if (is_gateway == false) 
-        {
-		    char poslog[] = "position";
-		    char neilog[] = "neighbor";
-		    g_position_log = LogFileManager::open (poslog);
-		    g_neighbor_log = LogFileManager::open (neilog);    
-        }
+		char poslog[] = "position";
+		char neilog[] = "neighbor";
+		g_position_log = LogManager::open (poslog);
+		g_neighbor_log = LogManager::open (neilog);    
+    }
+
+    // open gateway log
+    if (is_gateway) 
+    {
+        char GWlog[] = "gateway";
+        g_gateway_log = LogManager::open (GWlog);
+        LogManager::instance ()->setLogFile (g_gateway_log);
     }
 
     size_t count_per_sec = 0;
@@ -435,8 +450,8 @@ int main (int argc, char *argv[])
             //long long curr_msec = (long long) (start.sec () * 1000 + start.usec () / 1000);
             
             if (self != NULL)                
-                //PrintNeighbors (curr_msec, self->id);
-                PrintNeighbors (curr_msec, g_sub_no);
+                //printNeighbors (curr_msec, self->id);
+                printNeighbors (curr_msec, g_sub_no);
 
             // just do some per second stat collection stuff
             g_world->tickLogicalClock ();
@@ -457,11 +472,24 @@ int main (int argc, char *argv[])
             
     delete g_world;        
 
-    if (simulate_behavior && !is_gateway) 
+    if (g_position_log) 
     {
-		LogFileManager::close (g_position_log);
-		LogFileManager::close (g_neighbor_log);
+		LogManager::close (g_position_log);
+        g_position_log = NULL;
+    }
+
+    if (g_neighbor_log)
+    {
+		LogManager::close (g_neighbor_log);
+        g_neighbor_log = NULL;
 	}
+
+    if (g_gateway_log)
+    {
+        LogManager::instance ()->unsetLogFile ();
+		LogManager::close (g_gateway_log);
+        g_gateway_log = NULL;
+    }
 
     return 0;
 }
