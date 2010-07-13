@@ -44,7 +44,7 @@ using namespace std;
 const int FRAMES_PER_SECOND      = 40;
 
 // number of seconds elasped before a bandwidth usage is reported to gateway
-const int REPORT_INTERVAL        = 10;     
+const int REPORT_INTERVAL        = 600;     
 
 // global
 Area        g_aoi;              // my AOI (with center as current position)

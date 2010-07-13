@@ -133,7 +133,8 @@ namespace Vast {
             if (_remote_id == NET_ID_UNASSIGNED)
             {
                 printf ("net_ace_handler (): UDP message received, but handler's remote_id not yet known\n");
-                return 0;
+                // terminate this acceptor
+                return -1;
             }
 
             switch (n = _udp->recv (_buf.data, VAST_BUFSIZ, _local_addr)) 
