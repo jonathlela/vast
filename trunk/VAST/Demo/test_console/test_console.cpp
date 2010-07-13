@@ -43,6 +43,8 @@ using namespace std;
 // target game cycles per second
 const int FRAMES_PER_SECOND      = 40;
 
+// number of seconds elasped before a bandwidth usage is reported to gateway
+const int REPORT_INTERVAL        = 10;     
 
 // global
 Area        g_aoi;              // my AOI (with center as current position)
@@ -351,16 +353,14 @@ int main (int argc, char *argv[])
         LogManager::instance ()->setLogFile (g_gateway_log);
     }
 
-    size_t count_per_sec = 0;
-    int num_moves = 0;
-
-    // how much time in millisecond
-    size_t time_budget = 1000/FRAMES_PER_SECOND;
     
-    long curr_sec = 0;               // current seconds since start
-                                     // time of last movement
+    size_t count_per_sec = 0;                       // tick count per second
+    int seconds_to_report = REPORT_INTERVAL;     // # of seconds before reporting to gateway
+    int num_moves = 0;    
+    size_t time_budget = 1000/FRAMES_PER_SECOND;    // how much time in millisecond    
+    long curr_sec = 0;                              // current seconds since start
 
-    ACE_Time_Value last_move = ACE_OS::gettimeofday(); 
+    ACE_Time_Value last_move = ACE_OS::gettimeofday(); // last movement 
     
     // record beginning of main loop    
     while (!g_finished)
@@ -443,7 +443,10 @@ int main (int argc, char *argv[])
                     msg->extract (sendstat);                    
                     msg->extract (recvstat);
 
-                    LogManager::instance ()->writeLogFile ("[%llu] send avg: %f recv avg: %f", msg->from, (float)sendstat.average, (float)recvstat.average);
+                    sendstat.calculateAverage ();
+                    recvstat.calculateAverage ();
+
+                    LogManager::instance ()->writeLogFile ("[%llu] send: (%lu,%lu,%.2f) recv: (%lu,%lu,%.2f)", msg->from, sendstat.minimum, sendstat.maximum, sendstat.average, recvstat.minimum, recvstat.maximum, recvstat.average);
                 }
             }
 
@@ -465,17 +468,22 @@ int main (int argc, char *argv[])
             curr_sec = (long)start.sec ();
             printf ("%ld s, tick %lu, tick_persecc %lu, sleep: %lu us\n", 
                      curr_sec, g_count, count_per_sec, (long) sleep_time);
-            count_per_sec = 0;		
+
+            count_per_sec = 0;	
+
+            seconds_to_report--;
             
             if (self != NULL)                
-                //printNeighbors (curr_msec, self->id);
                 printNeighbors (curr_msec, g_sub_no);
 
             // just do some per second stat collection stuff
             g_world->tickLogicalClock ();
 
-            if (g_self)
+            // check if we should report to gateway of bandwidth usage
+            if (g_self && seconds_to_report <= 0)
             {
+                seconds_to_report = REPORT_INTERVAL;
+
                 // report bandwidth usage stat to gateway
                 // message type 1 = bandwidth
                 Message msg (1);
