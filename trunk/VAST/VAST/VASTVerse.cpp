@@ -501,9 +501,12 @@ namespace Vast
     {        
         VASTPointer *handlers = (VASTPointer *)_pointers;
 
-        // if no time is available
+        // if no time is available, at least give a little time to run at least once
         if (time_budget < 0)
-            time_budget = 0;
+            time_budget = 1;
+
+        // set budget
+        TimeMonitor::instance ()->setBudget (time_budget);
 
         // perform routine procedures for each logical time-step
         if (handlers->msgqueue != NULL)
@@ -531,7 +534,9 @@ namespace Vast
         }
 
         // right now there's always time available
-        return time_budget;
+        //return time_budget;
+
+        return TimeMonitor::instance ()->available ();
     }
 
     // move logical clock forward (perform periodic stuff here)

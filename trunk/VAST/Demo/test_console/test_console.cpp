@@ -239,7 +239,11 @@ void printNeighbors (long long curr_msec, Vast::id_t selfID)
 }
 
 int main (int argc, char *argv[])
-{      
+{   
+    // 
+    // Initialization
+    //
+
     ACE::init ();
 
     // initialize seed
@@ -303,13 +307,17 @@ int main (int argc, char *argv[])
 
     bool simulate_behavior = (g_node_no > 0);
     
-    // make backup of AOI
+    // make backup of AOI, this is so that we can check if position has moved
+    // if there's no movement then we won't call VAST to change position
     g_prev_aoi = g_aoi;
 
     // create VAST node factory    
     g_world = new VASTVerse (entries, &g_netpara, NULL);
     g_world->createVASTNode (g_gateway.publicIP, g_aoi, VAST_EVENT_LAYER);
 
+    //
+    // open logs
+    //
 
     // for simulated behavior, we will use position log to move the nodes
     if (simulate_behavior && is_gateway == false)
@@ -353,16 +361,19 @@ int main (int argc, char *argv[])
         LogManager::instance ()->setLogFile (g_gateway_log);
     }
 
+    //
+    // main loop
+    //
     
     size_t count_per_sec = 0;                       // tick count per second
-    int seconds_to_report = REPORT_INTERVAL;     // # of seconds before reporting to gateway
-    int num_moves = 0;    
-    size_t time_budget = 1000/FRAMES_PER_SECOND;    // how much time in millisecond    
+    int seconds_to_report = REPORT_INTERVAL;        // # of seconds before reporting to gateway
+    int num_moves = 0;                              // which movement
+    size_t time_budget = 1000/FRAMES_PER_SECOND;    // how much time in millisecond for each frame
     long curr_sec = 0;                              // current seconds since start
 
-    ACE_Time_Value last_move = ACE_OS::gettimeofday(); // last movement 
+    ACE_Time_Value last_move = ACE_OS::gettimeofday();  // time of last movement 
     
-    // record beginning of main loop    
+    // entering main loop
     while (!g_finished)
     {   
         // record starting time of this cycle
@@ -449,34 +460,24 @@ int main (int argc, char *argv[])
                     LogManager::instance ()->writeLogFile ("[%llu] send: (%lu,%lu,%.2f) recv: (%lu,%lu,%.2f)", msg->from, sendstat.minimum, sendstat.maximum, sendstat.average, recvstat.minimum, recvstat.maximum, recvstat.average);
                 }
             }
-
         }
-
-        // perform ticking (under available time budget)
-        ACE_Time_Value now = ACE_OS::gettimeofday();
-
-        // find elapsed time in microseconds
-        long long elapsed = (long long)(now.sec () - start.sec ()) * 1000000 + (now.usec () - start.usec ());
-              
-        // execute tick while obtaining time left
-        size_t sleep_time = g_world->tick ((time_budget - (size_t)(elapsed / 1000))) * 1000;
        
         // do per-second things / checks
         // NOTE: we assume this takes little time and does not currently count in as time spent in cycle       
+        
+        // whether we should print message
+        bool print_tick = false;
         if (start.sec () > curr_sec)
         {
             curr_sec = (long)start.sec ();
-            printf ("%ld s, tick %lu, tick_persecc %lu, sleep: %lu us\n", 
-                     curr_sec, g_count, count_per_sec, (long) sleep_time);
-
-            count_per_sec = 0;	
-
+            print_tick = true;
+            
             seconds_to_report--;
             
             if (self != NULL)                
                 printNeighbors (curr_msec, g_sub_no);
 
-            // just do some per second stat collection stuff
+            // do some per second stat collection stuff
             g_world->tickLogicalClock ();
 
             // check if we should report to gateway of bandwidth usage
@@ -499,7 +500,23 @@ int main (int argc, char *argv[])
                 g_world->clearStat ();
             }
         } 
-        
+
+        // perform ticking (under available time budget)
+        ACE_Time_Value now = ACE_OS::gettimeofday();
+
+        // find elapsed time in microseconds
+        long long elapsed = (long long)(now.sec () - start.sec ()) * 1000000 + (now.usec () - start.usec ());
+              
+        // execute tick while obtaining time left
+        size_t sleep_time = g_world->tick ((time_budget - (size_t)(elapsed / 1000))) * 1000;
+
+        if (print_tick)
+        {
+            printf ("%ld s, tick %lu, tick_persecc %lu, sleep: %lu us\n", curr_sec, g_count, count_per_sec, (long) sleep_time);
+            count_per_sec = 0;	
+        }
+    
+        // check if we should sleep out the remaining time in this frame
         if (sleep_time > 0)
         {
             // NOTE the 2nd parameter is specified in microseconds (us) not milliseconds
@@ -508,7 +525,10 @@ int main (int argc, char *argv[])
         }   
     }
 
+    //
     // depart & clean up
+    //
+
     g_self->leave ();
     g_world->destroyVASTNode (g_self);
             

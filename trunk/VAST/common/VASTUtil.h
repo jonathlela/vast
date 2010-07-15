@@ -233,8 +233,6 @@ private:
 class EXPORT TimeMonitor 
 {
 public:
-    TimeMonitor ();
-    ~TimeMonitor () {}
 
     // set how much time is left (in millisecond)
     void setBudget (int time_budget);
@@ -245,10 +243,15 @@ public:
     int available ();
 
     // return a global instance of TimeMonitor
-    static TimeMonitor &getInstance ();
+    static TimeMonitor *instance ();
 
 private:
-    static TimeMonitor _instance;   // static instance of the class
+
+    // private so it cannot be called outside
+    TimeMonitor ();
+    //~TimeMonitor () {}
+
+    static TimeMonitor *_instance;   // static instance of the class
 
     long long          _budget;     // time left in current budget
     long long          _start;      // start time of setting the budget

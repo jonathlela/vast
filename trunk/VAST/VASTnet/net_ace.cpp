@@ -393,9 +393,8 @@ namespace Vast {
     QMSG *
     net_ace::receive ()
     {
-        // if no time is left in current timeslot, then return immediately
-        //if (TimeMonitor::instance ()->available () == 0)
-        if (TimeMonitor::getInstance ().available () == 0)
+        // if no time is left in current timeslot, then return immediately        
+        if (TimeMonitor::instance ()->available () == 0)
         {
             //printf ("no time available\n");
             return NULL;
@@ -461,7 +460,11 @@ namespace Vast {
         ACE_SOCK_Stream &s = *((net_ace_handler *)stream);
         ACE_INET_Addr remote_addr;
         s.get_remote_addr (remote_addr);
-        IPaddr ip (remote_addr.get_ip_address (), remote_addr.get_port_number ()); 
+
+        // port is destinated as '0' because it's a send port, not a listen port
+        // so is only valid for this connection
+        //IPaddr ip (remote_addr.get_ip_address (), remote_addr.get_port_number ()); 
+        IPaddr ip (remote_addr.get_ip_address (), 0); 
         Addr addr (id, &ip);
 
         storeMapping (addr);

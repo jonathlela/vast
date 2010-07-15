@@ -534,11 +534,13 @@ namespace Vast
         // check for information consistency (for debug)
         map<id_t, Addr>::iterator it = _id2addr.find (addr.host_id);
         if (it != _id2addr.end () && it->second != addr)
-        {
-            // NOTE: this may be normal as the port of an address can differ betweeen 
-            //       what others see (if they receive a connection previously) vs. 
-            //       what we actually use to connect to outside
-            printf ("VASTnet::storeMapping (): existing address and new address mismatch.\n");
+        {            
+            // NOTE: this can occur normally due to two cases:
+            //       1) when an actual listen port replaces a detected port (will always be 0)
+            //       2) when a connection is re-established and a previous mapping exists (the new connection will have a detected port of 0)
+            // we should flag a warning for any other cases
+            if (it->second.publicIP.port != 0 && addr.publicIP.port != 0)
+                printf ("VASTnet::storeMapping (): existing address and new address mismatch.\n");
         }
 
         // store local copy of the mapping

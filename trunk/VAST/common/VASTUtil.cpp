@@ -110,8 +110,8 @@ bool LogManager::unsetLogFile ()
     return true;
 }
 
-//TimeMonitor gTimeMonitor;
-TimeMonitor TimeMonitor::_instance;
+
+TimeMonitor* TimeMonitor::_instance = NULL;
 
 TimeMonitor::TimeMonitor ()
 {
@@ -172,13 +172,13 @@ TimeMonitor::available ()
 }
 
 // return a global instance of TimeMonitor
-//TimeMonitor *
-//TimeMonitor::instance ()
-TimeMonitor&
-TimeMonitor::getInstance ()
+TimeMonitor *
+TimeMonitor::instance ()
 {
-    //return &gTimeMonitor;
-    return TimeMonitor::_instance;
+   if (!_instance)   // Only allow one instance of class to be generated.
+      _instance = new TimeMonitor;
+ 
+   return _instance;
 }
 
 
