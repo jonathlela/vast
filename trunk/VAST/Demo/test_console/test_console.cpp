@@ -371,16 +371,33 @@ int main (int argc, char *argv[])
     size_t time_budget = 1000/FRAMES_PER_SECOND;    // how much time in millisecond for each frame
     long curr_sec = 0;                              // current seconds since start
 
-    ACE_Time_Value last_move = ACE_OS::gettimeofday();  // time of last movement 
+    ACE_Time_Value last_time = ACE_OS::gettimeofday();  // time of last movement 
     
     // entering main loop
     while (!g_finished)
     {   
-        // record starting time of this cycle
-        ACE_Time_Value start = ACE_OS::gettimeofday ();
+        TimeMonitor::instance ()->setBudget (time_budget);
 
-        // current time in millisecond 
-        long long curr_msec = (long long) (start.sec () * 1000 + start.usec () / 1000);
+        // check whether we need to perform per-second task in this cycle
+        bool persec_task = false;
+
+        ACE_Time_Value curr_time = ACE_OS::gettimeofday ();
+        long long curr_msec = (long long) (curr_time.sec () * 1000 + curr_time.usec () / 1000);
+
+        // elapsed time in microseconds
+        long long elapsed = (long long)(curr_time.sec () - last_time.sec ()) * 1000000 + (curr_time.usec () - last_time.usec ());
+
+        if (curr_time.sec () > curr_sec)
+        {
+            curr_sec = (long)curr_time.sec ();
+            persec_task = true;
+        }
+
+        if (elapsed > (1000000 / simpara.STEPS_PERSEC))
+        {
+            // re-record last_time
+            last_time = curr_time;            
+        }
 
         g_count++;
         count_per_sec++;
@@ -404,15 +421,10 @@ int main (int argc, char *argv[])
 #ifdef WIN32
             getInput ();
 #endif
-            // fix movement at STEPS_PERSEC            
-            // elapsed time in microseconds
-            long long elapsed = (long long)(start.sec () - last_move.sec ()) * 1000000 + (start.usec () - last_move.usec ());
-                                   
-            if (simulate_behavior && (elapsed > (1000000 / simpara.STEPS_PERSEC)))
-            {    
-                //printf ("elapsed time since last move %ld\n", elapsed);
-                last_move = start;
-               
+                        
+            // check if automatic movement should be performed                                   
+            if (simulate_behavior && persec_task)
+            {                                                   
                 g_aoi.center = *g_movement.getPos (g_node_no, num_moves);
 
                 // in simulated mode, we only move TIME_STEPS times
@@ -462,16 +474,10 @@ int main (int argc, char *argv[])
             }
         }
        
-        // do per-second things / checks
-        // NOTE: we assume this takes little time and does not currently count in as time spent in cycle       
-        
-        // whether we should print message
-        bool print_tick = false;
-        if (start.sec () > curr_sec)
-        {
-            curr_sec = (long)start.sec ();
-            print_tick = true;
-            
+        // do other per-second things / checks
+                        
+        if (persec_task)
+        {            
             seconds_to_report--;
             
             if (self != NULL)                
@@ -500,17 +506,13 @@ int main (int argc, char *argv[])
                 g_world->clearStat ();
             }
         } 
-
-        // perform ticking (under available time budget)
-        ACE_Time_Value now = ACE_OS::gettimeofday();
-
-        // find elapsed time in microseconds
-        long long elapsed = (long long)(now.sec () - start.sec ()) * 1000000 + (now.usec () - start.usec ());
               
         // execute tick while obtaining time left
-        size_t sleep_time = g_world->tick ((time_budget - (size_t)(elapsed / 1000))) * 1000;
+        int time_left = TimeMonitor::instance ()->available ();
 
-        if (print_tick)
+        size_t sleep_time = g_world->tick (time_left) * 1000;
+
+        if (persec_task)
         {
             printf ("%ld s, tick %lu, tick_persecc %lu, sleep: %lu us\n", curr_sec, g_count, count_per_sec, (long) sleep_time);
             count_per_sec = 0;	
