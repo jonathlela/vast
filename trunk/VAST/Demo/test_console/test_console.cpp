@@ -393,10 +393,13 @@ int main (int argc, char *argv[])
             persec_task = true;
         }
 
+        // if we should move in this frame
+        bool to_move = false;
         if (elapsed > (1000000 / simpara.STEPS_PERSEC))
         {
             // re-record last_time
-            last_time = curr_time;            
+            last_time = curr_time;
+            to_move = true;
         }
 
         g_count++;
@@ -423,7 +426,7 @@ int main (int argc, char *argv[])
 #endif
                         
             // check if automatic movement should be performed                                   
-            if (simulate_behavior && persec_task)
+            if (simulate_behavior && to_move)
             {                                                   
                 g_aoi.center = *g_movement.getPos (g_node_no, num_moves);
 
@@ -443,8 +446,11 @@ int main (int argc, char *argv[])
                 // if I'm not gateway & need to record position
                 if (g_position_log != NULL)
                 {
-                    fprintf (g_position_log, "%lld,\"%llu,%d,%d\",%lld [%lu,%lu]\n", curr_msec, id,
-                             (int)self->aoi.center.x, (int)self->aoi.center.y, elapsed,
+                    fprintf (g_position_log, "%lld,\"%llu,%d,%d\",%lld [%lu,%lu]\n", 
+                             curr_msec, 
+                             id,
+                             (int)self->aoi.center.x, (int)self->aoi.center.y, 
+                             elapsed,
                              g_world->getSendStat ().total, g_world->getReceiveStat ().total);
                     fflush(g_position_log);
                 }
