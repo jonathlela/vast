@@ -305,10 +305,10 @@ int main (int argc, char *argv[])
     if ((g_node_no = InitPara (VAST_NET_ACE, g_netpara, simpara, cmd, &is_gateway, &g_aoi, &g_gateway, &entries)) == (-1))
         exit (0);
 
+    // if g_node_no is specified, then this node will simulate a client movement
     bool simulate_behavior = (g_node_no > 0);
     
-    // make backup of AOI, this is so that we can check if position has moved
-    // if there's no movement then we won't call VAST to change position
+    // make backup of AOI, so we can detect whehter position has changed and we need to move the client
     g_prev_aoi = g_aoi;
 
     // create VAST node factory    
@@ -357,7 +357,7 @@ int main (int argc, char *argv[])
     if (is_gateway) 
     {
         char GWlog[] = "gateway";
-        g_gateway_log = LogManager::open (GWlog);
+        g_gateway_log = LogManager::open (GWlog, "stat");
         LogManager::instance ()->setLogFile (g_gateway_log);
     }
 

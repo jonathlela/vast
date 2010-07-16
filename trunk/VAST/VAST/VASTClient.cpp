@@ -2,6 +2,7 @@
 
 #include "VASTClient.h"
 #include "MessageQueue.h"
+#include "VASTUtil.h"       // LogManager
 
 namespace Vast
 {   
@@ -86,10 +87,7 @@ namespace Vast
 
         // send a LEAVE message to my relay
         Message msg (LEAVE);
-        msg.priority = 1;
-        msg.msggroup = MSG_GROUP_VAST_MATCHER;
-        msg.addTarget (_matcher_id);
-        sendMessage (msg);
+        sendMatcherMessage (msg);
 
         // let gateway know I'm leaving (to record stat)
         // NOTE we use subscription ID
@@ -138,21 +136,16 @@ namespace Vast
         _sub.active  = false;
         _sub.relay   = _net->getAddress (_relay->getRelayID ());
 
+        printf ("VASTClient::subscribe () [%llu] sends SUBSCRIBE request to [%llu]\n", _self.id, _matcher_id);
+
         // send out subscription request
-        Message msg (SUBSCRIBE);
-        msg.priority = 1;        
-        msg.msggroup = MSG_GROUP_VAST_MATCHER;
+        Message msg (SUBSCRIBE);                
         msg.store (_sub);
-        msg.addTarget (_matcher_id);
-
-        sendMessage (msg);
-
+        
         // TODO: very strange if this is put here, consistency drops 10%        
         //_timeout_subscribe = _net->getTimestamp () + (TIMEOUT_SUBSCRIBE * _net->getTimestampPerSecond ());
 
-        printf ("VASTClient::subscribe () [%llu] sends SUBSCRIBE request to [%llu]\n", _self.id, _matcher_id);
-
-        return true;
+        return sendMatcherMessage (msg);
     }
 
     // send a message to all subscribers within a publication area
@@ -168,9 +161,6 @@ namespace Vast
         // (important as we cannot manipulate external message directly, 
         //  may cause access violation for memory allocated in a different library heap)
         Message msg (message);
-        msg.priority = 1;
-        msg.msggroup = MSG_GROUP_VAST_MATCHER;
-
         // modify the msgtype to indicate this is an app-specific message
         msg.msgtype = (msg.msgtype << VAST_MSGTYPE_RESERVED) | PUBLISH;
 
@@ -180,11 +170,8 @@ namespace Vast
         msg.store (area);
         msg.store (layer);
         
-        // send to relay for default processing       
-        msg.addTarget (_matcher_id);        
-        sendMessage (msg);
-
-        return true;
+        // send to matcher for default processing        
+        return sendMatcherMessage (msg);
     }
     
     // move a subscription area to a new position
@@ -215,8 +202,6 @@ namespace Vast
             prev_aoi.center = aoi.center;
 
             Message msg (MOVE);
-            msg.priority = 3;
-            msg.msggroup = MSG_GROUP_VAST_MATCHER;
 
             // store subscription ID
             msg.store (subID);
@@ -242,7 +227,6 @@ namespace Vast
             }
 
             // for movement we send to current and closest matcher
-            msg.addTarget (_matcher_id);
             if (_closest_id != NET_ID_UNASSIGNED)
                 msg.addTarget (_closest_id);
 
@@ -251,25 +235,7 @@ namespace Vast
                 // MOVE can be delivered unreliably
                 //msg.reliable = false;
 
-                vector<id_t> failed;
-                sendMessage (msg, &failed);
-
-                if (failed.size () > 0)
-                {
-                    // handle potential matcher & closest matcher fail
-                    // for failed matcher we re-initiate connection, for failed closest
-                    // we simply erase it
-                    for (size_t i=0; i < failed.size (); i++)
-                    {
-                        if (failed[i] == _matcher_id)
-                            handleMatcherDisconnect ();
-                        else if (failed[i] == _closest_id)
-                        {
-                            printf ("[%llu] VASTClient::move () cannot contact my backup matcher [%llu], remove it\n", _self.id, _closest_id);
-                            _closest_id = 0;
-                        }
-                    }
-                }
+                sendMatcherMessage (msg, 3);
             }
 
             // update into 'self'
@@ -289,7 +255,6 @@ namespace Vast
 
         // prepare message to send to matcher
         Message msg (message);
-        msg.msggroup = MSG_GROUP_VAST_MATCHER;
 
         // record my subscription ID as the default 'from' field, if not already specified
         // NOTE: this is to allow the recipiant to properly identify me and send reply back
@@ -309,12 +274,15 @@ namespace Vast
 
         // we clear out the targets field to send to matcher first for processing
         msg.targets.clear ();
-        msg.addTarget (_matcher_id);
 
         // modify the msgtype to indicate this is an app-specific message
         msg.msgtype = (msg.msgtype << VAST_MSGTYPE_RESERVED) | SEND;
 
-        return sendMessage (msg, failed);
+        bool success = sendMatcherMessage (msg, msg.priority, failed);
+
+        // TODO: right now the return is not meaningful at all, because there can only be
+        //       successful send to matcher or not, outcome of individual targets cannot be known
+        return (success ? message.targets.size () : 0);
     }
 
     // obtain a list of subscribers within an area
@@ -413,6 +381,7 @@ namespace Vast
 
         // prepare message to send to matcher
         Message msg (message);
+        msg.priority = 1;
         msg.msggroup = MSG_GROUP_VAST_CLIENT;
 
         // record my subscription ID as the default 'from' field, if not already specified
@@ -564,9 +533,6 @@ namespace Vast
                 // NOTE that _self.id is not updated as it specifies host_id                
                 _self.aoi = _sub.aoi;
                                       
-                // notify network so incoming messages can be processed by this host
-                //notifyMapping (sub_no, &_net->getHostAddress ());
-
                 // record new matcher, if different from existing one
                 if (matcher_addr.host_id != _matcher_id)
                 {
@@ -857,19 +823,62 @@ namespace Vast
     bool 
     VASTClient::requestNeighbor (id_t id)
     {
-        Message msg (NEIGHBOR_REQUEST);
-        msg.priority = 1;
+        Message msg (NEIGHBOR_REQUEST);        
         msg.store (_sub.id);
-        msg.store (id);
-        msg.msggroup = MSG_GROUP_VAST_MATCHER;
-        msg.addTarget (_matcher_id);
+        msg.store (id);                
 
-        return (sendMessage (msg) > 0);
+        return sendMatcherMessage (msg);
     }
 
     //
     // fault tolerance
     //
+
+    // matcher message with error checking
+    bool 
+    VASTClient::sendMatcherMessage (Message &msg, byte_t priority, vector<id_t> *failed)
+    {
+        static vector<id_t> failed_list;
+        failed_list.clear ();
+
+        if (failed == NULL)
+            failed = &failed_list;
+
+        // by default matcher message are high priority, unless specified otherwise
+        if (priority != 0)
+            msg.priority = priority;
+        else
+            msg.priority = 1;
+
+        msg.msggroup = MSG_GROUP_VAST_MATCHER;
+        msg.addTarget (_matcher_id);
+        
+        sendMessage (msg, failed);
+
+        bool success = true;
+
+        // handle potential matcher & closest matcher fail
+        if (failed->size () > 0)
+        {            
+            // for failed matcher we re-initiate connection, for failed closest we simply erase
+            for (size_t i=0; i < failed->size (); i++)
+            {
+                if (failed->at (i) == _matcher_id)
+                    success = false;
+                else if (failed->at (i) == _closest_id)
+                {
+                    LogManager::instance ()->writeLogFile ("[%llu] VASTClient::sendMatcherMessage () cannot contact my backup matcher [%llu], remove it\n", _self.id, _closest_id);
+                    _closest_id = 0;
+                }
+            }
+        }
+
+        // we disconnect matcher here as calling it will change the _closet
+        if (!success)
+            handleMatcherDisconnect ();
+
+        return success;
+    }
 
     // deal with matcher disconnection or non-update
     void 
@@ -879,10 +888,6 @@ namespace Vast
 
         _matcher_id = _closest_id;
         _closest_id = 0;
-
-        // if we know no alternative matcher, need to re-join
-        //if (_matcher_id == NET_ID_UNASSIGNED)
-        //    _state = ABSENT;
 
         // reset active flag so we need to re-subscribe (to re-affirm with matcher)
         _sub.active = false;

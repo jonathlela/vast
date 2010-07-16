@@ -161,7 +161,7 @@ public:
 
 
     // open a file, appending a numerical postfix 
-	static FILE *open (char *prefix)
+	static FILE *open (char *prefix, char *extension = NULL)
     {
         // prefix too long
         if (strlen (prefix) >= 200)
@@ -175,7 +175,7 @@ public:
         do 
         {
             // generate filename
-            sprintf (filename, "%s-%03d.log", prefix, count);
+            sprintf (filename, "%s-%03d.%s", prefix, count, (extension == NULL ? "log" : extension));
 
             if ((fp = fopen (filename, "rt")) == NULL)
             {

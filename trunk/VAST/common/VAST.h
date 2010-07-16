@@ -130,6 +130,7 @@ namespace Vast
         // send a custom message to a particular VAST node (ID obtained from list ())
         // returns the number of successful send, 
         // optionally obtains the failed targets, and indicate if the send should be 'directly' (end-to-end, without relays)
+        // TODO: send () now only sends to matcher, so target is always 1
         virtual int         send (Message &message, vector<id_t> *failed = NULL, bool direct = false) = 0;
 
         // obtain a list of subscribers with an area

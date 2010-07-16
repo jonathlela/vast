@@ -165,6 +165,9 @@ namespace Vast
         // fault tolerance mechanism
         //
 
+        // matcher message with error checking, default priority is 1
+        bool sendMatcherMessage (Message &msg, byte_t priority = 0, vector<id_t> *failed = NULL);
+
         // deal with matcher disconnection or non-update
         void handleMatcherDisconnect ();
 

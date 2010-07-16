@@ -443,7 +443,9 @@ LRESULT WINAPI MsgProc (HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
             if (!finished)
             {
                 g_steps++;
-                                   
+                               
+                // NOTE that we will process for as long as needed 
+                // (so possibly will run out of the time budget)
                 g_world->tick (0);
 
                 if (g_state == JOINED)            
