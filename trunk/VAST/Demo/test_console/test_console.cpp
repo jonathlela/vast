@@ -44,7 +44,7 @@ using namespace std;
 const int FRAMES_PER_SECOND      = 40;
 
 // number of seconds elasped before a bandwidth usage is reported to gateway
-const int REPORT_INTERVAL        = 600;     
+const int REPORT_INTERVAL        = 10;     
 
 // global
 Area        g_aoi;              // my AOI (with center as current position)
@@ -219,7 +219,7 @@ void printNeighbors (long long curr_msec, Vast::id_t selfID)
 			printf ("[%llu] (%d, %d) ", (neighbors[i]->id), 
 					(int)neighbors[i]->aoi.center.x, (int)neighbors[i]->aoi.center.y);
 
-            if (g_neighbor_log != NULL)
+            if (g_neighbor_log)
             {
 			    fprintf (g_neighbor_log, "\"%llu,%d,%d\"", (neighbors[i]->id), 
 				    	(int)neighbors[i]->aoi.center.x, (int)neighbors[i]->aoi.center.y);			
@@ -230,7 +230,7 @@ void printNeighbors (long long curr_msec, Vast::id_t selfID)
 		
         printf ("\n");
 
-        if (g_neighbor_log != NULL) 
+        if (g_neighbor_log) 
         {
             fprintf (g_neighbor_log, "\n");
 		    fflush (g_neighbor_log);
@@ -246,11 +246,11 @@ int main (int argc, char *argv[])
 
     ACE::init ();
 
-    // initialize seed
-    //srand ((unsigned int)time (NULL));
+    // initialize random seed
 
     // NOTE: do not use time () as nodes starting concurrently at different sites may have 
     //       very close time () values
+    //srand ((unsigned int)time (NULL));
     ACE_Time_Value now = ACE_OS::gettimeofday ();
     printf ("Setting random seed as: %d\n", (int)now.usec ());
     srand (now.usec ());
@@ -371,8 +371,10 @@ int main (int argc, char *argv[])
     size_t time_budget = 1000/FRAMES_PER_SECOND;    // how much time in millisecond for each frame
     long curr_sec = 0;                              // current seconds since start
 
-    ACE_Time_Value last_time = ACE_OS::gettimeofday();  // time of last movement 
+    ACE_Time_Value last_movement = ACE_OS::gettimeofday();  // time of last movement 
     
+    map<id_t, long long> last_update;               // last update time for a neighbor
+
     // entering main loop
     while (!g_finished)
     {   
@@ -385,7 +387,7 @@ int main (int argc, char *argv[])
         long long curr_msec = (long long) (curr_time.sec () * 1000 + curr_time.usec () / 1000);
 
         // elapsed time in microseconds
-        long long elapsed = (long long)(curr_time.sec () - last_time.sec ()) * 1000000 + (curr_time.usec () - last_time.usec ());
+        long long elapsed = (long long)(curr_time.sec () - last_movement.sec ()) * 1000000 + (curr_time.usec () - last_movement.usec ());
 
         if (curr_time.sec () > curr_sec)
         {
@@ -397,8 +399,8 @@ int main (int argc, char *argv[])
         bool to_move = false;
         if (elapsed > (1000000 / simpara.STEPS_PERSEC))
         {
-            // re-record last_time
-            last_time = curr_time;
+            // re-record last_movement
+            last_movement = curr_time;
             to_move = true;
         }
 
@@ -452,11 +454,11 @@ int main (int argc, char *argv[])
                              (int)self->aoi.center.x, (int)self->aoi.center.y, 
                              elapsed,
                              g_world->getSendStat ().total, g_world->getReceiveStat ().total);
-                    fflush(g_position_log);
+                    fflush (g_position_log);
                 }
 
-                // print out every 10 moves
-                if (num_moves % 10 == 0)
+                // print out movement once per second
+                if (num_moves % simpara.STEPS_PERSEC == 0)
                     printf ("[%llu] moves to (%d, %d)\n", id, (int)g_aoi.center.x, (int)g_aoi.center.y);
             }
 
@@ -471,13 +473,16 @@ int main (int argc, char *argv[])
                     StatType sendstat, recvstat;
 
                     // send size
-                    msg->extract (sendstat);                    
+                    msg->extract (sendstat);         
                     msg->extract (recvstat);
 
                     sendstat.calculateAverage ();
                     recvstat.calculateAverage ();
 
                     LogManager::instance ()->writeLogFile ("[%llu] send: (%lu,%lu,%.2f) recv: (%lu,%lu,%.2f)", msg->from, sendstat.minimum, sendstat.maximum, sendstat.average, recvstat.minimum, recvstat.maximum, recvstat.average);
+
+                    // record last update time for this node
+                    last_update[msg->from] = curr_msec;
                 }
             }
         }
@@ -494,7 +499,7 @@ int main (int argc, char *argv[])
             // do some per second stat collection stuff
             g_world->tickLogicalClock ();
 
-            // check if we should report to gateway of bandwidth usage
+            // check if we should report to gateway bandwidth usage
             if (g_self && seconds_to_report <= 0)
             {
                 seconds_to_report = REPORT_INTERVAL;
@@ -513,6 +518,23 @@ int main (int argc, char *argv[])
                 // reset stat collection (interval as per second)
                 g_world->clearStat ();
             }
+
+            // remove obsolete entries in last_update (if gateway)
+            if (is_gateway)
+            {
+                map<id_t, long long>::iterator it = last_update.begin ();
+                vector<id_t> remove_list;
+                for ( ; it != last_update.end (); it++)
+                {
+                    if ((curr_msec - it->second) > (REPORT_INTERVAL * 1000 * 1.5))
+                        remove_list.push_back (it->first);
+                }
+
+                for (size_t i=0; i < remove_list.size (); i++)
+                    last_update.erase (remove_list[i]);
+
+                LogManager::instance ()->writeLogFile ("GW-STAT: %lu concurrent at %lld\n", last_update.size (), curr_msec);
+            }
         } 
               
         // execute tick while obtaining time left
@@ -522,7 +544,7 @@ int main (int argc, char *argv[])
 
         if (persec_task)
         {
-            printf ("%ld s, tick %lu, tick_persecc %lu, sleep: %lu us\n", curr_sec, g_count, count_per_sec, (long) sleep_time);
+            printf ("%ld s, tick %lu, tick_persec %lu, sleep: %lu us\n", curr_sec, g_count, count_per_sec, sleep_time);
             count_per_sec = 0;	
         }
     
