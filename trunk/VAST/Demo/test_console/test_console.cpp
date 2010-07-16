@@ -455,7 +455,9 @@ int main (int argc, char *argv[])
                     fflush(g_position_log);
                 }
 
-                printf ("[%llu] moves to (%d, %d)\n", id, (int)g_aoi.center.x, (int)g_aoi.center.y); 
+                // print out every 10 moves
+                if (num_moves % 10 == 0)
+                    printf ("[%llu] moves to (%d, %d)\n", id, (int)g_aoi.center.x, (int)g_aoi.center.y);
             }
 
             // process input messages, if any
@@ -538,6 +540,12 @@ int main (int argc, char *argv[])
     //
 
     g_self->leave ();
+    g_world->tick ();
+
+    // sleep a little to let message be sent out
+    ACE_Time_Value tv (0, 2000000);
+    ACE_OS::sleep (tv);        
+
     g_world->destroyVASTNode (g_self);
             
     delete g_world;        
