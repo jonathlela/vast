@@ -41,7 +41,7 @@ using namespace std;
 #endif
 
 // target game cycles per second
-const int FRAMES_PER_SECOND      = 40;
+const int FRAMES_PER_SECOND      = 20;
 
 // number of seconds elasped before a bandwidth usage is reported to gateway
 const int REPORT_INTERVAL        = 10;     
@@ -223,6 +223,7 @@ void printNeighbors (long long curr_msec, Vast::id_t selfID)
             {
 			    fprintf (g_neighbor_log, "\"%llu,%d,%d\"", (neighbors[i]->id), 
 				    	(int)neighbors[i]->aoi.center.x, (int)neighbors[i]->aoi.center.y);			
+
                 if (i != neighbors.size() - 1)
 	    		    fprintf(g_neighbor_log, ",");
             }
@@ -365,47 +366,54 @@ int main (int argc, char *argv[])
     // main loop
     //
     
-    size_t count_per_sec = 0;                       // tick count per second
+    size_t tick_per_sec = 0;                        // tick count per second
     int seconds_to_report = REPORT_INTERVAL;        // # of seconds before reporting to gateway
     int num_moves = 0;                              // which movement
     size_t time_budget = 1000/FRAMES_PER_SECOND;    // how much time in millisecond for each frame
+    size_t ms_per_move = (1000000 / (simpara.STEPS_PERSEC));  // microseconds elapsed for one move
+    int tick_per_move = FRAMES_PER_SECOND / simpara.STEPS_PERSEC;  // number of ticks elapsed for each move
+
     long curr_sec = 0;                              // current seconds since start
 
     ACE_Time_Value last_movement = ACE_OS::gettimeofday();  // time of last movement 
     
     map<id_t, long long> last_update;               // last update time for a neighbor
+    size_t sleep_time = 0;                          // time to sleep
+    int    time_left = 0;                           // how much time left for ticking VAST
 
     // entering main loop
+    // NOTE we don't necessarily move in every loop (# of loops > # of moves per second)
     while (!g_finished)
     {   
+        g_count++;
+        tick_per_sec++;
+
         TimeMonitor::instance ()->setBudget (time_budget);
+
+        ACE_Time_Value curr_time = ACE_OS::gettimeofday ();
+
+        // current time in microseconds
+        long long curr_msec = (long long) (curr_time.sec () * 1000 + curr_time.usec () / 1000);
 
         // check whether we need to perform per-second task in this cycle
         bool persec_task = false;
-
-        ACE_Time_Value curr_time = ACE_OS::gettimeofday ();
-        long long curr_msec = (long long) (curr_time.sec () * 1000 + curr_time.usec () / 1000);
-
-        // elapsed time in microseconds
-        long long elapsed = (long long)(curr_time.sec () - last_movement.sec ()) * 1000000 + (curr_time.usec () - last_movement.usec ());
-
         if (curr_time.sec () > curr_sec)
         {
             curr_sec = (long)curr_time.sec ();
             persec_task = true;
         }
 
+        // elapsed time in microseconds
+        long long elapsed = (long long)(curr_time.sec () - last_movement.sec ()) * 1000000 + (curr_time.usec () - last_movement.usec ());        
+
         // if we should move in this frame
         bool to_move = false;
-        if (elapsed > (1000000 / simpara.STEPS_PERSEC))
+        if (elapsed >= ms_per_move)
         {
             // re-record last_movement
             last_movement = curr_time;
             to_move = true;
         }
-
-        g_count++;
-        count_per_sec++;
 
         // obtain pointer to self
         Node *self = NULL;
@@ -537,24 +545,23 @@ int main (int argc, char *argv[])
             }
         } 
               
-        // execute tick while obtaining time left
-        int time_left = TimeMonitor::instance ()->available ();
-
-        size_t sleep_time = g_world->tick (time_left) * 1000;
-
         if (persec_task)
         {
-            printf ("%ld s, tick %lu, tick_persec %lu, sleep: %lu us\n", curr_sec, g_count, count_per_sec, sleep_time);
-            count_per_sec = 0;	
+            printf ("%ld s, tick %lu, tick_persec %lu, last_sleep: %lu us, time_left: %d\n", curr_sec, g_count, tick_per_sec, sleep_time, time_left);
+            tick_per_sec = 0;
         }
     
+        // execute tick while obtaining time left
+        time_left = TimeMonitor::instance ()->available ();
+        sleep_time = g_world->tick (time_left) * 1000;
+
         // check if we should sleep out the remaining time in this frame
         if (sleep_time > 0)
         {
             // NOTE the 2nd parameter is specified in microseconds (us) not milliseconds
             ACE_Time_Value duration (0, sleep_time);            
             ACE_OS::sleep (duration); 
-        }   
+        }
     }
 
     //

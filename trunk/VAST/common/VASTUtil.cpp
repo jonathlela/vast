@@ -149,11 +149,13 @@ TimeMonitor::available ()
     else if (_budget < 0)
         return 0;
 
-    // fix movement at tick_persec times per second
+    // check how much time has elapsed since setBudget was called
     ACE_Time_Value time = ACE_OS::gettimeofday();
-    long long elapsed = (long long)time.sec () * 1000000 + time.usec () - _start;
-    
-    //printf ("available (): %ld budget: %ld\n", (long)now, (long)_budget);
+    long long elapsed = (long long)((long long)time.sec () * 1000000 + time.usec ()) - _start;
+
+    //if (elapsed > 0)
+    //    printf ("available (): elapsed %ld budget: %ld\n", (long)elapsed, (long)_budget);
+
     int time_left = (int)(_budget - elapsed)/1000;
 
     if (time_left < 0)
