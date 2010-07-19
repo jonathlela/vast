@@ -377,7 +377,7 @@ int main (int argc, char *argv[])
 
     ACE_Time_Value last_movement = ACE_OS::gettimeofday();  // time of last movement 
     
-    map<id_t, long long> last_update;               // last update time for a neighbor
+    map<Vast::id_t, long long> last_update;               // last update time for a neighbor
     size_t sleep_time = 0;                          // time to sleep
     int    time_left = 0;                           // how much time left for ticking VAST
 
@@ -530,8 +530,8 @@ int main (int argc, char *argv[])
             // remove obsolete entries in last_update (if gateway)
             if (is_gateway)
             {
-                map<id_t, long long>::iterator it = last_update.begin ();
-                vector<id_t> remove_list;
+                map<Vast::id_t, long long>::iterator it = last_update.begin ();
+                vector<Vast::id_t> remove_list;
                 for ( ; it != last_update.end (); it++)
                 {
                     if ((curr_msec - it->second) > (REPORT_INTERVAL * 1000 * 1.5))
