@@ -234,10 +234,10 @@ class EXPORT TimeMonitor
 {
 public:
 
-    // set how much time is left (in millisecond)
+    // set how much time is left (in microseconds, 10^-6)
     void setBudget (int time_budget);
 
-    // still time available? return time left (in millisecond)
+    // still time available? return time left (in microseconds, 10^-6)
     // return 0 for no more time, 
     //     (-1) for unlimited time
     int available ();

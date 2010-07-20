@@ -127,12 +127,12 @@ TimeMonitor::TimeMonitor ()
 void 
 TimeMonitor::setBudget (int time_budget)
 {
-    if (time_budget > 1000)
+    if (time_budget > 1000000)
     {
         printf ("TimeMonitor::setBudget () budget exceeds 1000 ms, may want to check if this is correct\n");
     }
 
-    _budget = time_budget * 1000;
+    _budget = time_budget;
     ACE_Time_Value time = ACE_OS::gettimeofday();
     _start = (long long)time.sec () * 1000000 + time.usec ();
     _first = true;
@@ -156,7 +156,7 @@ TimeMonitor::available ()
     //if (elapsed > 0)
     //    printf ("available (): elapsed %ld budget: %ld\n", (long)elapsed, (long)_budget);
 
-    int time_left = (int)(_budget - elapsed)/1000;
+    int time_left = (int)(_budget - elapsed);
 
     if (time_left < 0)
         time_left = 0;

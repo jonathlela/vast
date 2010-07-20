@@ -114,8 +114,8 @@ namespace Vast
         // bool switchWorld (IPaddr &gateway);
 
         // advance one time-step for all nodes to process messages  
-        // input time budget for this tick in millisecond, specify 0 for unlimited budget
-        // returns time left in millisecond, 0 for no more time, (-1) for unlimited budget
+        // input time budget for this tick in microseconds, 10^-6, specify 0 for unlimited budget
+        // returns time left in microseconds, 0 for no more time, (-1) for unlimited budget
         // NOTE: currently only (-1) would return
         int     tick (int time_budget = 0);
 

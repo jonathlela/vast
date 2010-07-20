@@ -369,7 +369,7 @@ int main (int argc, char *argv[])
     size_t tick_per_sec = 0;                        // tick count per second
     int seconds_to_report = REPORT_INTERVAL;        // # of seconds before reporting to gateway
     int num_moves = 0;                              // which movement
-    size_t time_budget = 1000/FRAMES_PER_SECOND;    // how much time in millisecond for each frame
+    size_t time_budget = 1000000/FRAMES_PER_SECOND;    // how much time in millisecond for each frame
     size_t ms_per_move = (1000000 / (simpara.STEPS_PERSEC));  // microseconds elapsed for one move
     int tick_per_move = FRAMES_PER_SECOND / simpara.STEPS_PERSEC;  // number of ticks elapsed for each move
 
@@ -392,7 +392,7 @@ int main (int argc, char *argv[])
 
         ACE_Time_Value curr_time = ACE_OS::gettimeofday ();
 
-        // current time in microseconds
+        // current time in milliseconds
         long long curr_msec = (long long) (curr_time.sec () * 1000 + curr_time.usec () / 1000);
 
         // check whether we need to perform per-second task in this cycle
@@ -553,7 +553,7 @@ int main (int argc, char *argv[])
     
         // execute tick while obtaining time left
         time_left = TimeMonitor::instance ()->available ();
-        sleep_time = g_world->tick (time_left) * 1000;
+        sleep_time = g_world->tick (time_left);
 
         // check if we should sleep out the remaining time in this frame
         if (sleep_time > 0)
