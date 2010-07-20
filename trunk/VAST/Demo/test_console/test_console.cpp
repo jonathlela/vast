@@ -487,7 +487,7 @@ int main (int argc, char *argv[])
                     sendstat.calculateAverage ();
                     recvstat.calculateAverage ();
 
-                    LogManager::instance ()->writeLogFile ("[%llu] send: (%lu,%lu,%.2f) recv: (%lu,%lu,%.2f)", msg->from, sendstat.minimum, sendstat.maximum, sendstat.average, recvstat.minimum, recvstat.maximum, recvstat.average);
+                    LogManager::instance ()->writeLogFile ("[%llu] send: (%u,%u,%.2f) recv: (%u,%u,%.2f)", msg->from, sendstat.minimum, sendstat.maximum, sendstat.average, recvstat.minimum, recvstat.maximum, recvstat.average);
 
                     // record last update time for this node
                     last_update[msg->from] = curr_msec;
