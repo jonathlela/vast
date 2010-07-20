@@ -50,6 +50,7 @@ const int REPORT_INTERVAL        = 10;
 Area        g_aoi;              // my AOI (with center as current position)
 Area        g_prev_aoi;         // previous AOI (to detect if AOI has changed)
 Addr        g_gateway;          // address for gateway
+world_t     g_world_id = 0;     // world ID
 bool        g_finished = false; // whether we're done for this program execution
 NodeState   g_state = ABSENT;   // the join state of this node
 char        g_lastcommand = 0;  // last keyboard character typed 
@@ -302,7 +303,7 @@ int main (int argc, char *argv[])
     bool is_gateway;
 
     // obtain parameters from command line and/or INI file
-    if ((g_node_no = InitPara (VAST_NET_ACE, g_netpara, simpara, cmd, &is_gateway, &g_aoi, &g_gateway, &entries)) == (-1))
+    if ((g_node_no = InitPara (VAST_NET_ACE, g_netpara, simpara, cmd, &is_gateway, &g_world_id, &g_aoi, &g_gateway, &entries)) == (-1))
         exit (0);
 
     // if g_node_no is specified, then this node will simulate a client movement
@@ -524,7 +525,8 @@ int main (int argc, char *argv[])
                 g_world->clearStat ();
             }
 
-            // remove obsolete entries in last_update (if gateway)
+            // remove obsolete entries in last_update (if I'm gateway), 
+            // this keeps the concurrent count accurate
             if (is_gateway)
             {
                 map<Vast::id_t, long long>::iterator it = last_update.begin ();
@@ -540,19 +542,16 @@ int main (int argc, char *argv[])
 
                 LogManager::instance ()->writeLogFile ("GW-STAT: %lu concurrent at %lld\n", last_update.size (), curr_msec);
             }
-        } 
-              
-        if (persec_task)
-        {
+
+            // show message to indicate liveness
             printf ("%ld s, tick %lu, tick_persec %lu, last_sleep: %lu us, time_left: %d\n", curr_sec, g_count, tick_per_sec, sleep_time, time_left);
             tick_per_sec = 0;
         }
     
-        // execute tick while obtaining time left
+        // execute tick while obtaining time left, sleep out the remaining time
         time_left = TimeMonitor::instance ()->available ();
         sleep_time = g_world->tick (time_left);
 
-        // check if we should sleep out the remaining time in this frame
         if (sleep_time > 0)
         {
             // NOTE the 2nd parameter is specified in microseconds (us) not milliseconds

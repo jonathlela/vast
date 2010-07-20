@@ -56,6 +56,7 @@ const int FRAMES_PER_SECOND      = 40;
 Area        g_aoi;              // my AOI (with center as current position)
 Area        g_prev_aoi;         // my AOI (with center as current position)
 Addr        g_gateway;          // address for gateway
+world_t     g_world_id = 0;     // ID for world I'm joining
 bool        g_finished = false; // whether we're done for this program execution
 NodeState   g_state = ABSENT;   // the join state of this node
 char        g_lastcommand = 0;  // last keyboard character typed 
@@ -461,7 +462,7 @@ int main (int argc, char *argv[])
     bool is_gateway;
 
     // obtain parameters from command line and/or INI file
-    if ((g_node_no = InitPara (VAST_NET_ACE, g_netpara, simpara, cmd, &is_gateway, &g_aoi, &g_gateway, &entries)) == (-1))
+    if ((g_node_no = InitPara (VAST_NET_ACE, g_netpara, simpara, cmd, &is_gateway, &g_world_id, &g_aoi, &g_gateway, &entries)) == (-1))
         exit (0);
 
     bool simulate_behavior = (g_node_no > 0);

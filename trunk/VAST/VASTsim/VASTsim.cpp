@@ -54,12 +54,13 @@ bool                g_joining   = true;
 
 
 // Initilize parameters, including setting default values or read from INI file
-int InitPara (VAST_NetModel model, VASTPara_Net &netpara, SimPara &simpara, const char *cmdline, bool *p_is_gateway, Area *p_aoi, Addr *p_gateway, vector<IPaddr> *p_entries)
+int InitPara (VAST_NetModel model, VASTPara_Net &netpara, SimPara &simpara, const char *cmdline, bool *p_is_gateway, world_t *p_world_id, Area *p_aoi, Addr *p_gateway, vector<IPaddr> *p_entries)
 {
     netpara.model = model;
 
     // parameters to be filled
     bool is_gateway;
+    world_t world_id = 0;
     Area aoi;
     vector<IPaddr> entries;
 
@@ -117,33 +118,38 @@ int InitPara (VAST_NetModel model, VASTPara_Net &netpara, SimPara &simpara, cons
                     sprintf (GWstr, "%s:%d", p, netpara.port);
                 break;
     
-            case 2:
-                // 3rd parameter: node to simulate                
+            // 3rd parameter: node to simulate   
+            case 2:                             
                 node_no = atoi (p);
+                break;
+
+            // world id
+            case 3:
+                world_id = (world_t)atoi (p);
                 break;
     
             // X-coord
-            case 3:
+            case 4:
                 aoi.center.x = (coord_t)atoi (p);
                 break;
     
             // Y-coord
-            case 4:
+            case 5:
                 aoi.center.y = (coord_t)atoi (p);
                 break;
 
             // AOI-radius
-            case 5:
+            case 6:
                 aoi.radius = (length_t)atoi (p);
                 break;
 
             // is relay
-            case 6:
+            case 7:
                 netpara.is_relay = (atoi (p) == 1);
                 break;
 
             // is matcher
-            case 7:
+            case 8:
                 netpara.is_matcher = (atoi (p) == 1);
                 break;
             }
@@ -215,6 +221,9 @@ int InitPara (VAST_NetModel model, VASTPara_Net &netpara, SimPara &simpara, cons
 
     if (p_aoi != NULL)
         *p_aoi = aoi;
+
+    if (p_world_id != NULL)
+        *p_world_id = world_id;
 
     if (p_gateway != NULL)
         *p_gateway = g_gateway_addr;

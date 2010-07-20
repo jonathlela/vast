@@ -67,6 +67,7 @@ Arbitrator *    g_arbitrator = NULL;
 // common variables
 int             g_node_no = (-1);   // which node to simulate (-1 indicates none, manual control)
 Area            g_aoi;              // my AOI (with center as current position)
+world_t         g_world_id = 0;
 Vast::NodeState g_state = ABSENT;
 Voronoi      *  g_Voronoi = NULL;   // access to Voronoi class
 VASTPara_Net    g_netpara;          // network parameters
@@ -642,7 +643,7 @@ INT WINAPI WinMain (HINSTANCE hInst, HINSTANCE, LPSTR lpCmdLine, INT)
     bool is_gateway;
 
     // obtain parameters from command line and/or INI file
-    if ((g_node_no = InitPara (VAST_NET_ACE, g_netpara, simpara, lpCmdLine, &is_gateway, &g_aoi, &g_gateway, &entries)) == (-1))
+    if ((g_node_no = InitPara (VAST_NET_ACE, g_netpara, simpara, lpCmdLine, &is_gateway, &g_world_id, &g_aoi, &g_gateway, &entries)) == (-1))
         exit (0);
 
     //bool simulate_behavior = (g_node_no > 0);
