@@ -65,7 +65,7 @@ namespace Vast
         //       join at a different location as determined by the workload        
         _self.aoi.radius = 5;
 
-        // if we're gateway, then our VSOpeer also has to join
+        // if I'm gateway, then my VSOpeer also has to join
         if (isGateway () || _self.aoi.center.isEmpty () == false)
         {
             Node gateway;
@@ -296,9 +296,6 @@ namespace Vast
                 if (voronoi->contains (_self.id, sub.aoi.center) || 
                     closest == _self.id)
                 {
-                    // store which host requests for the subscription
-                    //sub.host_id = in_msg.from;
-
                     // slight increase AOI radius to avoid client-side ghost objects
                     sub.aoi.radius += SUBSCRIPTION_AOI_BUFFER;
 
@@ -618,13 +615,7 @@ namespace Vast
                 // NOTE: the disconnecting host may be either a regular client
                 //       or a matcher host. In the latter case, we should also
                 //       notify the VONpeer component of its departure
-                
-                // NOTE that this will work because MessageQueue will put all associated sub_id for the 
-                //      disconnecting host as 'in_msg.from' when notifying the DISCONNECT event
-
-                //if (_neighbors.find (in_msg.from) == _neighbors.end ())
-                //    removeSubscription (in_msg.from);
-                
+                                
                 // removing a simple client (subscriber)
                 subscriberDisconnected (in_msg.from);       
 
@@ -636,8 +627,7 @@ namespace Vast
                 _VSOpeer->handleMessage (in_msg);
 
                 // remove a matcher
-                refreshMatcherList ();
-                
+                refreshMatcherList ();                
             }
             break;
 
@@ -1325,7 +1315,6 @@ namespace Vast
     bool 
     VASTMatcher::peerJoined ()
     {
-
         return true;
     }
 

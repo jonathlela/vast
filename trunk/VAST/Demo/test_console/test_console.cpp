@@ -75,7 +75,7 @@ void getInput ()
     while (kbhit ())
     {
         char c = (char)getch ();
-        //printf ("%d ", c);
+
         switch (c)
         {
         // quit
@@ -201,6 +201,7 @@ void checkJoin ()
     }
 }
 
+// print out current list of observed neighbors
 void printNeighbors (long long curr_msec, Vast::id_t selfID)
 {
     // record neighbor position to log if joined
@@ -249,9 +250,7 @@ int main (int argc, char *argv[])
 
     // initialize random seed
 
-    // NOTE: do not use time () as nodes starting concurrently at different sites may have 
-    //       very close time () values
-    //srand ((unsigned int)time (NULL));
+    // NOTE: do not use time () as nodes at different sites may have very close time () values
     ACE_Time_Value now = ACE_OS::gettimeofday ();
     printf ("Setting random seed as: %d\n", (int)now.usec ());
     srand (now.usec ());
@@ -292,9 +291,9 @@ int main (int argc, char *argv[])
 
     // store default gateway address
     string str ("127.0.0.1:1037");
-    //g_gateway = *VASTVerse::translateAddress (str);
-    g_gateway.fromString (str);
-    g_gateway.host_id = ((Vast::id_t)g_gateway.publicIP.host << 32) | ((Vast::id_t)g_gateway.publicIP.port << 16) | NET_ID_RELAY;
+    g_gateway = *VASTVerse::translateAddress (str);
+    //g_gateway.fromString (str);
+    //g_gateway.host_id = ((Vast::id_t)g_gateway.publicIP.host << 32) | ((Vast::id_t)g_gateway.publicIP.port << 16) | NET_ID_RELAY;
 
     // initialize parameters
     SimPara simpara;
@@ -366,20 +365,19 @@ int main (int argc, char *argv[])
     // main loop
     //
     
-    size_t tick_per_sec = 0;                        // tick count per second
-    int seconds_to_report = REPORT_INTERVAL;        // # of seconds before reporting to gateway
-    int num_moves = 0;                              // which movement
-    size_t time_budget = 1000000/FRAMES_PER_SECOND;    // how much time in millisecond for each frame
-    size_t ms_per_move = (1000000 / (simpara.STEPS_PERSEC));  // microseconds elapsed for one move
-    int tick_per_move = FRAMES_PER_SECOND / simpara.STEPS_PERSEC;  // number of ticks elapsed for each move
+    size_t tick_per_sec = 0;                                        // tick count per second
+    int seconds_to_report = REPORT_INTERVAL;                        // # of seconds before reporting to gateway
+    int num_moves = 0;                                              // which movement
+    size_t time_budget = 1000000/FRAMES_PER_SECOND;                 // how much time in microseconds for each frame
+    size_t ms_per_move = (1000000 / (simpara.STEPS_PERSEC));        // microseconds elapsed for one move
 
-    long curr_sec = 0;                              // current seconds since start
+    long curr_sec = 0;                                      // current seconds since start
 
     ACE_Time_Value last_movement = ACE_OS::gettimeofday();  // time of last movement 
     
-    map<Vast::id_t, long long> last_update;               // last update time for a neighbor
-    size_t sleep_time = 0;                          // time to sleep
-    int    time_left = 0;                           // how much time left for ticking VAST
+    map<Vast::id_t, long long> last_update;                 // last update time for a neighbor
+    size_t sleep_time = 0;                                  // time to sleep (in microseconds)
+    int    time_left = 0;                                   // how much time left for ticking VAST, in microseconds
 
     // entering main loop
     // NOTE we don't necessarily move in every loop (# of loops > # of moves per second)
@@ -495,8 +493,7 @@ int main (int argc, char *argv[])
             }
         }
        
-        // do other per-second things / checks
-                        
+        // do other per-second things / checks                        
         if (persec_task)
         {            
             seconds_to_report--;
@@ -600,5 +597,3 @@ int main (int argc, char *argv[])
 
     return 0;
 }
-
-

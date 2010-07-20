@@ -1,7 +1,7 @@
 /*
  * VAST, a scalable peer-to-peer network for virtual environments
- * Copyright (C) 2007 Shao-Chen Chang (cscxcs at gmail.com)
- *                    Shun-Yun Hu     (syhu at yahoo.com)
+ * Copyright (C) 2007       Shao-Chen Chang (cscxcs at gmail.com)
+ *                          Shun-Yun Hu     (syhu at yahoo.com)
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public

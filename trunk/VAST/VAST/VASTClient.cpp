@@ -6,6 +6,7 @@
 
 namespace Vast
 {   
+    /*
     // TODO: change to reflect with current
     char VAST_MESSAGE[][20] = 
     {
@@ -22,6 +23,7 @@ namespace Vast
         "NEIGHBOR",
         "MESSAGE"
     };
+    */
 
     VASTClient::VASTClient (VASTRelay *relay)
     {
@@ -31,8 +33,10 @@ namespace Vast
         _sub.id         = NET_ID_UNASSIGNED;
         _matcher_id     = NET_ID_UNASSIGNED;
         _closest_id     = NET_ID_UNASSIGNED;
-        _next_periodic     = 0;
-        _timeout_subscribe = 0;
+        _next_periodic      = 0;
+        _timeout_join       = 0;
+        _timeout_subscribe  = 0;
+        _world_id           = 0;
     }
 
     VASTClient::~VASTClient ()
@@ -51,11 +55,9 @@ namespace Vast
 
     // join the overlay
     bool
-    VASTClient::join (const IPaddr &gatewayIP)
+    VASTClient::join (const IPaddr &gatewayIP, world_t worldID)
     {
         // NOTE: we can join or re-join at any stage 
-        //if (_state == JOINED)
-        //    return false;
 
         // convert possible "127.0.0.1" to actual IP address
         IPaddr gateway = gatewayIP;
@@ -68,13 +70,37 @@ namespace Vast
         gateway.getString (GW_str);
         printf ("[%llu] VASTClient::join () gateway is: %s\n", _self.id, GW_str);
 
-        // gateway is the initial matcher
-        _matcher_id = _gateway.host_id; 
+        // record my worldID, so re-join attempts can proceed with correct worldID
+        _world_id = worldID; 
 
-        // specifying the gateway to contact is considered joined
-        _state = JOINED;
+        // if worldID is unspecified, gateway is treated as the initial matcher
+        // (we join the common world)
+        if (worldID == 0)
+        {
+            // gateway is the initial matcher and we're joined
+            _matcher_id = _gateway.host_id;         
+            _state = JOINED;
+        
+            return true;
+        }
 
-        return true;
+        else
+        {
+            // set timeout to re-try, necessary because it might take time for sending request
+            _timeout_join = _net->getTimestamp () + (TIMEOUT_JOIN * _net->getTimestampPerSecond ());        
+              
+            // if relay is yet known, wait first
+            if (_relay->isJoined () == false)
+                return false;
+                
+            printf ("VASTClient::join () [%llu] sends JOIN request to gateway [%llu]\n", _self.id, _gateway.host_id);
+        
+            // send out join request
+            Message msg (JOIN);                
+            msg.store (_world_id);
+                    
+            return sendGatewayMessage (msg, MSG_GROUP_VAST_MATCHER);
+        }
     }
 
     // quit the overlay
@@ -92,14 +118,9 @@ namespace Vast
         // let gateway know I'm leaving (to record stat)
         // NOTE we use subscription ID
         msg.clear (STAT);
-        msg.priority = 1;
-        msg.from = _sub.id;
-        msg.msggroup = MSG_GROUP_VAST_MATCHER;
-        msg.addTarget (_gateway.host_id);
-
         layer_t type = 2;   // type 2 = LEAVE
         msg.store (type);
-        sendMessage (msg);
+        sendGatewayMessage (msg, MSG_GROUP_VAST_MATCHER);
         
         // important to set it to 0, so that auto-subscribe check would not happen 
         // in postHandling ()
@@ -161,6 +182,7 @@ namespace Vast
         // (important as we cannot manipulate external message directly, 
         //  may cause access violation for memory allocated in a different library heap)
         Message msg (message);
+
         // modify the msgtype to indicate this is an app-specific message
         msg.msgtype = (msg.msgtype << VAST_MSGTYPE_RESERVED) | PUBLISH;
 
@@ -381,26 +403,15 @@ namespace Vast
 
         // prepare message to send to matcher
         Message msg (message);
-        msg.priority = 1;
-        msg.msggroup = MSG_GROUP_VAST_CLIENT;
 
-        // record my subscription ID as the default 'from' field, if not already specified
-        // NOTE: this is to allow the recipiant to properly identify me and send reply back
-        if (msg.from == 0)
-            msg.from = _sub.id;
-
-        // we clear out the targets field to send to matcher first for processing
+        // we clear out the targets field so only gateway will receive it
         msg.targets.clear ();
-        msg.addTarget (_gateway.host_id);
 
         // modify the msgtype to indicate this is an app-specific message
         msg.msgtype = (msg.msgtype << VAST_MSGTYPE_RESERVED) | MESSAGE;
-
-        vector<id_t> failed;
-        sendMessage (msg, &failed);
-
+       
         // if message is sent out successfully
-        return (failed.size () == 0);
+        return sendGatewayMessage (msg, MSG_GROUP_VAST_CLIENT);
     }
 
 
@@ -542,14 +553,9 @@ namespace Vast
 
                 // let gateway know I'm joining (to record stat)
                 Message msg (STAT);
-                msg.priority = 1;
-                msg.from = _sub.id;
-                msg.msggroup = MSG_GROUP_VAST_MATCHER;
-                msg.addTarget (_gateway.host_id);
-        
                 layer_t type = 1;   // type 1 = JOIN
                 msg.store (type);
-                sendMessage (msg);
+                sendGatewayMessage (msg, MSG_GROUP_VAST_MATCHER);
             }
             break;
 
@@ -740,10 +746,11 @@ namespace Vast
         // attempt to re-join if matcher becomes invalid
         if (_matcher_id == NET_ID_UNASSIGNED)
         {
-            // if gateway exists, then attempt to join
-            if (_gateway.host_id != 0)
+            // if gateway exists & join has timeouted, then attempt to re-join
+            if (_gateway.host_id != 0 &&
+                (_timeout_join != 0 && now >= _timeout_join))
             {
-                join (_gateway.publicIP);        
+                join (_gateway.publicIP, _world_id);
             }
         }
         // if we have subscribed before, but now inactive, attempt to re-subscribe
@@ -878,6 +885,26 @@ namespace Vast
             handleMatcherDisconnect ();
 
         return success;
+    }
+
+    // gateway message with error checking, priority is 1, msggroup must specify
+    bool 
+    VASTClient::sendGatewayMessage (Message &msg, byte_t msggroup)
+    {
+        if (_gateway.host_id == 0)
+            return false;
+
+        msg.priority = 1;
+        msg.msggroup = msggroup;
+        msg.addTarget (_gateway.host_id);
+
+        // record my subscription ID as the default 'from' field, if not already specified
+        // NOTE: this is to allow the recipiant to properly identify me and send reply back
+        if (msg.from == 0)
+            msg.from = _sub.id;
+              
+        // if at least one message is sent, then it's successful
+        return (sendMessage (msg) > 0);
     }
 
     // deal with matcher disconnection or non-update

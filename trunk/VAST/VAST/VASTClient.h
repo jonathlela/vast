@@ -1,6 +1,6 @@
 /*
  * VAST, a scalable peer-to-peer network for virtual environments
- * Copyright (C) 2005-2009 Shun-Yun Hu (syhu@yahoo.com)
+ * Copyright (C) 2005-2010 Shun-Yun Hu (syhu@ieee.org)
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -19,10 +19,9 @@
  */
 
 /*
- *  VASTClient.h     Implementation class for the VAST interface. 
- *              Acts as both a Client at regular peers and VASTClient at super-peers
+ *  VASTClient.h    Implementation class for the VAST interface. 
  *              
- *    history:  2009/04/28  separated from VAST.h
+ *      history:    2009/04/28  separated from VAST.h
  */
 
 #ifndef _VAST_CLIENT_H
@@ -37,9 +36,9 @@
 
 // NOTE: remove ghost should be at least twice as much as keepalive
 
-const int TIMEOUT_SUBSCRIBE    = (5);        // # of seconds before re-attempting to subscribe 
-//const int TIMEOUT_SUBSCRIBE    = (5000);        // # of seconds before re-attempting to subscribe 
-const int TIMEOUT_REMOVE_GHOST = (5);        // # of seconds before removing ghost objects at clients
+const int TIMEOUT_JOIN          = (5);        // # of seconds before re-attempting to subscribe 
+const int TIMEOUT_SUBSCRIBE     = (5);        // # of seconds before re-attempting to subscribe 
+const int TIMEOUT_REMOVE_GHOST  = (5);        // # of seconds before removing ghost objects at clients
 //const int TIMEOUT_KEEP_ALIVE   = (2);        // # of seconds before re-sending our own position
 
 using namespace std;
@@ -48,15 +47,10 @@ namespace Vast
 {
 
     //
-    // NOTE that we currently assume two things are decided
-    //      outside of the VAST class:
+    // NOTE that we currently assume two things are decided external to VAST class:
     //
-    //          1. unique ID (hostID obtained via IDGenerator, handlerID by MessageQueue)
-    //          2. a coordinate representing physical location
-    //      
-    //      Also, a VASTClient (the same one) serves as:
-    //            1) a Client at a regular peer, 
-    //            2) a Matcher at a super-peer
+    //          1. unique ID
+    //          2. a coordinate representing physical location      
     //
     class VASTClient : public VAST
     {
@@ -72,7 +66,7 @@ namespace Vast
         ~VASTClient ();
 
         // join the overlay (so we can perform subscription)
-        bool        join (const IPaddr &gateway);
+        bool        join (const IPaddr &gateway, world_t worldID = 0);
 
         // quit the overlay
         void        leave ();
@@ -168,6 +162,9 @@ namespace Vast
         // matcher message with error checking, default priority is 1
         bool sendMatcherMessage (Message &msg, byte_t priority = 0, vector<id_t> *failed = NULL);
 
+        // gateway message with error checking, priority is 1, msggroup must specify
+        bool sendGatewayMessage (Message &msg, byte_t msggroup);
+
         // deal with matcher disconnection or non-update
         void handleMatcherDisconnect ();
 
@@ -192,10 +189,12 @@ namespace Vast
         VASTRelay          *_relay;         // pointer to VASTRelay (to obtain relayID)        
 
         Subscription        _sub;           // my subscription 
+        world_t             _world_id;      // my current worldID
 
         // timeouts
         timestamp_t         _next_periodic;     // next timestamp to perform tasks
-        timestamp_t         _timeout_subscribe; // timeout for re-attempt to subscribe
+        timestamp_t         _timeout_join;      // timeout for re-attempt to join
+        timestamp_t         _timeout_subscribe; // timeout for re-attempt to subscribe        
         map<id_t, timestamp_t> _last_update;    // last update time for a particular neighbor
 
         Addr                _gateway;       // info about the gateway server

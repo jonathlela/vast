@@ -1,6 +1,6 @@
 /*
  * VAST, a scalable peer-to-peer network for virtual environments
- * Copyright (C) 2005-2010 Shun-Yun Hu (syhu@yahoo.com)
+ * Copyright (C) 2005-2010 Shun-Yun Hu (syhu@ieee.org)
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -49,6 +49,7 @@ namespace Vast
         MATCHER_JOINED,                 // notify gateway a matcher has joined successfully
         MATCHER_NOTIFY,                 // current matcher notifying client of new current matcher
         CLOSEST_NOTIFY,                 // current matcher notifying client of closest alternative matcher
+        JOIN,                           // client joining a world (find initial matcher)
         PUBLISH,                        // publish a message         
         SUBSCRIBE,                      // send subscription
         SUBSCRIBE_R,                    // to reply whether a node has successfully subscribed (VON node joined)        
@@ -97,9 +98,8 @@ namespace Vast
 		//
 		// main VAST methods
 		//
-        // NOTE: there are two timeout values that need to be paid attention when
-        //       debugging, as they would disconnect a client and cause 
-        //       re-subscription.
+        // NOTE: there are two timeout values that need attention when debugging,
+        //       as they would disconnect a client and cause re-subscription.
         //
         //          TIMEOUT_REMOVE_GHOST        in VASTClient.h
         //          TIMEOUT_REMOVE_CONNECTION   in VASTnet.h
@@ -111,8 +111,8 @@ namespace Vast
          
         //virtual ~VAST () = 0;
         
-        // join by specify the gateway to contact
-        virtual bool        join (const IPaddr &gateway) = 0;
+        // join by specifying the gateway to contact, and an optional worldID
+        virtual bool        join (const IPaddr &gateway, world_t worldID = 0) = 0;
 
         // quit the overlay
         virtual void        leave () = 0;

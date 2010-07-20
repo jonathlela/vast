@@ -1,6 +1,6 @@
 /*
  * VAST, a scalable peer-to-peer network for virtual environments
- * Copyright (C) 2005-2009 Shun-Yun Hu (syhu@yahoo.com)
+ * Copyright (C) 2005-2010 Shun-Yun Hu (syhu@ieee.org)
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -81,6 +81,8 @@ typedef uint16_t    length_t;       // type for a length, for radius or rectangl
 
 typedef uint16_t    msgtype_t;      // the types of messages (0 - 65535)
 typedef uint16_t    layer_t;        // the number of layers in the overlay (0 - 65535)
+
+typedef uint16_t    world_t;        // a world ID unique to a given gateway (0 - 65535)
 
 typedef uint8_t     listsize_t;     // size of a list sent over network (0 - 255)
 
