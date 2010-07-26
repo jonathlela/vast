@@ -256,8 +256,8 @@ int main (int argc, char *argv[])
     printf ("Setting random seed as: %d\n", (int)now.usec ());
     srand (now.usec ());
     
-    printf ("sizeof sizes:\n");
-    printf ("VASTheader: %lu id_t: %lu timestamp_t: %lu length_t: %lu coord_t: %lu\nPosition: %lu Area: %lu IPaddr: %lu Addr: %lu Node: %lu\n\n",
+   /* printf ("sizeof sizes:\n");
+    printf ("VASTheader: %zu id_t: %zu timestamp_t: %zu length_t: %zu coord_t: %zu\nPosition: %zu Area: %zu IPaddr: %zu Addr: %zu Node: %zu\n\n",
         sizeof (VASTHeader),
         sizeof (Vast::id_t),
         sizeof (timestamp_t),
@@ -268,18 +268,19 @@ int main (int argc, char *argv[])
         sizeof (IPaddr),
         sizeof (Addr),
         sizeof (Node));
-
+ 
     Position a; Area b; IPaddr c; Addr d; Node e;
     printf ("transfer sizes:\n");
-    printf ("VASTheader: %lu coord_t: %lu Position: %lu Area: %lu IPaddr: %lu Addr: %lu Node: %lu\n\n",
+    printf ("VASTheader: %zu coord_t: %zu Position: %zu Area: %zu IPaddr: %zu Addr: %zu Node: %zu\n\n",
         sizeof (VASTHeader),
         sizeof (coord_t),
         a.sizeOf (),
         b.sizeOf (),
         c.sizeOf (),
         d.sizeOf (),
-        e.sizeOf ());
+        e.sizeOf ());*/
 
+  
     // initialize parameters
     char cmd[255];
     cmd[0] = 0;
@@ -290,6 +291,7 @@ int main (int argc, char *argv[])
         strcat (cmd, " ");
     }
 
+    
     // store default gateway address
     string str ("127.0.0.1:1037");
     g_gateway = *VASTVerse::translateAddress (str);
@@ -463,6 +465,10 @@ int main (int argc, char *argv[])
                              g_world->getSendStat ().total, g_world->getReceiveStat ().total);
                     fflush (g_position_log);
                 }
+                //print neighbor by lee
+                if (self != NULL)                
+                printNeighbors (curr_msec, g_sub_no);
+
 
                 // print out movement once per second
                 if (num_moves % simpara.STEPS_PERSEC == 0)
@@ -499,9 +505,7 @@ int main (int argc, char *argv[])
         {            
             seconds_to_report--;
             
-            if (self != NULL)                
-                printNeighbors (curr_msec, g_sub_no);
-
+            
             // do some per second stat collection stuff
             g_world->tickLogicalClock ();
 
