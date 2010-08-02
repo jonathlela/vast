@@ -307,6 +307,11 @@ int main (int argc, char *argv[])
     // obtain parameters from command line and/or INI file
     if ((g_node_no = InitPara (VAST_NET_ACE, g_netpara, simpara, cmd, &is_gateway, &g_world_id, &g_aoi, &g_gateway, &entries)) == (-1))
         exit (0);
+    if (!is_gateway){
+        //obtain parameters by random  by lee
+        g_node_no=rand()%(simpara.NODE_SIZE-1)+1;
+    
+    }
 
     // if g_node_no is specified, then this node will simulate a client movement
     bool simulate_behavior = (g_node_no > 0);
@@ -438,9 +443,9 @@ int main (int argc, char *argv[])
                         
             // check if automatic movement should be performed                                   
             if (simulate_behavior && to_move)
-            {                                                   
+            {   //printf("for check /n");                                               
                 g_aoi.center = *g_movement.getPos (g_node_no, num_moves);
-
+                //printf("for check2 /n");
                 // in simulated mode, we only move TIME_STEPS times
                 if (num_moves >= simpara.TIME_STEPS)
                     g_finished = true;
@@ -572,9 +577,12 @@ int main (int argc, char *argv[])
     g_world->tick ();
 
     // sleep a little to let message be sent out
-    ACE_Time_Value tv (0, 2000000);
+    ACE_Time_Value tv (0, 2000000*g_node_no); //sleep a little to let nodes move at different   time  by lee
     ACE_OS::sleep (tv);        
 
+   
+    
+    
     g_world->destroyVASTNode (g_self);
             
     delete g_world;        
