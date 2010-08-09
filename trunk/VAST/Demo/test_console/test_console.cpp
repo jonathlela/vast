@@ -212,9 +212,9 @@ void checkJoin ()
         if(g_position_log != NULL)
         {
                        fprintf(g_position_log, 
-                        "%lld,\"%llu,joining\"\n",joining_msec,nodeID);
+                        "%lld,\"%llu,joining\",%d\n",joining_msec,nodeID,g_node_no);
                        fprintf(g_position_log, 
-                        "%lld,\"%llu,joined\"\n",joined_msec,nodeID);
+                        "%lld,\"%llu,joined\",%d\n",joined_msec,nodeID,g_node_no);
                        fflush(g_position_log); 
 
         }
