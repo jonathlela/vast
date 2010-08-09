@@ -4,7 +4,8 @@
  *  
  *  version:    2010/06/15  init - adopted from demo_console
  *              2010/07/12  added bandwidth stat reporting to gateway
- *
+ *              2010/07/28  randomize the path to move
+ *              2010/08/04  print joining and joined time in position.log
  */
 
 #ifdef WIN32
@@ -56,6 +57,8 @@ NodeState   g_state = ABSENT;   // the join state of this node
 char        g_lastcommand = 0;  // last keyboard character typed 
 size_t      g_count = 0;        // # of ticks so far (# of times the main loop has run)
 int         g_node_no = (-1);   // which node to simulate (-1 indicates none, manual control)
+long long   joining_msec;       // record the time for begining to join  by lee
+long long   joined_msec;        // record the time for joined  by lee
 
 VASTPara_Net g_netpara;         // network parameters
 
@@ -157,9 +160,15 @@ void checkJoin ()
     {
     case ABSENT:
         if ((g_self = g_world->getVASTNode ()) != NULL)
-        {                
+        {   
             g_sub_no = g_self->getSubscriptionID (); 
             g_state = JOINED;
+            //record the time joined   by lee
+            // current time in milliseconds
+            ACE_Time_Value joined_time = ACE_OS::gettimeofday ();
+            joined_msec = (long long) (joined_time.sec () * 1000 + joined_time.usec () / 1000);
+    
+            
         }
         break;
 
@@ -199,6 +208,27 @@ void checkJoin ()
 			fprintf (g_neighbor_log, "# millisec,\"nodeID,posX,posY\", ... (per step)\n\n");		
 			fflush (g_neighbor_log);	
         }
+
+        if(g_position_log != NULL)
+        {
+                       fprintf(g_position_log, 
+                        "%lld,\"%llu,joining\"\n",joining_msec,nodeID);
+                       fprintf(g_position_log, 
+                        "%lld,\"%llu,joined\"\n",joined_msec,nodeID);
+                       fflush(g_position_log); 
+
+        }
+      
+        if(g_neighbor_log != NULL)
+        {
+                       fprintf(g_neighbor_log, 
+                        "%lld,\"%llu,joining\"\n",joining_msec,nodeID);
+                       fprintf(g_neighbor_log, 
+                        "%lld,\"%llu,joined\"\n",joined_msec,nodeID);
+                       fflush(g_neighbor_log); 
+
+        } 
+
     }
 }
 
@@ -323,6 +353,13 @@ int main (int argc, char *argv[])
     g_world = new VASTVerse (entries, &g_netpara, NULL);
     g_world->createVASTNode (g_gateway.publicIP, g_aoi, VAST_EVENT_LAYER);
 
+    //record "begin to join" in position.log  by lee
+    // current time in milliseconds
+    ACE_Time_Value joining_time = ACE_OS::gettimeofday ();
+    joining_msec = (long long) (joining_time.sec () * 1000 + joining_time.usec () / 1000);
+    
+    
+
     //
     // open logs
     //
@@ -361,6 +398,7 @@ int main (int argc, char *argv[])
 		g_neighbor_log = LogManager::open (neilog);    
     }
 
+    
     // open gateway log
     if (is_gateway) 
     {
@@ -431,10 +469,11 @@ int main (int argc, char *argv[])
             id = g_sub_no;
         }
 
-        if (g_state != JOINED)
+        if (g_state != JOINED){
+            
             checkJoin ();
 
-        else 
+        }else 
         {
             // generate movement (either from input or from movement model, for simulated behavior)
 #ifdef WIN32
@@ -502,6 +541,7 @@ int main (int argc, char *argv[])
                     // record last update time for this node
                     last_update[msg->from] = curr_msec;
                 }
+                
             }
         }
        
