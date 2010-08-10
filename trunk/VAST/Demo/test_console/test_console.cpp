@@ -349,6 +349,11 @@ int main (int argc, char *argv[])
     // make backup of AOI, so we can detect whehter position has changed and we need to move the client
     g_prev_aoi = g_aoi;
 
+    // sleep a little to let message be sent out
+    printf ("sleep for %d seconds\n", 2000000*g_node_no / 1000000);
+    ACE_Time_Value tv (0, 2000000*g_node_no); //sleep a little to let nodes move at different   time  by lee
+    ACE_OS::sleep (tv);
+    
     // create VAST node factory    
     g_world = new VASTVerse (entries, &g_netpara, NULL);
     g_world->createVASTNode (g_gateway.publicIP, g_aoi, VAST_EVENT_LAYER, g_world_id);
@@ -549,8 +554,7 @@ int main (int argc, char *argv[])
         if (persec_task)
         {            
             seconds_to_report--;
-            
-            
+                        
             // do some per second stat collection stuff
             g_world->tickLogicalClock ();
 
@@ -616,12 +620,9 @@ int main (int argc, char *argv[])
     g_self->leave ();
     g_world->tick ();
 
-    // sleep a little to let message be sent out
-    ACE_Time_Value tv (0, 2000000*g_node_no); //sleep a little to let nodes move at different   time  by lee
-    ACE_OS::sleep (tv);        
-
-   
-    
+    // sleep a little to let LEAVE message be sent out
+    ACE_Time_Value tv2 (0, 2000000); 
+    ACE_OS::sleep (tv2);              
     
     g_world->destroyVASTNode (g_self);
             
