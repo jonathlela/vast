@@ -350,9 +350,9 @@ int main (int argc, char *argv[])
     g_prev_aoi = g_aoi;
 
     // sleep a little to let message be sent out
-    printf ("sleep for %d seconds\n", 2000000*g_node_no / 1000000);
-    ACE_Time_Value tv (0, 2000000*g_node_no); //sleep a little to let nodes move at different   time  by lee
-    ACE_OS::sleep (tv);
+    //printf ("sleep for %d seconds\n", 1000000*g_node_no / 1000000);
+    //ACE_Time_Value tv (0, 1000000*g_node_no); //sleep a little to let nodes move at different   time  by lee
+    //ACE_OS::sleep (tv);
     
     // create VAST node factory    
     g_world = new VASTVerse (entries, &g_netpara, NULL);

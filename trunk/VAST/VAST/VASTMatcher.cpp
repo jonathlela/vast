@@ -625,11 +625,11 @@ namespace Vast
                 
                 printf ("Gateway [%llu] JOIN replies [%llu] with origin matcher [%llu] on world (%u)\n", _self.id, in_msg.from, _origins[world_id].host_id, world_id);
 
-                if (in_msg.from == 9151314447179923458)
-                    printf ("here");
+                //if (in_msg.from == 9151314447179923458)
+                //    printf ("here");
 
-                if (world_id == 5)
-                    printf ("here");
+                //if (world_id == 5)
+                //    printf ("here");
 
                 // send reply to joining client
                 // NOTE: that we send directly back, as this is a gateway response
