@@ -45,26 +45,30 @@ namespace Vast
     {
         // internal message # must begin with VON_MAX_MSG as VONpeer is used and share the MessageQueue        
         MATCHER_JOIN = VON_MAX_MSG,     // join the overlay as a matcher
-        MATCHER_JOIN_R,                 // reply to the joining matcher
+        MATCHER_JOIN_R,                 // reply to the joining matcher        
         MATCHER_JOINED,                 // notify gateway a matcher has joined successfully
-        MATCHER_NOTIFY,                 // current matcher notifying client of new current matcher
-        CLOSEST_NOTIFY,                 // current matcher notifying client of closest alternative matcher
-        JOIN,                           // client joining a world (find initial matcher)
+        MATCHER_LEFT,                   // notify gateway a matcher is leaving
+        MATCHER_CANDIDATE,              // notify gateway of willingness to be origin matcher
+        MATCHER_INIT,                   // call up a candidate origin matcher to start up a new world
+        MATCHER_ALIVE,                  // keepalive messages from matchers to gateway
+        NOTIFY_MATCHER,                 // current matcher notifying client of new current matcher
+        NOTIFY_CLOSEST,                 // current matcher notifying client of closest alternative matcher
+        JOIN,                           // client request to gateway for joining a world (find first "origin matcher")
+        LEAVE,                          // departure of a client
         PUBLISH,                        // publish a message         
         SUBSCRIBE,                      // send subscription
         SUBSCRIBE_R,                    // to reply whether a node has successfully subscribed (VON node joined)        
         SUBSCRIBE_TRANSFER,             // transfer a subscription to a neighbor matcher
         SUBSCRIBE_UPDATE,               // update of a subscription to neighboring matchers
         MOVE,                           // position update to normal nodes
-        MOVE_F,                         // full update for an AOI region
-        LEAVE,                          // departure of a client
+        MOVE_F,                         // full update for an AOI region        
         NEIGHBOR,                       // send back a list of known neighbors
         NEIGHBOR_REQUEST,               // request full info for an unknown neighbor
         SEND,                           // send a particular message to certain targets        
         MESSAGE,                        // deliver a message to a node
         SUBSCRIBE_NOTIFY,               // client notifying a relay of its subscription
         STAT,                           // sending statistics for gateway to record
-        REPORT,                         // sending app-specific message to gateway
+        //REPORT,                         // sending app-specific message to gateway
 
         // Relay-specific messages
         REQUEST,                // request for relays
@@ -79,6 +83,8 @@ namespace Vast
 
     } VAST_Message;
 
+    // default world ID (lobby) for VAST
+    #define VAST_DEFAULT_WORLD_ID   (1)
 
     //
     // NOTE that we currently assume two things are decided
@@ -111,8 +117,8 @@ namespace Vast
          
         //virtual ~VAST () = 0;
         
-        // join by specifying the gateway to contact, and an optional worldID
-        virtual bool        join (const IPaddr &gateway, world_t worldID = 0) = 0;
+        // join by specifying the gateway to contact, and an optional worldID (default to be 1)
+        virtual bool        join (const IPaddr &gateway, world_t worldID) = 0;
 
         // quit the overlay
         virtual void        leave () = 0;

@@ -66,7 +66,7 @@ namespace Vast
         ~VASTClient ();
 
         // join the overlay (so we can perform subscription)
-        bool        join (const IPaddr &gateway, world_t worldID = 0);
+        bool        join (const IPaddr &gateway, world_t worldID = VAST_DEFAULT_WORLD_ID);
 
         // quit the overlay
         void        leave ();

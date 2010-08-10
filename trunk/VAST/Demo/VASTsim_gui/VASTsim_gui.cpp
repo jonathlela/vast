@@ -32,6 +32,9 @@ using namespace std;
 // how often should the timer be called (in millisecond)
 #define TIMER_INTERVAL      40
 
+#define SCREEN_DIMENSION_X  800
+#define SCREEN_DIMENSION_Y  600
+
 // simulation parameters
 SimPara                     g_para;
 
@@ -49,6 +52,7 @@ bool    paused          = false;    // toggle for pausing
 bool    show_edges      = true;     // display Voronoi edges
 bool    show_box        = false;     // display bounding box
 bool    show_node_id    = true;     // display node IDs
+bool    show_self       = true;     // display my AOI and AOI neighbors in colors
 bool    pause_at_incon  = false;     // pause at inconsistency
 char    last_char       = 0;        // numerical value of last key pressed
 bool    finished        = false;    // simulation is done
@@ -226,8 +230,11 @@ VOID Render (HWND hWnd)
             size_AN = nodes.size ()-1;
             
             // draw AOI
-            //SelectObject( hdc, GetStockObject(HOLLOW_BRUSH) );
-            Ellipse (hdc, x-aoi, y-aoi, x+aoi, y+aoi);
+            if (show_self)
+            {
+                //SelectObject( hdc, GetStockObject(HOLLOW_BRUSH) );
+                Ellipse (hdc, x-aoi, y-aoi, x+aoi, y+aoi);
+            }
 
             // draw neighbor dots
             for (j=0; j<(int)nodes.size (); j++)
@@ -240,15 +247,18 @@ VOID Render (HWND hWnd)
                 //SetDCPenColor(hdc,RGB(0x00,0xff,0x00));
 
                 // draw small circle
-                
-                //SelectObject (hdc, GetStockObject(GRAY_BRUSH));       
-                if (j == 0 || is_EN (en_list, id))
-                    hPenOld = (HPEN)SelectObject (hdc, hPenRed);
-                else
-                    hPenOld = (HPEN)SelectObject (hdc, hPenBlue);
-                
-                Ellipse (hdc, x-(NODE_RADIUS/2), y-(NODE_RADIUS/2), x+(NODE_RADIUS/2), y+(NODE_RADIUS/2));
-                SelectObject (hdc, hPenOld);                    
+                if (show_self)
+                {
+                    //SelectObject (hdc, GetStockObject(GRAY_BRUSH));       
+                    if (j == 0 || is_EN (en_list, id))
+                        hPenOld = (HPEN)SelectObject (hdc, hPenRed);
+                    else
+                        hPenOld = (HPEN)SelectObject (hdc, hPenBlue);
+                                     
+                    Ellipse (hdc, x-(NODE_RADIUS/2), y-(NODE_RADIUS/2), x+(NODE_RADIUS/2), y+(NODE_RADIUS/2));
+                        
+                    SelectObject (hdc, hPenOld);
+                }
 
                 // draw node id
                 if (show_node_id)
@@ -426,7 +436,7 @@ LRESULT WINAPI MsgProc (HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
                 show_box = !show_box;
                 InvalidateRect (hWnd, NULL, TRUE);
             }
-            // turning on/off forwarding mode
+            // turning on/off following mode
             else if (wParam == 'f')
             {
                 follow_mode = !follow_mode;
@@ -477,11 +487,17 @@ LRESULT WINAPI MsgProc (HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
                 follow_mode = false;
                 InvalidateRect (hWnd, NULL, TRUE);
             }
-            // move viewport RIGHT
+            // reset viewport at 'origin'
             else if (wParam == 'o' )
             {
                 follow_mode = false;
                 g_origin.x = g_origin.y = 0;
+                InvalidateRect (hWnd, NULL, TRUE);
+            }    
+            // display AOI and AOI neighbors
+            else if (wParam == 'i')
+            {
+                show_self = !show_self;
                 InvalidateRect (hWnd, NULL, TRUE);
             }    
             // simply update status bar
@@ -489,7 +505,7 @@ LRESULT WINAPI MsgProc (HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
             {            
                 RECT r;
                 r.top = r.left = 0;
-                r.right  = 800;
+                r.right  = SCREEN_DIMENSION_X;
                 r.bottom = 100;                 
                 InvalidateRect (hWnd, &r, TRUE);
             }
@@ -500,7 +516,7 @@ LRESULT WINAPI MsgProc (HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
                 g_cursor = MAKEPOINTS (lParam);
                 RECT r;
                 r.top = r.left = 0;
-                r.right  = 800;
+                r.right  = SCREEN_DIMENSION_X;
                 r.bottom = 100;                 
                 InvalidateRect (hWnd, &r, TRUE);
             }
@@ -588,7 +604,7 @@ INT WINAPI WinMain( HINSTANCE hInst, HINSTANCE, LPSTR, INT )
 
     // Create the application's window
     HWND hWnd = CreateWindow ("VASTSim", "VAST Simulator (GUI) v 0.1",
-                              WS_OVERLAPPEDWINDOW, 100, 100, 800, 600,
+                              WS_OVERLAPPEDWINDOW, 100, 100, SCREEN_DIMENSION_X, SCREEN_DIMENSION_Y,
                               GetDesktopWindow (), NULL, hInst, NULL);
 
     // Show the window

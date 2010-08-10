@@ -1054,7 +1054,6 @@ public:
             memcpy (p, &host_id, sizeof (id_t));        p += sizeof (id_t);
             memcpy (p, &id, sizeof (id_t));             p += sizeof (id_t);            
             memcpy (p, &layer, sizeof (layer_t));       p += sizeof (layer_t);
-            //memcpy (p, &active, sizeof (bool));         p += sizeof (bool);
             p += aoi.serialize (p);
             relay.serialize (p);
         }
@@ -1069,26 +1068,33 @@ public:
             memcpy (&host_id, p, sizeof (id_t));        p += sizeof (id_t);
             memcpy (&id, p, sizeof (id_t));             p += sizeof (id_t);
             memcpy (&layer, p, sizeof (layer_t));       p += sizeof (layer_t);
-            //memcpy (&active, p, sizeof (bool));         p += sizeof (bool);
-            this->active = false;
-            this->time = 0;
             p += aoi.deserialize (p, aoi.sizeOf ());
             relay.deserialize (p, relay.sizeOf ());
+
+            this->active    = false;
+            this->dirty     = false;
+            this->in_region = false;
+            this->time      = 0;
+            this->world_id  = 0;
 
             return sizeOf ();
         }
         return 0;        
     }
 
+    // serializable components
     id_t        host_id;        // HostID of the subscriber
     id_t        id;             // subscriptionID (different subscriptions may have same hostID)
     layer_t     layer;          // layer number for the subscription    
+    Area        aoi;            // aoi of the subscription (including a center position)
+    Addr        relay;          // the address of the relay of the subscriber (to receive messages)
+
+    // non-serialized components
     bool        active;         // whether the subscription is successful
     bool        dirty;          // whether the subscription has been updated
     bool        in_region;      // whether the subscriber lies within the current managed region
     timestamp_t time;           // last update time for this subscriber
-    Area        aoi;            // aoi of the subscription (including a center position)
-    Addr        relay;          // the address of the relay of the subscriber (to receive messages)
+    world_t     world_id;       // which world the subscriber belongs
 
 private:
     std::map<id_t, NeighborUpdateStatus> _neighbor_states;

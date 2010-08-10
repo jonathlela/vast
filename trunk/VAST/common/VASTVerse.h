@@ -103,7 +103,7 @@ namespace Vast
         
         // create & destroy a VASTNode
         // currently only supports one per VASTVerse
-        bool createVASTNode (const IPaddr &gateway, Area &area, layer_t layer);    
+        bool createVASTNode (const IPaddr &gateway, Area &area, layer_t layer, world_t world_id = 0);
         bool destroyVASTNode (VAST *node);
 
         // obtain a reference to the created VASTNode
@@ -157,7 +157,7 @@ namespace Vast
     private:
 
         // create & destroy a VAST client
-        VAST *   createClient (const IPaddr &gateway);
+        VAST *   createClient (const IPaddr &gateway, world_t world_id);
         bool     destroyClient (VAST *node);
 
         // obtain & destory a Voronoi object

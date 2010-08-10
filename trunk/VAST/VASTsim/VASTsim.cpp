@@ -60,7 +60,7 @@ int InitPara (VAST_NetModel model, VASTPara_Net &netpara, SimPara &simpara, cons
 
     // parameters to be filled
     bool is_gateway;
-    world_t world_id = 0;
+    world_t world_id = VAST_DEFAULT_WORLD_ID;
     Area aoi;
     vector<IPaddr> entries;
 

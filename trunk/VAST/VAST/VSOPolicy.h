@@ -68,9 +68,9 @@ namespace Vast
         virtual bool objectClaimed (id_t obj_id) = 0;
 
         // handle the event of a new VSO node's successful join
-        virtual bool peerJoined () = 0;
+        virtual bool peerJoined (id_t origin_id) = 0;
 
-        // handle the event of a VSO node's movement
+        // handle the event of the VSO node's movement
         virtual bool peerMoved () = 0;
 
     };

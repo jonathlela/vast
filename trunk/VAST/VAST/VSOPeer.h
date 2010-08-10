@@ -163,11 +163,11 @@ namespace Vast
 
     public:
 
-        VSOPeer (id_t id, VONNetwork *net, VSOPolicy *policy, length_t aoi_buffer = AOI_DETECTION_BUFFER);        
+        VSOPeer (id_t id, VONNetwork *net, VSOPolicy *policy, length_t aoi_buffer = AOI_DETECTION_BUFFER);
         ~VSOPeer ();                        
 
-        // perform joining the overlay, indicate the joining position, AOI, contact gateway, also whether dynamic adjustment is enabled
-        void join (Area &aoi, Node *gateway, bool is_static = false);
+        // perform joining the overlay, indicate the joining position, AOI, contact origin, also whether dynamic adjustment is enabled
+        void join (Area &aoi, Node *origin, bool is_static = false);
 
         // returns whether the message was successfully handled
         bool handleMessage (Message &in_msg);
@@ -292,8 +292,10 @@ namespace Vast
         Node                _newpos;            // new AOI & position to be updated due to load balancing
         bool                _is_static;         // whether load balancing is turned off
                 
+        Node                _origin;            // the origin peer (1st contact node) for this VSO network
+
         // server data (Gateway node)       
-        vector<Node>        _candidates;          // list of potential nodes      
+        vector<Node>        _candidates;          // list of potential nodes
         map<id_t, Node>     _promote_requests;    // requesting nodes' timestamp of promotion and position, index is the promoted node
         
         // ownership related

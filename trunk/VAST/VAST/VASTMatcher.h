@@ -40,9 +40,14 @@
 #include "Voronoi.h"
 #include "VSOPeer.h"
 
-#define TIMEOUT_SUBSCRIPTION_KEEPALIVE         (1.0)   // # of seconds to send updates for my subscriptions
+#define TIMEOUT_SUBSCRIPTION_KEEPALIVE          (1.0)   // # of seconds to send updates for my subscriptions
 
-#define SUBSCRIPTION_AOI_BUFFER                 (10)    // extended AOI to avoid ghost objects
+#define TIMEOUT_REGULAR_MATCHER_KEEPALIVE       (10.0)    // # of seconds to inform gateway of alive status
+#define TIMEOUT_ORIGIN_MATCHER_KEEPALIVE        (1.0)     // # of seconds to inform gateway of alive status
+    
+#define LIMIT_LIVE_MATCHERS_PER_WORLD           (5)     // # of live matcher info the gateway needs to keep (for fault tolerance)
+
+#define SUBSCRIPTION_AOI_BUFFER                (10)     // extended AOI to avoid ghost objects
 
 // flag to send NEIGHBOR notices via relay (slower but can test relay correctness)
 // IMPORTANT NOTE: if position updates are not sent via relay, need to make sure
@@ -155,9 +160,9 @@ namespace Vast
         bool objectClaimed (id_t obj_id);
 
         // handle the event of a new VSO node's successful join
-        bool peerJoined ();
+        bool peerJoined (id_t origin_id);
 
-        // handle the event of a new VSO node's successful join
+        // handle the event of the VSO node's movement
         bool peerMoved ();
 
         //
@@ -187,6 +192,9 @@ namespace Vast
         // Matcher maintain functions
         //
 
+        // notify the gateway that I can be available as origin matchers
+        bool notifyCandidacy ();
+
         // update the list of neighboring matchers
         void refreshMatcherList ();
 
@@ -196,12 +204,18 @@ namespace Vast
         // re-send updates of our owned objects so they won't be deleted
         void sendKeepAlive ();
 
+        // remove matchers that have not sent in keepalive
+        void removeExpiredMatchers ();
+
         // tell clients updates of their neighbors (changes in other nodes subscribing at same layer)
         void notifyClients (); 
 
         //
         // helper functions
         //
+
+        // get a candidate origin matcher to use
+        bool findCandidate (Node &new_origin);
 
         // send a message to clients (optional flag to send directly)
         // returns # of targets successfully sent, optional to return failed targets
@@ -223,6 +237,10 @@ namespace Vast
 
         VSOPeer *           _VSOpeer;       // interface as a participant in a VON
 
+        world_t             _world_id;      // which world I'm currently in (0 is default world)
+        world_t             _world_counter; // counter for assigning world IDs
+        id_t                _origin_id;     // id for the origin matcher
+
         map<id_t, Node *>   _neighbors;     // list of neighboring matchers, NOTE: pointers refer to data in VSOPeer, so do not need to be released upon destruction
                                                                                                             
         map<id_t, Subscription> _subscriptions; // a list of subscribers managed by this matcher
@@ -239,14 +257,24 @@ namespace Vast
         timestamp_t         _next_periodic;     // record for next time stamp to process periodic (per-second) tasks
 
         vector<Message *>   _queue;             // messages received but cannot yet processed before VSOpeer is joined
-            
+
+        //
+        // origin matcher management (gateway only)
+        //
+        // TODO: separate this into a VASTGateway class?
+
+        int _matcher_keepalive;                 // # of seconds before reporting to gateway of keep alive status
+        map<world_t, Addr>  _origins;           // list of origin matchers (gateway-only) 
+        map<id_t, world_t>  _matcher2world;     // mapping from host_id to world_id
+        map<id_t, Node>     _candidates;        // list of candidate origin matchers (gateway-only)
+        map<world_t, vector<id_t> *> _requests; // initial requests from clients to join a given world        
+        map<world_t, map<id_t, timestamp_t> *> _alives; // most current timestamp records for all matchers
 
         //
         // stat collection
         //
 
-        StatType        _stat_sub;          // statistics on actual subscriptions at this matcher
-                                            
+        StatType        _stat_sub;          // statistics on actual subscriptions at this matcher                                            
 	};
 
 } // namespace Vast

@@ -351,7 +351,7 @@ int main (int argc, char *argv[])
 
     // create VAST node factory    
     g_world = new VASTVerse (entries, &g_netpara, NULL);
-    g_world->createVASTNode (g_gateway.publicIP, g_aoi, VAST_EVENT_LAYER);
+    g_world->createVASTNode (g_gateway.publicIP, g_aoi, VAST_EVENT_LAYER, g_world_id);
 
     //record "begin to join" in position.log  by lee
     // current time in milliseconds

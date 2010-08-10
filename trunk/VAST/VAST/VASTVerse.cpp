@@ -274,7 +274,7 @@ namespace Vast
 
     // create & destroy a VASTNode
     bool  
-    VASTVerse::createVASTNode (const IPaddr &gateway, Area &area, layer_t layer)
+    VASTVerse::createVASTNode (const IPaddr &gateway, Area &area, layer_t layer, world_t world_id)
     {
         // right now can only create one
         if (_vastinfo.size () != 0)
@@ -289,8 +289,11 @@ namespace Vast
         info.aoi = area;
         info.layer = layer;
         info.id = id;
+        info.world_id = world_id;
 
         _vastinfo.push_back (info);
+        
+        printf ("VASTVerse::createVASTNode world_id: %u layer: %u\n", world_id, layer);
 
         return true;
     }
@@ -327,7 +330,7 @@ namespace Vast
         if (_state == ABSENT)
         {            
             printf ("state = ABSENT\n");
-            if ((createClient (info.relay.publicIP)) != NULL)
+            if ((createClient (info.relay.publicIP, info.world_id)) != NULL)
             {                            
                 printf ("VASTVerse::getVASTNode () client created\n");
                 _state = JOINING;
@@ -438,7 +441,7 @@ namespace Vast
     }
 
     VAST *
-    VASTVerse::createClient (const IPaddr &gateway)
+    VASTVerse::createClient (const IPaddr &gateway, world_t world_id)
     {
         if (isLogined () == false)
             return NULL;
@@ -461,7 +464,7 @@ namespace Vast
         // perform join for the client 
         if (vnode != NULL)
         {
-            vnode->join (gateway);
+            vnode->join (gateway, world_id);
             handlers->client = vnode;
         }
         

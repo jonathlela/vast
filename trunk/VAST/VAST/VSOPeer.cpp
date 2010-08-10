@@ -33,12 +33,15 @@ namespace Vast
 
     // perform joining the overlay
     void 
-    VSOPeer::join (Area &aoi, Node *gateway, bool is_static)
+    VSOPeer::join (Area &aoi, Node *origin, bool is_static)
     {
         // NOTE: it's important to set newpos correctly so that self-adjust of center can be correct
         _newpos.aoi = aoi;
-        VONPeer::join (aoi, gateway);
+        VONPeer::join (aoi, origin);
         _is_static = is_static;
+
+        // record the origin (so later VSO_INSERT request can be attached with the origin info)
+        _origin = *origin;
     }
 
     bool 
@@ -53,7 +56,7 @@ namespace Vast
 
         // registration of a potential node with the gateway
         case VSO_CANDIDATE:
-            if (_self.id == _policy->getGatewayID ())
+            if (isGateway (_self.id))
             {
                 Node candidate;
 
@@ -77,11 +80,13 @@ namespace Vast
             }
             else
             {
-                float level;
-                Position join_pos;
+                float level;        // level of work load
+                Position join_pos;  // joining position of the new node
+                Node origin;        // the origin node of the requesting overlay
 
-                in_msg.extract ((char *)&level, sizeof (float));
+                in_msg.extract (level);
                 in_msg.extract (join_pos);
+                in_msg.extract (origin);
 
                 // TODO: ignore redundent requests at same position
                 
@@ -103,7 +108,7 @@ namespace Vast
                     Message msg (VSO_PROMOTE);
                     msg.priority = 1;
                     msg.store (join_pos);
-                    msg.store (_net->getHostAddress ());
+                    msg.store (origin);
 
                     // send promotion message
                     _net->notifyAddressMapping (new_node.id, new_node.addr);
@@ -123,26 +128,22 @@ namespace Vast
         case VSO_PROMOTE:        
             if (_state == ABSENT)
             {
-                // TODO: find a way so gateway address need not be sent?
+                // "origin" always needs to be sent so that we know the proper initial contact of the overlay
                 Position join_pos;
-                Addr addr;
+                Node origin;
                 in_msg.extract (join_pos);
-                in_msg.extract (addr);
-
-                Node gateway;
-                gateway.id = in_msg.from;
-                gateway.addr = addr;
-
+                in_msg.extract (origin);
+               
                 Area aoi (join_pos, 5);
 
                 // join at the specified position, but only if I'm available
-                join (aoi, &gateway);
+                join (aoi, &origin);
             }
             break;
 
         // Overloaded node's request for neighbors to move closer
         case VSO_MOVE:            
-            {                             
+            {                 
                 // received not my enclosing neighbor's help signal
                 if (_Voronoi->is_enclosing (in_msg.from) == false)
                 {
@@ -176,9 +177,11 @@ namespace Vast
             else
             {
                 printf ("[%llu] VSOPeer: VSO_JOINED received, new VSO node [%llu] joined\r\n", _self.id, in_msg.from);
-
+                
                 if (_promote_requests.find (in_msg.from) != _promote_requests.end ())
                     _promote_requests.erase (in_msg.from);
+
+                // TODO: record the joining time for logging total nodes in system?
             }
             break;
         
@@ -318,8 +321,9 @@ namespace Vast
                 {
                     Message msg (VSO_INSERT);
                     msg.priority = 1;
-                    msg.store ((char *)&level, sizeof (float));
+                    msg.store (level);
                     msg.store (pos);
+                    msg.store (_origin);
                     msg.addTarget (_policy->getGatewayID ());
                     _net->sendVONMessage (msg);    
                 }
@@ -822,10 +826,11 @@ namespace Vast
         new_node = _candidates[0];
         _candidates.erase (_candidates.begin ());
 
-        string str;
-        new_node.addr.toString (str);
+        //string str;
+        //new_node.addr.toString (str);
 
-        printf ("\n[%llu] promoting [%llu] %s as new node\n\n", _self.id, new_node.id, str.c_str ());
+        //printf ("\n[%llu] promoting [%llu] %s as new node\n\n", _self.id, new_node.id, str.c_str ());
+        printf ("\n[%llu] promoting [%llu] as new node\n\n", _self.id, new_node.id);
 
         return true;
     }
@@ -868,8 +873,8 @@ namespace Vast
         {
             _vso_state = JOINED;
 
-            // notify the host for some join processing
-            _policy->peerJoined ();
+            // notify the host for some joining processing, also notify the origin node's ID
+            _policy->peerJoined (_origin.id);
 
             // notify gateway that I've joined (can remove me from request list)
             Message msg (VSO_JOINED);

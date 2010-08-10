@@ -68,11 +68,12 @@ namespace Vast
      
         char GW_str[80];
         gateway.getString (GW_str);
-        printf ("[%llu] VASTClient::join () gateway is: %s\n", _self.id, GW_str);
+        printf ("[%llu] VASTClient::join () gateway is: %s world is: %u\n", _self.id, GW_str, worldID);
 
         // record my worldID, so re-join attempts can proceed with correct worldID
         _world_id = worldID; 
 
+        /*
         // if worldID is unspecified, gateway is treated as the initial matcher
         // (we join the common world)
         if (worldID == 0)
@@ -83,24 +84,24 @@ namespace Vast
         
             return true;
         }
+        */
 
-        else
-        {
-            // set timeout to re-try, necessary because it might take time for sending request
-            _timeout_join = _net->getTimestamp () + (TIMEOUT_JOIN * _net->getTimestampPerSecond ());        
-              
-            // if relay is yet known, wait first
-            if (_relay->isJoined () == false)
-                return false;
-                
-            printf ("VASTClient::join () [%llu] sends JOIN request to gateway [%llu]\n", _self.id, _gateway.host_id);
+        // set timeout to re-try, necessary because it might take time for sending request
+        _timeout_join = _net->getTimestamp () + (TIMEOUT_JOIN * _net->getTimestampPerSecond ());        
+          
+        // if relay is yet known, wait first
+        if (_relay->isJoined () == false)
+            return false;
+            
+        printf ("VASTClient::join () [%llu] sends JOIN request to gateway [%llu]\n", _self.id, _gateway.host_id);
         
-            // send out join request
-            Message msg (JOIN);                
-            msg.store (_world_id);
-                    
-            return sendGatewayMessage (msg, MSG_GROUP_VAST_MATCHER);
-        }
+        // send out join request
+        Message msg (JOIN);
+        msg.store (_world_id);
+
+        _state = JOINING;
+                
+        return sendGatewayMessage (msg, MSG_GROUP_VAST_MATCHER);
     }
 
     // quit the overlay
@@ -516,6 +517,24 @@ namespace Vast
 
         switch (in_msg.msgtype)
         {
+            /*
+        // getting the address of origin matcher from gateway
+        case JOIN_R:
+            {
+                Addr origin_matcher;
+                in_msg.extract (origin_matcher);
+
+                printf ("VASTClient [%llu] JOIN_R: gateway: %llu, origin matcher: %llu\n", _self.id, _gateway.host_id, origin_matcher.host_id);
+
+                // store origin matcher's address
+                notifyMapping (origin_matcher.host_id, &origin_matcher);
+                
+                //_matcher_id = _gateway.host_id;         
+                _matcher_id = origin_matcher.host_id;
+                _state = JOINED;
+            }
+            break;
+            */
 
         // response from VASTClient regarding whether a subscription is successful
         case SUBSCRIBE_R:
@@ -523,7 +542,7 @@ namespace Vast
                 // check if there are pending requests
                 if (_sub.active == true)
                 {
-                    printf ("VASTClient::handleMessage () SUBSCRIBE_REPLY received, but no prior pending subscription found\n");
+                    printf ("VASTClient::handleMessage () SUBSCRIBE_R received, but no prior pending subscription found\n");
                     break;
                 }
 
@@ -560,33 +579,34 @@ namespace Vast
             break;
 
         // notification from existing matcher about a new current matcher
-        case MATCHER_NOTIFY:
+        case NOTIFY_MATCHER:
             {     
                 // TODO: security check? 
-                // right now no check is done because MATCHER_NOTIFY can come
+                // right now no check is done because NOTIFY_MATCHER can come
                 // from either the previous existing matcher, or a new matcher that
-                // takes on the client
+                // takes on the client, or the gateway notifying initial origin matcher
                 
-                // we only accept notify from current matcher
-                //if (in_msg.from == _matcher_id)
-                //{
-                    Addr new_matcher;
-                    in_msg.extract (new_matcher);
+                Addr new_matcher;
+                in_msg.extract (new_matcher);
                
-                    // accept transfer only if new matcher differs from known one
-                    if (new_matcher.host_id != _matcher_id)
-                    {
-                        _closest_id = _matcher_id;
-                        _matcher_id = new_matcher.host_id;
+                printf ("VASTClient NOTIFY_MATCHER new [%llu] current [%llu]\n", new_matcher.host_id, _matcher_id);
 
-                        notifyMapping (_matcher_id, &new_matcher);
-                    }
-                //}
+                // accept transfer only if new matcher differs from known one
+                if (new_matcher.host_id != _matcher_id)
+                {
+                    _closest_id = _matcher_id;
+                    _matcher_id = new_matcher.host_id;
+
+                    notifyMapping (_matcher_id, &new_matcher);
+                }
+
+                if (_state == JOINING)
+                    _state = JOINED;
             }
             break;
 
         // notification from existing matcher about a new current matcher
-        case CLOSEST_NOTIFY:
+        case NOTIFY_CLOSEST:
             {     
                 // we only accept notify from current matcher
                 if (in_msg.from == _matcher_id)
@@ -753,6 +773,7 @@ namespace Vast
                 join (_gateway.publicIP, _world_id);
             }
         }
+
         // if we have subscribed before, but now inactive, attempt to re-subscribe
         else if (_sub.active == false)
         {
@@ -900,8 +921,8 @@ namespace Vast
 
         // record my subscription ID as the default 'from' field, if not already specified
         // NOTE: this is to allow the recipiant to properly identify me and send reply back
-        if (msg.from == 0)
-            msg.from = _sub.id;
+        //if (msg.from == 0)
+        //    msg.from = _sub.id;
               
         // if at least one message is sent, then it's successful
         return (sendMessage (msg) > 0);
