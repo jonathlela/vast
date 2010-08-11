@@ -72,6 +72,15 @@ VASTVerse *     g_world = NULL;
 VAST *          g_self  = NULL;
 Vast::id_t      g_sub_no = 0;        // subscription # for my client (peer)  
 
+// types of node
+typedef enum 
+{
+    GATEWAY = 1,        // gateway
+    ORIGIN,             // origin matcher
+    MATCHER,            // regular matcher
+    CLIENT              // regular client
+} NodeType;
+
 #ifdef WIN32
 void getInput ()
 {
@@ -211,24 +220,21 @@ void checkJoin ()
 
         if(g_position_log != NULL)
         {
-                       fprintf(g_position_log, 
-                        "%lld,\"%llu,joining\",%d\n",joining_msec,nodeID,g_node_no);
-                       fprintf(g_position_log, 
-                        "%lld,\"%llu,joined\",%d\n",joined_msec,nodeID,g_node_no);
-                       fflush(g_position_log); 
-
+            fprintf(g_position_log, 
+                "%lld,\"%llu,joining\",%d\n",joining_msec,nodeID,g_node_no);
+            fprintf(g_position_log, 
+                "%lld,\"%llu,joined\",%d\n",joined_msec,nodeID,g_node_no);
+            fflush(g_position_log);
         }
       
         if(g_neighbor_log != NULL)
         {
-                       fprintf(g_neighbor_log, 
-                        "%lld,\"%llu,joining\"\n",joining_msec,nodeID);
-                       fprintf(g_neighbor_log, 
-                        "%lld,\"%llu,joined\"\n",joined_msec,nodeID);
-                       fflush(g_neighbor_log); 
-
-        } 
-
+            fprintf(g_neighbor_log, 
+                "%lld,\"%llu,joining\"\n",joining_msec,nodeID);
+            fprintf(g_neighbor_log, 
+                "%lld,\"%llu,joined\"\n",joined_msec,nodeID);
+            fflush(g_neighbor_log); 
+        }
     }
 }
 
@@ -337,10 +343,11 @@ int main (int argc, char *argv[])
     // obtain parameters from command line and/or INI file
     if ((g_node_no = InitPara (VAST_NET_ACE, g_netpara, simpara, cmd, &is_gateway, &g_world_id, &g_aoi, &g_gateway, &entries)) == (-1))
         exit (0);
-    if (!is_gateway){
+
+    if (g_node_no != 0 && !is_gateway)
+    {
         //obtain parameters by random  by lee
-        g_node_no=rand()%(simpara.NODE_SIZE-1)+1;
-    
+        g_node_no=rand()%(simpara.NODE_SIZE-1)+1;    
     }
 
     // if g_node_no is specified, then this node will simulate a client movement
@@ -349,9 +356,9 @@ int main (int argc, char *argv[])
     // make backup of AOI, so we can detect whehter position has changed and we need to move the client
     g_prev_aoi = g_aoi;
 
-    // sleep a little to let message be sent out
+    //sleep a little to let nodes move at different time  by lee
     //printf ("sleep for %d seconds\n", 1000000*g_node_no / 1000000);
-    //ACE_Time_Value tv (0, 1000000*g_node_no); //sleep a little to let nodes move at different   time  by lee
+    //ACE_Time_Value tv (0, 1000000*g_node_no); 
     //ACE_OS::sleep (tv);
     
     // create VAST node factory    
@@ -453,7 +460,7 @@ int main (int argc, char *argv[])
         }
 
         // elapsed time in microseconds
-        long long elapsed = (long long)(curr_time.sec () - last_movement.sec ()) * 1000000 + (curr_time.usec () - last_movement.usec ());        
+        long long elapsed = (long long)(curr_time.sec () - last_movement.sec ()) * 1000000 + (curr_time.usec () - last_movement.usec ());
 
         // if we should move in this frame
         bool to_move = false;
@@ -474,11 +481,11 @@ int main (int argc, char *argv[])
             id = g_sub_no;
         }
 
-        if (g_state != JOINED){
-            
+        if (g_state != JOINED)
+        {            
             checkJoin ();
-
-        }else 
+        }
+        else 
         {
             // generate movement (either from input or from movement model, for simulated behavior)
 #ifdef WIN32
@@ -514,10 +521,10 @@ int main (int argc, char *argv[])
                              g_world->getSendStat ().total, g_world->getReceiveStat ().total);
                     fflush (g_position_log);
                 }
+
                 //print neighbor by lee
                 if (self != NULL)                
-                printNeighbors (curr_msec, g_sub_no);
-
+                    printNeighbors (curr_msec, g_sub_no);
 
                 // print out movement once per second
                 if (num_moves % simpara.STEPS_PERSEC == 0)
@@ -534,6 +541,10 @@ int main (int argc, char *argv[])
                 {
                     StatType sendstat, recvstat;
 
+                    // extract node type
+                    listsize_t type;
+                    msg->extract (type);
+
                     // send size
                     msg->extract (sendstat);         
                     msg->extract (recvstat);
@@ -541,7 +552,8 @@ int main (int argc, char *argv[])
                     sendstat.calculateAverage ();
                     recvstat.calculateAverage ();
 
-                    LogManager::instance ()->writeLogFile ("[%llu] send: (%u,%u,%.2f) recv: (%u,%u,%.2f)", msg->from, sendstat.minimum, sendstat.maximum, sendstat.average, recvstat.minimum, recvstat.maximum, recvstat.average);
+                    LogManager::instance ()->writeLogFile ("[%llu] %s send: (%u,%u,%.2f) recv: (%u,%u,%.2f)", msg->from, (type == GATEWAY ? "GATEWAY" : (type == MATCHER ? "MATCHER" : "CLIENT")), 
+                                                            sendstat.minimum, sendstat.maximum, sendstat.average, recvstat.minimum, recvstat.maximum, recvstat.average);
 
                     // record last update time for this node
                     last_update[msg->from] = curr_msec;
@@ -568,7 +580,17 @@ int main (int argc, char *argv[])
                 Message msg (1);
                 StatType sendstat = g_world->getSendStat (true);
                 StatType recvstat = g_world->getReceiveStat (true);
+
+                // type 1: origin, 2: matcher, 3: client
+                listsize_t type = CLIENT;
+                if (g_world->isMatcher ())
+                {
+                    type = MATCHER;
+                    if (g_world->isGateway ())
+                        type = GATEWAY;
+                }
                         
+                msg.store (type);
                 msg.store (sendstat);
                 msg.store (recvstat);
             

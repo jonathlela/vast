@@ -42,8 +42,7 @@
 
 #define TIMEOUT_SUBSCRIPTION_KEEPALIVE          (1.0)   // # of seconds to send updates for my subscriptions
 
-#define TIMEOUT_REGULAR_MATCHER_KEEPALIVE       (10.0)    // # of seconds to inform gateway of alive status
-#define TIMEOUT_ORIGIN_MATCHER_KEEPALIVE        (1.0)     // # of seconds to inform gateway of alive status
+#define TIMEOUT_MATCHER_KEEPALIVE               (10)    // # of seconds to inform gateway of alive status
     
 #define LIMIT_LIVE_MATCHERS_PER_WORLD           (5)     // # of live matcher info the gateway needs to keep (for fault tolerance)
 
@@ -61,6 +60,23 @@ using namespace std;
 
 namespace Vast
 {
+
+    // possible states for a given matcher
+    typedef enum 
+    {
+        CANDIDATE = 1,      // a idle matcher
+        PROMOTING,          // in the process of promotion
+        ACTIVE,             // active regular matcher
+        ORIGIN,             // active origin matcher
+    } MatcherState;
+
+    struct MatcherInfo
+    {
+        MatcherState    state;      // matcher state
+        world_t         world_id;   // world the matcher belongs
+        Addr            addr;       // address for matcher        
+        timestamp_t     time;       // last update of the info
+    };
 
     class VASTMatcher : public MessageHandler, public VONNetwork, public VSOPolicy
     {
@@ -86,7 +102,10 @@ namespace Vast
         bool    isJoined ();
                
         // whether I'm a gateway node
-        bool    isGateway ();
+        bool    isGateway (id_t id = 0);
+
+        // whether I'm an active matcher (promoted by gateawy)
+        bool    isActive ();
 
         // 
         // GUI helper functions 
@@ -210,12 +229,15 @@ namespace Vast
         // tell clients updates of their neighbors (changes in other nodes subscribing at same layer)
         void notifyClients (); 
 
+        // handle the failure of a origin matcher (gateway-only)
+        void originDisconnected (id_t matcher_id);
+
         //
         // helper functions
         //
 
-        // get a candidate origin matcher to use
-        bool findCandidate (Node &new_origin);
+        // get a candidate origin matcher to use (gateway-only)
+        bool findCandidate (Addr &new_origin);
 
         // send a message to clients (optional flag to send directly)
         // returns # of targets successfully sent, optional to return failed targets
@@ -227,8 +249,12 @@ namespace Vast
         // set the gateway node for this world
         bool setGateway (const IPaddr &gatewayIP);
 
-        // whether is particular ID is the gateway node
-        inline bool isGateway (id_t id);
+        // check if a node is an origin matcher (gateway-only)
+        bool isOriginMatcher (id_t id);
+
+        // store a joining client to the queue of waiting for origin matcher response
+        void storeRequestingClient (world_t world_id, id_t client_id);
+
 
         Node                _self;          // information regarding current node
         NodeState           _state;         // current state
@@ -237,8 +263,7 @@ namespace Vast
 
         VSOPeer *           _VSOpeer;       // interface as a participant in a VON
 
-        world_t             _world_id;      // which world I'm currently in (0 is default world)
-        world_t             _world_counter; // counter for assigning world IDs
+        world_t             _world_id;      // which world I'm currently in (default to VAST_DEFAULT_WORLD_ID)
         id_t                _origin_id;     // id for the origin matcher
 
         map<id_t, Node *>   _neighbors;     // list of neighboring matchers, NOTE: pointers refer to data in VSOPeer, so do not need to be released upon destruction
@@ -258,17 +283,17 @@ namespace Vast
 
         vector<Message *>   _queue;             // messages received but cannot yet processed before VSOpeer is joined
 
+        int                 _matcher_keepalive; // # of seconds before reporting to gateway of keep alive status
+
         //
         // origin matcher management (gateway only)
         //
         // TODO: separate this into a VASTGateway class?
 
-        int _matcher_keepalive;                 // # of seconds before reporting to gateway of keep alive status
-        map<world_t, Addr>  _origins;           // list of origin matchers (gateway-only) 
-        map<id_t, world_t>  _matcher2world;     // mapping from host_id to world_id
-        map<id_t, Node>     _candidates;        // list of candidate origin matchers (gateway-only)
-        map<world_t, vector<id_t> *> _requests; // initial requests from clients to join a given world        
-        map<world_t, map<id_t, timestamp_t> *> _alives; // most current timestamp records for all matchers
+        world_t                         _world_counter;     // counter for assigning world IDs 
+        map<world_t, id_t>              _origins;           // list of origin matchers
+        map<id_t, MatcherInfo>          _matchers;          // info of candidate & currently active matchers
+        map<world_t, vector<id_t> *>    _requests;          // initial requests from clients to join a given world        
 
         //
         // stat collection

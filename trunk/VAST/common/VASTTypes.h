@@ -121,6 +121,7 @@ typedef enum
     JOINED,
 } NodeState;
 
+
 // failure method for simulations
 typedef enum 
 {

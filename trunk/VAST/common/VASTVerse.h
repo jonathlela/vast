@@ -135,6 +135,12 @@ namespace Vast
         // obtain the matcher's adjustable AOI radius, returns 0 if no matcher exists
         Area *getMatcherAOI ();
 
+        // whether I am a matcher node
+        bool isMatcher ();
+
+        // whether I am a gateway node
+        bool isGateway ();
+
         // obtain the number of active connections at this node
         int getConnectionSize ();
 

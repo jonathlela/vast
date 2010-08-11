@@ -609,6 +609,31 @@ namespace Vast
         return NULL;
     }
 
+    // whether I am a matcher node
+    bool 
+    VASTVerse::isMatcher ()
+    {
+        if (isLogined () == false)
+            return false;
+
+        VASTPointer *handlers = (VASTPointer *)_pointers;
+                
+        return handlers->matcher->isActive ();
+    }
+
+    // whether I am a gateway node
+    bool 
+    VASTVerse::isGateway ()
+    {
+        if (isLogined () == false)
+            return false;
+
+        VASTPointer *handlers = (VASTPointer *)_pointers;
+                
+        return handlers->matcher->isGateway ();
+    }
+
+
     // obtain the number of active connections at this node
     int 
     VASTVerse::getConnectionSize ()

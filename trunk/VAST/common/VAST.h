@@ -44,13 +44,14 @@ namespace Vast
     typedef enum 
     {
         // internal message # must begin with VON_MAX_MSG as VONpeer is used and share the MessageQueue        
-        MATCHER_JOIN = VON_MAX_MSG,     // join the overlay as a matcher
-        MATCHER_JOIN_R,                 // reply to the joining matcher        
-        MATCHER_JOINED,                 // notify gateway a matcher has joined successfully
-        MATCHER_LEFT,                   // notify gateway a matcher is leaving
-        MATCHER_CANDIDATE,              // notify gateway of willingness to be origin matcher
+        MATCHER_CANDIDATE = VON_MAX_MSG,// notify gateway of willingness to be origin matcher
         MATCHER_INIT,                   // call up a candidate origin matcher to start up a new world
         MATCHER_ALIVE,                  // keepalive messages from matchers to gateway
+        MATCHER_WORLD_ID,               // notify a matcher of its world_id
+        //MATCHER_JOIN,                 // join the overlay as a matcher
+        //MATCHER_JOIN_R,               // reply to the joining matcher        
+        //MATCHER_JOINED,               // notify gateway a matcher has joined successfully
+        //MATCHER_LEFT,                 // notify gateway a matcher is leaving
         NOTIFY_MATCHER,                 // current matcher notifying client of new current matcher
         NOTIFY_CLOSEST,                 // current matcher notifying client of closest alternative matcher
         JOIN,                           // client request to gateway for joining a world (find first "origin matcher")
@@ -68,7 +69,6 @@ namespace Vast
         MESSAGE,                        // deliver a message to a node
         SUBSCRIBE_NOTIFY,               // client notifying a relay of its subscription
         STAT,                           // sending statistics for gateway to record
-        //REPORT,                         // sending app-specific message to gateway
 
         // Relay-specific messages
         REQUEST,                // request for relays
