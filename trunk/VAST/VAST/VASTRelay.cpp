@@ -614,7 +614,7 @@ namespace Vast
             // obtain some relays from network layer if no known relays
             if (_relays.size () == 0)
             {
-                printf ("VASTRelay::postHandling () no relays known, try to get some from network layer\n");
+                printf ("VASTRelay: relay list is empty, get some from network layer\n");
 
                 // using network entry points as initial relays 
                 vector<IPaddr> &entries = _net->getEntries ();

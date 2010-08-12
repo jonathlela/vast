@@ -349,6 +349,12 @@ int main (int argc, char *argv[])
         //obtain parameters by random  by lee
         g_node_no=rand()%(simpara.NODE_SIZE-1)+1;    
     }
+    
+    // force all clients to default join at world 2, unless specified other than 2
+    if (!is_gateway && g_world_id == 1)
+    {
+        g_world_id = 2;
+    }
 
     // if g_node_no is specified, then this node will simulate a client movement
     bool simulate_behavior = (g_node_no > 0);

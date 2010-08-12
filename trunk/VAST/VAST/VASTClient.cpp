@@ -68,7 +68,7 @@ namespace Vast
      
         char GW_str[80];
         gateway.getString (GW_str);
-        printf ("[%llu] VASTClient::join () gateway is: %s world is: %u\n", _self.id, GW_str, worldID);
+        LogManager::instance ()->writeLogFile ("[%llu] VASTClient: gateway [%s] world: [%u]\n", _self.id, GW_str, worldID);
 
         // record my worldID, so re-join attempts can proceed with correct worldID
         _world_id = worldID; 
@@ -93,14 +93,14 @@ namespace Vast
         if (_relay->isJoined () == false)
             return false;
             
-        printf ("VASTClient::join () [%llu] sends JOIN request to gateway [%llu]\n", _self.id, _gateway.host_id);
+        LogManager::instance ()->writeLogFile ("VASTClient [%llu] JOIN request to gateway [%llu]\n", _self.id, _gateway.host_id);
         
         // send out join request
         Message msg (JOIN);
         msg.store (_world_id);
 
         _state = JOINING;
-                
+
         return sendGatewayMessage (msg, MSG_GROUP_VAST_MATCHER);
     }
 
@@ -150,15 +150,18 @@ namespace Vast
         _sub.aoi    = area;
         _sub.layer  = layer;
 
-        // if matcher or relay is yet known, wait first
+        // if matcher or relay is not yet known, wait first
         if (_state != JOINED || _relay->isJoined () == false)
+        {
+            LogManager::instance ()->writeLogFile ("VASTClient::subscribe () [%llu] matcher or relay not ready, wait first. matcher: [%llu], relay joined: %s\n", _self.id, _matcher_id, (_relay->isJoined () ? "true" : "false"));
             return false;
+        }
 
         _sub.host_id = _net->getHostID ();
         _sub.active  = false;
         _sub.relay   = _net->getAddress (_relay->getRelayID ());
 
-        printf ("VASTClient::subscribe () [%llu] sends SUBSCRIBE request to [%llu]\n", _self.id, _matcher_id);
+        LogManager::instance ()->writeLogFile ("VASTClient::subscribe () [%llu] sends SUBSCRIBE request to [%llu]\n", _self.id, _matcher_id);
 
         // send out subscription request
         Message msg (SUBSCRIBE);                
@@ -208,7 +211,7 @@ namespace Vast
         
         if (subID != _sub.id)
         {
-            printf ("VASTClient::move () [%llu] try to move for invalid subscription ID\n", _self.id);
+            LogManager::instance ()->writeLogFile ("VASTClient::move () [%llu] try to move for invalid subscription ID\n", _self.id);
             
             // re-initiate subscription
             _sub.active = false;
@@ -542,7 +545,7 @@ namespace Vast
                 // check if there are pending requests
                 if (_sub.active == true)
                 {
-                    printf ("VASTClient::handleMessage () SUBSCRIBE_R received, but no prior pending subscription found\n");
+                    LogManager::instance ()->writeLogFile ("VASTClient::handleMessage () SUBSCRIBE_R received, but no prior pending subscription found\n");
                     break;
                 }
 
@@ -589,7 +592,7 @@ namespace Vast
                 Addr new_matcher;
                 in_msg.extract (new_matcher);
                
-                printf ("VASTClient NOTIFY_MATCHER new [%llu] current [%llu]\n", new_matcher.host_id, _matcher_id);
+                LogManager::instance ()->writeLogFile ("VASTClient NOTIFY_MATCHER new [%llu] current [%llu]\n", new_matcher.host_id, _matcher_id);
 
                 // accept transfer only if new matcher differs from known one
                 if (new_matcher.host_id != _matcher_id)
@@ -607,7 +610,7 @@ namespace Vast
 
         // notification from existing matcher about a new current matcher
         case NOTIFY_CLOSEST:
-            {     
+            {
                 // we only accept notify from current matcher
                 if (in_msg.from == _matcher_id)
                 {
@@ -687,7 +690,7 @@ namespace Vast
                             }
                             if (it == _neighbors.end ())
                             {
-                                printf ("VASTClient receives update on neighbor [%llu] without info\n", neighbor_id);
+                                LogManager::instance ()->writeLogFile ("VASTClient receives update on neighbor [%llu] without info\n", neighbor_id);
                                 requestNeighbor (neighbor_id);
                             }
                         }
@@ -721,7 +724,7 @@ namespace Vast
                 // simply switch to backup matcher
                 if (in_msg.from == _matcher_id)
                 {
-                    printf ("VASTClient::handleMessage () DISCONNECT by my matcher, switching to backup matcher [%llu]\n", _closest_id);
+                    LogManager::instance ()->writeLogFile ("VASTClient::handleMessage () DISCONNECT by my matcher, switching to backup matcher [%llu]\n", _closest_id);
                     handleMatcherDisconnect ();
                 }
                 // if the relay fails
@@ -729,7 +732,7 @@ namespace Vast
                 else if (_relay->getRelayID () == NET_ID_UNASSIGNED ||
                          in_msg.from == _relay->getRelayID ())
                 {
-                    printf ("VASTClient::handleMessage () DISCONNECT by my relay, wait until new relay is found\n");
+                    LogManager::instance ()->writeLogFile ("VASTClient::handleMessage () DISCONNECT by my relay, wait until new relay is found\n");
 
                     // NOTE: VASTRelay will automatically find a new relay to connect
                     //       we just need to periodically check back if the new relay is found
@@ -918,6 +921,10 @@ namespace Vast
         msg.priority = 1;
         msg.msggroup = msggroup;
         msg.addTarget (_gateway.host_id);
+
+        // if we've lost connection to gateway, make sure it's re-establish
+        if (_net->isConnected (_gateway.host_id) == false)
+            notifyMapping (_gateway.host_id, &_gateway); 
 
         // record my subscription ID as the default 'from' field, if not already specified
         // NOTE: this is to allow the recipiant to properly identify me and send reply back
