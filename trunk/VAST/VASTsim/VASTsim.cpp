@@ -54,7 +54,7 @@ bool                g_joining   = true;
 
 
 // Initilize parameters, including setting default values or read from INI file
-int InitPara (VAST_NetModel model, VASTPara_Net &netpara, SimPara &simpara, const char *cmdline, bool *p_is_gateway, world_t *p_world_id, Area *p_aoi, Addr *p_gateway, vector<IPaddr> *p_entries)
+int InitPara (VAST_NetModel model, VASTPara_Net &netpara, SimPara &simpara, const char *cmdline, bool *p_is_gateway, world_t *p_world_id, Area *p_aoi, Addr *p_gateway, vector<IPaddr> *p_entries, int *p_interval)
 {
     netpara.model = model;
 
@@ -87,6 +87,9 @@ int InitPara (VAST_NetModel model, VASTPara_Net &netpara, SimPara &simpara, cons
 
     // which node to simulate, (0) means manual
     int node_no = 0; 
+
+    // interval in seconds to pause before joining
+    int interval = 0;
    
     char GWstr[80];
     GWstr[0] = 0;
@@ -127,29 +130,34 @@ int InitPara (VAST_NetModel model, VASTPara_Net &netpara, SimPara &simpara, cons
             case 3:
                 world_id = (world_t)atoi (p);
                 break;
-    
-            // X-coord
+
+            // interval for pausing in joining
             case 4:
+                interval = atoi (p);
+                break; 
+
+            // X-coord
+            case 5:
                 aoi.center.x = (coord_t)atoi (p);
                 break;
     
             // Y-coord
-            case 5:
+            case 6:
                 aoi.center.y = (coord_t)atoi (p);
                 break;
 
             // AOI-radius
-            case 6:
+            case 7:
                 aoi.radius = (length_t)atoi (p);
                 break;
 
             // is relay
-            case 7:
+            case 8:
                 netpara.is_relay = (atoi (p) == 1);
                 break;
 
             // is matcher
-            case 8:
+            case 9:
                 netpara.is_matcher = (atoi (p) == 1);
                 break;
             }
@@ -230,6 +238,9 @@ int InitPara (VAST_NetModel model, VASTPara_Net &netpara, SimPara &simpara, cons
 
     if (p_entries != NULL)
         *p_entries = entries;
+
+    if (p_interval != NULL)
+        *p_interval = interval;
 
     return node_no;
 }

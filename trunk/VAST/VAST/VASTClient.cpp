@@ -573,7 +573,7 @@ namespace Vast
                     notifyMapping (matcher_addr.host_id, &matcher_addr);
                 }
 
-                // let gateway know I'm joining (to record stat)
+                // let gateway know I've joined successfully (subscription acknowledged)
                 Message msg (STAT);
                 layer_t type = 1;   // type 1 = JOIN
                 msg.store (type);

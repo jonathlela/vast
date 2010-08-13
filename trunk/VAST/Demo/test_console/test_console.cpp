@@ -340,8 +340,11 @@ int main (int argc, char *argv[])
 
     bool is_gateway;
 
+    // # of seconds to pause before joining, default is no pause
+    int interval = 0;
+
     // obtain parameters from command line and/or INI file
-    if ((g_node_no = InitPara (VAST_NET_ACE, g_netpara, simpara, cmd, &is_gateway, &g_world_id, &g_aoi, &g_gateway, &entries)) == (-1))
+    if ((g_node_no = InitPara (VAST_NET_ACE, g_netpara, simpara, cmd, &is_gateway, &g_world_id, &g_aoi, &g_gateway, &entries, &interval)) == (-1))
         exit (0);
 
     if (g_node_no != 0 && !is_gateway)
@@ -362,10 +365,13 @@ int main (int argc, char *argv[])
     // make backup of AOI, so we can detect whehter position has changed and we need to move the client
     g_prev_aoi = g_aoi;
 
+    // process interval
+    printf ("interval to pause is: %d seconds\n", interval);
     //sleep a little to let nodes move at different time  by lee
     //printf ("sleep for %d seconds\n", 1000000*g_node_no / 1000000);
     //ACE_Time_Value tv (0, 1000000*g_node_no); 
-    //ACE_OS::sleep (tv);
+    ACE_Time_Value tv (0, 1000000 * interval); 
+    ACE_OS::sleep (tv);
     
     // create VAST node factory    
     g_world = new VASTVerse (entries, &g_netpara, NULL);
