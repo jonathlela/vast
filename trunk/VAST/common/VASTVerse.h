@@ -34,6 +34,7 @@
 #include "VAST.h"           // provides spatial publish / subscribe (SPS)
 #include "VASTRelay.h"      // provides physical coordinate, IP address, and public IP
 
+#define VASTVERSE_RETRY_PERIOD  (10)     // # of seconds if we're stuck in a state, revert to the previous
 
 namespace Vast
 {
@@ -93,14 +94,14 @@ namespace Vast
         // also the network & simulation parameters
         VASTVerse (vector<IPaddr> &entries, VASTPara_Net *netpara, VASTPara_Sim *simpara);
         ~VASTVerse ();
-
-        // whether we'ved connect with the closest relay
-        // (ready to create client)
-        bool isLogined ();
         
         // NOTE: to run a gateway-like entry point only, there's no need to call
-        //       createVASTNode (), as long as isLogined () returns success
-        
+        //       createVASTNode (), as long as isInitialized () returns success
+
+        // check if we're ready to create a VASTNode
+        // (all init and the creation of Relay, Matcher are ready)
+        bool isInitialized ();
+
         // create & destroy a VASTNode
         // currently only supports one per VASTVerse
         bool createVASTNode (const IPaddr &gateway, Area &area, layer_t layer, world_t world_id = 0);
@@ -128,6 +129,11 @@ namespace Vast
         // resume operations on this node
         void    resume ();
 
+
+        //
+        //  accessors & state check
+        //
+
         // obtain access to Voronoi class of the matcher (usually for drawing purpose)
         // returns NULL if matcher does not exist on this node
         Voronoi *getMatcherVoronoi ();
@@ -141,6 +147,10 @@ namespace Vast
         // whether I am a gateway node
         bool isGateway ();
 
+        //
+        // stat collection
+        //
+
         // obtain the number of active connections at this node
         int getConnectionSize ();
 
@@ -153,6 +163,10 @@ namespace Vast
 
         // record nodeID on the same host
         void    recordLocalTarget (id_t target);
+
+        //
+        // misc tools
+        //
 
         // translate a string-based address into Addr object
         static Addr *translateAddress (const string &addr);
@@ -174,7 +188,8 @@ namespace Vast
         VASTPara_Net        _netpara;
         VASTPara_Sim        _simpara;
         void               *_pointers;      // pointers to VASTPointer
-        bool                _logined;
+        
+        int                 _timeout;       // # of ticks before we consider current state timeout
 
         vector<Subscription> _vastinfo;     // info about a VASTNode to be created
         vector<IPaddr>      _entries;       // entry points for the overlay

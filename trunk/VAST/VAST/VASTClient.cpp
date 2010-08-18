@@ -73,19 +73,6 @@ namespace Vast
         // record my worldID, so re-join attempts can proceed with correct worldID
         _world_id = worldID; 
 
-        /*
-        // if worldID is unspecified, gateway is treated as the initial matcher
-        // (we join the common world)
-        if (worldID == 0)
-        {
-            // gateway is the initial matcher and we're joined
-            _matcher_id = _gateway.host_id;         
-            _state = JOINED;
-        
-            return true;
-        }
-        */
-
         // set timeout to re-try, necessary because it might take time for sending request
         _timeout_join = _net->getTimestamp () + (TIMEOUT_JOIN * _net->getTimestampPerSecond ());        
           
@@ -520,24 +507,6 @@ namespace Vast
 
         switch (in_msg.msgtype)
         {
-            /*
-        // getting the address of origin matcher from gateway
-        case JOIN_R:
-            {
-                Addr origin_matcher;
-                in_msg.extract (origin_matcher);
-
-                printf ("VASTClient [%llu] JOIN_R: gateway: %llu, origin matcher: %llu\n", _self.id, _gateway.host_id, origin_matcher.host_id);
-
-                // store origin matcher's address
-                notifyMapping (origin_matcher.host_id, &origin_matcher);
-                
-                //_matcher_id = _gateway.host_id;         
-                _matcher_id = origin_matcher.host_id;
-                _state = JOINED;
-            }
-            break;
-            */
 
         // response from VASTClient regarding whether a subscription is successful
         case SUBSCRIBE_R:

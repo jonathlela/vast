@@ -175,9 +175,7 @@ void checkJoin ()
             //record the time joined   by lee
             // current time in milliseconds
             ACE_Time_Value joined_time = ACE_OS::gettimeofday ();
-            joined_msec = (long long) (joined_time.sec () * 1000 + joined_time.usec () / 1000);
-    
-            
+            joined_msec = (long long) (joined_time.sec () * 1000 + joined_time.usec () / 1000);                
         }
         break;
 
@@ -185,6 +183,7 @@ void checkJoin ()
         break;
     }
 
+    // if we just join then record the join time in various logs
     if (g_state == JOINED)
     {
         Node *self;
@@ -247,14 +246,14 @@ void printNeighbors (long long curr_msec, Vast::id_t selfID)
 		//vector<Node *>& neighbors = g_self->getLogicalNeighbors ();
         vector<Node *>& neighbors = g_self->list ();
 	
-		printf ("Neighbors: ");
+		printf ("Neighbors:\n");
 
         if (g_neighbor_log != NULL)
 		    fprintf (g_neighbor_log, "%lld,%llu,", curr_msec, selfID);
 
 		for (size_t i = 0; i < neighbors.size (); i++)
 		{
-			printf ("[%llu] (%d, %d) ", (neighbors[i]->id), 
+			printf ("[%llu] (%d, %d)\n", (neighbors[i]->id), 
 					(int)neighbors[i]->aoi.center.x, (int)neighbors[i]->aoi.center.y);
 
             if (g_neighbor_log)
@@ -354,7 +353,7 @@ int main (int argc, char *argv[])
     }
     
     // force all clients to default join at world 2, unless specified other than 2
-    if (!is_gateway && g_world_id == 1)
+    if (!is_gateway && g_world_id <= 1)
     {
         g_world_id = 2;
     }
@@ -493,6 +492,7 @@ int main (int argc, char *argv[])
             id = g_sub_no;
         }
 
+        // determine if we should perform joining or normal actions
         if (g_state != JOINED)
         {            
             checkJoin ();

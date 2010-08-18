@@ -69,23 +69,6 @@ namespace Vast
         //       also, it doesn't matter where our center is, as we will certainly
         //       join at a different location as determined by the workload        
         _self.aoi.radius = 5;
-
-        /*
-        // if I'm gateway, then my VSOpeer also has to join
-        if (isGateway () || _self.aoi.center.isEmpty () == false)
-        {
-            Node gateway;
-            gateway.id = _gateway.host_id;
-            gateway.addr = _gateway;
-
-            // start up the initial VSOPeer gateway
-            _VSOpeer->join (_self.aoi, &gateway, _is_static);
-
-            // create first origin matcher
-            // TODO: should call up
-            //_origins[0] = _gateway;
-        }
-        */
         
         // let gateway know whether I can be a candidate origin matcher
         // NOTE: even the gateway matcher needs to call this
@@ -505,93 +488,6 @@ namespace Vast
             }
             break;
 
-        /*
-        // process the report of a newly joined matcher
-        // can be either a 'origin matcher' (world_id > 0), 
-        // or a regular matcher (world_id is 0)
-        case MATCHER_JOINED:
-            if (isGateway () == false)
-            {
-                printf ("MATCHER_JOINED received by non-gateway\n");
-            }
-            else
-            {
-                // record the new matcher
-                world_t world_id;
-                Addr    matcher_addr;
-                id_t    origin_id;
-
-                in_msg.extract (world_id);
-                in_msg.extract (matcher_addr);
-
-                id_t matcher_id = matcher_addr.host_id;
-                
-                // if no world_id is indicated, meaning it's a regular matcher join
-                // the action is to remove the joined matcher from matcher candidates
-                if (world_id == 0)
-                {
-                    // know which world/origin the matcher has joined
-                    in_msg.extract (origin_id);
-
-                    // record the mapping from this matcher's host to world ID
-                    if (_matcher2world.find (origin_id) == _matcher2world.end ())
-                    {
-                        LogManager::instance ()->writeLogFile ("MATCHER_JOINED: origin [%llu] joined by matcher [%llu] cannot be found\n", origin_id, matcher_id);
-                        break;
-                    }
-
-                    // store mapping from new matcher's ID to world ID
-                    // TODO: separate into a addMatcherRecord () class?
-                    world_id = _matcher2world[origin_id];
-                    _matcher2world[matcher_id] = world_id;
-
-                    // remove matcher from candidates
-                    if (_candidates.find (matcher_id) == _candidates.end ())
-                        LogManager::instance ()->writeLogFile ("MATCHER_JOINED: candidate matcher '%llu' does not exist in list\n", matcher_id);
-                    else
-                        _candidates.erase (matcher_id);
-                    break;
-                }
-
-                // register or replace origin matcher record
-                if (_origins.find (world_id) != _origins.end ())
-                {
-                    LogManager::instance ()->writeLogFile ("VASTMatcher [%llu] MATCHER_JOINED: origin matcher [%llu] for world [%u] already exists, replacing with [%llu]\n", _self.id, world_id, _origins[world_id].host_id, matcher_addr.host_id);
-                }
-
-                _origins[world_id] = matcher_addr;
-                _matcher2world[matcher_id] = world_id;
-
-                // notify any requesting clients of the world created
-                map<world_t, vector<id_t> *>::iterator it = _requests.find (world_id);
-                if (it != _requests.end ())
-                {
-                    // send reply to joining client
-                    // TODO: combine with response in JOIN
-                    // NOTE: that we send directly back, as this is a gateway response
-                    Message msg (NOTIFY_MATCHER);
-                    msg.priority = 1;
-                    msg.msggroup = MSG_GROUP_VAST_CLIENT;
-                    msg.store (_origins[world_id]);                    
-                    msg.targets = *it->second;
-                    sendMessage (msg);
-
-                    LogManager::instance ()->writeLogFile ("Gateway MATCHER_JOINED notify clients with origin matcher [%llu] on world (%u) for clients:\n", _origins[world_id].host_id, world_id);
-                    for (size_t i=0; i < msg.targets.size (); i++)
-                        LogManager::instance ()->writeLogFile ("[%llu]\n", msg.targets[i]);
-
-                    // erase requesting clients
-                    delete it->second;
-                    _requests.erase (it);
-                }
-                else
-                {
-                    LogManager::instance ()->writeLogFile ("VASTMatcher [%llu] MATCHER_JOINED: origin matcher [%llu] for world [%u], no requesting clients found!\n", _self.id, matcher_id, world_id);
-                }
-            }
-            break;
-        */
-
         case MATCHER_WORLD_ID:
             {
                 world_t world_id;
@@ -688,6 +584,13 @@ namespace Vast
                     if (_matchers.find (matcher_id) == _matchers.end ())
                     {
                         LogManager::instance ()->writeLogFile ("Gateway JOIN: origin matcher [%llu] cannot be found for world [%u]\n", matcher_id, world_id);
+
+                        if (matcher_id == 0)
+                        {
+                            // TODO: find what causes this
+                            LogManager::instance ()->writeLogFile ("Gateway JOIN: matcher_id = 0, should not happen, remove it\n");
+                            _origins.erase (world_id);
+                        }
                         break;
                     }
 

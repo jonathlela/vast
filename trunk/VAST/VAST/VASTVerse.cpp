@@ -25,13 +25,11 @@
 #include <time.h>           // time
 
 #include "MessageQueue.h"
-//#include "Relay.h"
-//#include "IDGenerator.h"
 #include "VASTRelay.h"
 #include "VASTClient.h"
 #include "VASTMatcher.h"
 #include "VoronoiSF.h"
-#include "net_emu.h"     // TODO: cleaner way?
+#include "net_emu.h"        // TODO: cleaner way?
 #include "net_emu_bl.h"     // TODO: cleaner way?
 
 #ifndef ACE_DISABLED
@@ -39,17 +37,14 @@
 #endif
 
 
-
 namespace Vast
 {  
 	
-    // currently we assume there's only one globally accessible
-    // netbridge (for simulation only)
-    // TODO: once created, it will not ever be released until the program terminates
+    // currently we assume there's only one globally accessible netbridge (for simu only)
+    // TODO: once created, it will not be released until the program ends,
     //       a better mechanism?
     static net_emubridge *g_bridge     = NULL;
-    int            g_bridge_ref = 0;            // reference count for the bridge
-    //int            g_bridge_tickcount = 0;      // countdown to next tick
+    int                   g_bridge_ref = 0;            // reference count for the bridge
    
     class VASTPointer
     {
@@ -74,36 +69,8 @@ namespace Vast
     //  Internal helper functions
     //
 
-    // TODO: better interface?
-    VAST *
-    createNode (MessageQueue *msgqueue, VASTPointer *node)
-    {
-        VASTClient *vnode;
-        
-        if ((vnode = new VASTClient ((VASTRelay *)node->relay)) == NULL)
-            return NULL;
-
-        node->msgqueue->registerHandler (vnode);
-
-        return vnode;
-    }
-
-    bool 
-    destroyNode (MessageQueue *msgqueue, VAST *node)
-    {
-        if (node == NULL || msgqueue == NULL)
-            return false;
-
-        // release memory
-        if (node != NULL)
-        {                   
-            // unregister from message queue
-            msgqueue->unregisterHandler ((VASTClient *)node);            
-            delete (VASTClient *)node;
-        }
-        return true;
-    }
-    
+    // TODO: better interface? (don't use global functions)
+   
     VASTnet *
     createNet (unsigned short port, VASTPara_Net &para, vector<IPaddr> &entries)
     {
@@ -191,7 +158,7 @@ namespace Vast
         _lastsend = _lastrecv = 0;
         _next_periodic = 0;
 
-        _logined = false;
+        _timeout = 0;
 
         // make the local copy of the parameters
         _entries = entries;
@@ -220,6 +187,7 @@ namespace Vast
 		    else if (_netpara.model == VAST_NET_EMULATED_BL)		
 			    g_bridge = new net_emubridge_bl (_simpara.loss_rate, _simpara.fail_rate, 1, _netpara.step_persec);        
         }
+
         g_bridge_ref++;
     }
 
@@ -230,7 +198,7 @@ namespace Vast
         // delete those vast_nodes not yet deleted
         if (handlers->client != NULL)
         {
-            destroyNode (handlers->msgqueue, handlers->client);
+            destroyClient (handlers->client);
             handlers->client = NULL;
         }
 
@@ -268,20 +236,22 @@ namespace Vast
         }
 
         delete (VASTPointer *)_pointers;
+        _pointers = NULL;
 
-        _logined = false;
     }
 
     // create & destroy a VASTNode
+    // here we only records the info for the new VASTNode, 
+    // actual creation will occur during tick ()
     bool  
     VASTVerse::createVASTNode (const IPaddr &gateway, Area &area, layer_t layer, world_t world_id)
     {
         // right now can only create one
-        if (_vastinfo.size () != 0)
+        if (_vastinfo.size () > 0)
             return false;
 
         Subscription info;
-        size_t id = _vastinfo.size () + 1; 
+        size_t id = _vastinfo.size () + 1;  // NOTE: id is mainly useful for simulation lookup
 
         // store info about the VASTNode to be created
         // NOTE we store gateway's info in relay
@@ -316,62 +286,20 @@ namespace Vast
     VAST *
     VASTVerse::getVASTNode ()
     {
-        // error check
-        if (_vastinfo.size () == 0)
-        {
-            printf ("VASTVerse::getVASTNode () attempt to get VASTNode without first calling createVASTNode ()\n");
-            return NULL;
-        }
-
         VASTPointer *handlers = (VASTPointer *)_pointers;
-        Subscription &info = _vastinfo[0];
-
-        // create the VAST node
-        if (_state == ABSENT)
-        {            
-            printf ("state = ABSENT\n");
-            if ((createClient (info.relay.publicIP, info.world_id)) != NULL)
-            {                            
-                printf ("VASTVerse::getVASTNode () client created\n");
-                _state = JOINING;
-            }
-        }
-        else if (_state == JOINING)
-        {
-            printf ("state = JOINING\n");
-            if (handlers->client->isJoined ())
-            {
-                printf ("VASTVerse::getVASTNode () subscribing ... \n");
-                handlers->client->subscribe (info.aoi, info.layer);
-                _state = JOINING_2;
-            }
-        }
-        else if (_state == JOINING_2)
-        {
-            printf ("state = JOINING_2\n");
-            if (handlers->client->getSubscriptionID () != NET_ID_UNASSIGNED)
-            {
-                printf ("VASTVerse::getVASTNode () ID obtained, joined\n");
-                _state = JOINED;
-            }
-        }
 
         if (_state == JOINED)
-        {
-            printf ("state = JOINED\n");
             return handlers->client;
-        }
         else
             return NULL;
     }
 
-    // whether this VASTVerse is initialized to create VASTNode instances
+    // whether this VASTVerse is init to create VASTNode instances
+    // NOTE: everytime isInitialized () is called, it will always check the readiness of
+    //       network, relay, and matcher components
     bool 
-    VASTVerse::isLogined ()
+    VASTVerse::isInitialized ()
     {
-        if (_logined == true)
-            return true;
-
         VASTPointer *handlers = (VASTPointer *)_pointers;
 
         Position *physcoord = NULL;     // physical coordinate obtained
@@ -383,18 +311,18 @@ namespace Vast
         // create the basic network layer & message queue
         if (handlers->net == NULL)
         {
-            printf ("VASTVerse::isLogined () creating VASTnet...\n");
+            printf ("VASTVerse::isInitialized () creating VASTnet...\n");
 
             // create network layer
             handlers->net = createNet (_netpara.port, _netpara, _entries);
             if (handlers->net == NULL)
                 return false;
 
-            printf ("VASTVerse::isLogined () creating MessageQueue...\n");
+            printf ("VASTVerse::isInitialized () creating MessageQueue...\n");
             handlers->msgqueue = createQueue (handlers->net);
         }
 
-        // make sure the network layer is joined properly
+        // wait for the network layer to join properly
         else if (handlers->net->isJoined () == false)
             return false;
 
@@ -402,7 +330,7 @@ namespace Vast
         else if (handlers->relay == NULL)
         {
             // create the Relay node and store potential overlay entries 
-            printf ("VASTVerse::isLogined () creating VASTRelay...\n");
+            printf ("VASTVerse::isInitialized () creating VASTRelay...\n");
 
             id_t id = handlers->net->getHostID ();
 
@@ -432,18 +360,21 @@ namespace Vast
 
             // create (idle) 'matcher' instance
             handlers->matcher = new VASTMatcher (_netpara.is_matcher, _netpara.overload_limit, _netpara.is_static, (_netpara.matcher_coord.isEmpty () ? NULL : &_netpara.matcher_coord));
-            handlers->msgqueue->registerHandler (handlers->matcher);
-
-            _logined = true;
+            handlers->msgqueue->registerHandler (handlers->matcher);            
+            return true;
         }
-   
-        return _logined;
+        else
+            // everything is well & done
+            return true;
+
+        // by default init is not yet done
+        return false;
     }
 
     VAST *
     VASTVerse::createClient (const IPaddr &gateway, world_t world_id)
     {
-        if (isLogined () == false)
+        if (isInitialized () == false)
             return NULL;
 
         VASTPointer *handlers = (VASTPointer *)_pointers;
@@ -459,15 +390,17 @@ namespace Vast
             return NULL;
         }
 
-        VAST *vnode = createNode (handlers->msgqueue, (VASTPointer *)_pointers);
+        VAST *vnode = NULL;
 
-        // perform join for the client 
-        if (vnode != NULL)
+        if ((vnode = new VASTClient (handlers->relay)) != NULL)
         {
+            handlers->msgqueue->registerHandler (vnode);
+
+            // perform join for the client 
             vnode->join (gateway, world_id);
             handlers->client = vnode;
         }
-        
+
         return vnode;
     }
 
@@ -475,9 +408,18 @@ namespace Vast
     VASTVerse::destroyClient (VAST *node)
     {
         VASTPointer *handlers = (VASTPointer *)_pointers;
-        bool result = destroyNode (handlers->msgqueue, node);
+
+        if (node == NULL || handlers->msgqueue == NULL)
+            return false;        
+
+        // unregister from message queue
+        handlers->msgqueue->unregisterHandler ((VASTClient *)node);            
+
+        // release memory
+        delete (VASTClient *)node;        
         handlers->client = NULL;
-        return result;
+
+        return true;
     }
 
     /*
@@ -504,6 +446,88 @@ namespace Vast
     {        
         VASTPointer *handlers = (VASTPointer *)_pointers;
 
+        // # of ticks a joining stage is considered timeout
+        int timeout_period = (handlers->net != NULL ? (VASTVERSE_RETRY_PERIOD * handlers->net->getTimestampPerSecond ()) : 0);
+
+        //
+        // perform init & joining tasks
+        //
+
+        // check if a createVASTNode has been called
+        if (_vastinfo.size () > 0 && _state != JOINED)
+        {
+            Subscription &info = _vastinfo[0];
+
+            switch (_state)
+            {
+            // try to create VASTClient and let it start joining
+            case ABSENT:
+                {
+                    printf ("state = ABSENT\n");
+                    if ((createClient (info.relay.publicIP, info.world_id)) != NULL)
+                    {                            
+                        printf ("VASTVerse::tick () client created\n");
+                        _state = JOINING;
+                    }
+                }
+                break;
+
+            // try to perform subscription after the client has joined
+            case JOINING:
+                {
+                    printf ("state = JOINING\n");
+                    if (handlers->client->isJoined ())
+                    {
+                        printf ("VASTVerse::tick () subscribing ... \n");
+                        handlers->client->subscribe (info.aoi, info.layer);
+                        _state = JOINING_2;
+                    }
+                    // check if this stage is timeout, revert to previous state
+                    else
+                    {
+                        _timeout++;
+                        if (_timeout > timeout_period)
+                        {
+                            LogManager::instance ()->writeLogFile ("VASTVerse::tick () VASTClient join timeout after %d seconds, revert to ABSENT state", VASTVERSE_RETRY_PERIOD);
+                            _timeout = 0;
+                            destroyClient (handlers->client);
+                            _state = ABSENT;
+                        }
+                    }
+                }
+                break;
+
+            // wait until subscription is successful
+            case JOINING_2:
+                {
+                    printf ("state = JOINING_2\n");
+                    if (handlers->client->getSubscriptionID () != NET_ID_UNASSIGNED)
+                    {
+                        printf ("VASTVerse::getVASTNode () ID obtained\n");
+                        printf ("state = JOINED\n");
+                        _state = JOINED;
+                    }
+                    // check if this stage is timeout, revert to previous state
+                    else
+                    {
+                        _timeout++;
+
+                        if (_timeout > timeout_period)
+                        {
+                            LogManager::instance ()->writeLogFile ("VASTVerse::tick () wait for subscription ID timeout after %d seconds, revert to JOINING state", VASTVERSE_RETRY_PERIOD);
+                            _timeout = 0;
+                            _state = JOINING;
+                        }
+                    }
+                }
+                break;
+            }
+        }
+
+        //
+        // perform ticking
+        //
+
         // if no time is available, at least give a little time to run at least once
         if (time_budget < 0)
             time_budget = 1;
@@ -515,14 +539,19 @@ namespace Vast
         if (handlers->msgqueue != NULL)
             handlers->msgqueue->tick ();
            
+        //
         // perform per-second tasks
+        //
+
         if (handlers->net != NULL)
         {
+            // check if we need to perform per-second task
             timestamp_t now = handlers->net->getTimestamp ();
+        
             if (now >= _next_periodic)
             {
                 _next_periodic = now + handlers->net->getTimestampPerSecond ();
-            
+
                 // record network stat for this node
                 size_t size = handlers->net->getSendSize (0);            
                 _sendstat.addRecord (size - _lastsend);
@@ -535,9 +564,6 @@ namespace Vast
                 _lastrecv = size;
             }
         }
-
-        // right now there's always time available
-        //return time_budget;
 
         return TimeMonitor::instance ()->available ();
     }
@@ -581,7 +607,7 @@ namespace Vast
     Voronoi *
     VASTVerse::getMatcherVoronoi ()
     {
-        if (isLogined () == false)
+        if (isInitialized () == false)
             return NULL;
 
         VASTPointer *handlers = (VASTPointer *)_pointers;
@@ -597,7 +623,7 @@ namespace Vast
     Area *
     VASTVerse::getMatcherAOI ()
     {
-        if (isLogined () == false)
+        if (isInitialized () == false)
             return NULL;
 
         VASTPointer *handlers = (VASTPointer *)_pointers;
@@ -613,7 +639,7 @@ namespace Vast
     bool 
     VASTVerse::isMatcher ()
     {
-        if (isLogined () == false)
+        if (isInitialized () == false)
             return false;
 
         VASTPointer *handlers = (VASTPointer *)_pointers;
@@ -625,7 +651,7 @@ namespace Vast
     bool 
     VASTVerse::isGateway ()
     {
-        if (isLogined () == false)
+        if (isInitialized () == false)
             return false;
 
         VASTPointer *handlers = (VASTPointer *)_pointers;
