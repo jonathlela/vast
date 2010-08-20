@@ -177,7 +177,7 @@ namespace Vast
         void notifyLoading (float level);
 
         // notify the gateway that I can be available to join
-        bool notifyCandidacy ();
+        //bool notifyCandidacy ();
 
         // check if a particular point is within our region
         //bool inRegion (Position &pos);
@@ -268,7 +268,7 @@ namespace Vast
         //
 
         // get a new node that can be inserted
-        bool findCandidate (float level, Node &new_node);
+        //bool findCandidate (float level, Node &new_node);
 
         // get the center of all current objects I maintain
         bool getLoadCenter (Position &center);
@@ -295,7 +295,7 @@ namespace Vast
         Node                _origin;            // the origin peer (1st contact node) for this VSO network
 
         // server data (Gateway node)       
-        vector<Node>        _candidates;          // list of potential nodes
+        //vector<Node>        _candidates;          // list of potential nodes
         map<id_t, Node>     _promote_requests;    // requesting nodes' timestamp of promotion and position, index is the promoted node
         
         // ownership related

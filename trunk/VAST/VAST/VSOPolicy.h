@@ -49,7 +49,10 @@ namespace Vast
         //virtual bool getLoadCenter (Position &center) = 0; 
 
         // whether the current node can be a spare node for load balancing
-        virtual bool isCandidate () = 0;
+        //virtual bool isCandidate () = 0;
+
+        // find a candidate node suitable for promotion (gateway-only)
+        virtual bool findCandidate (Addr &new_node, float level) = 0;
 
         // obtain the ID of the gateway node
         virtual id_t getGatewayID () = 0;

@@ -18,7 +18,7 @@ namespace Vast
     {
         _newpos = _self;
 
-        notifyCandidacy ();
+        //notifyCandidacy ();
 
         _next_periodic = 0;
         _overload_timeout = _underload_timeout = 0;
@@ -54,6 +54,7 @@ namespace Vast
         switch ((VSO_Message)in_msg.msgtype)
         {
 
+        /*
         // registration of a potential node with the gateway
         case VSO_CANDIDATE:
             if (isGateway (_self.id))
@@ -70,6 +71,7 @@ namespace Vast
                 printf ("[%llu] VSOPeer::handleMessage () VSO_CANDIDATE received by non-gateway\r\n", _self.id);
             }
             break;
+        */
                          
         // Overloaded node's request for inserting a new helper
         case VSO_INSERT:                      
@@ -91,12 +93,12 @@ namespace Vast
                 // TODO: ignore redundent requests at same position
                 
                 // promote one of the spare potential nodes
-                Node new_node;
+                Addr new_node;
 
-                // TODO: if findCandidate () fails, insert virtual
+                // TODO: findCandidate () would always be successful (if no candidate found, then create gateway node)
                 // return from loop either request successfully served (promotion sent) 
                 // or no candidates can be found
-                while (findCandidate (level, new_node))
+                while (_policy->findCandidate (new_node, level))
                 {
                     // fill in the stressed node's contact info & join location
                     Node requester;
@@ -111,13 +113,13 @@ namespace Vast
                     msg.store (origin);
 
                     // send promotion message
-                    _net->notifyAddressMapping (new_node.id, new_node.addr);
-                    msg.addTarget (new_node.id);
+                    _net->notifyAddressMapping (new_node.host_id, new_node);
+                    msg.addTarget (new_node.host_id);
 
                     // record the promoted position if sent success
                     if (_net->sendVONMessage (msg) > 0)   
                     {
-                        _promote_requests[new_node.id] = requester;
+                        _promote_requests[new_node.host_id] = requester;
                         break;
                     }
                 }
@@ -138,6 +140,8 @@ namespace Vast
 
                 // join at the specified position, but only if I'm available
                 join (aoi, &origin);
+
+                printf ("VSO_PROMOTE: promoted to join at (%f, %f) for origin [%llu]\n", join_pos.x, join_pos.y, origin.id);
             }
             break;
 
@@ -353,7 +357,7 @@ namespace Vast
                 // depart as node if loading is below threshold                
                 leave ();
 
-                notifyCandidacy ();
+                //notifyCandidacy ();
                 _overload_count = 0;
             }
                     
@@ -814,6 +818,7 @@ namespace Vast
         _net->sendVONMessage (msg);
     }
 
+    /*
     // find a suitable new node to join given a certain need/stress level
     bool 
     VSOPeer::findCandidate (float level, Node &new_node)
@@ -834,7 +839,9 @@ namespace Vast
 
         return true;
     }
+    */
 
+    /*
     // notify the gateway that I can be available to join
     bool 
     VSOPeer::notifyCandidacy ()
@@ -851,6 +858,7 @@ namespace Vast
 
         return true;       
     }
+    */
 
     /*
     // check if a particular point is within our region

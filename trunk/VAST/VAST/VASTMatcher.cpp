@@ -478,8 +478,8 @@ namespace Vast
                 // for regular matchers
                 else
                 {
-                    // case 3: new regular matcher
-                    if (info.state == CANDIDATE)
+                    // case 3: new regular matcher (just directly to ACTIVE mode)
+                    if (info.state == CANDIDATE || info.state == PROMOTING)
                     {
                         info.state = ACTIVE;
                         LogManager::instance ()->writeLogFile ("MATCHER_ALIVE: matcher '%llu' now promoted as regular matcher for world [%u]\n", matcher_id, world_id);
@@ -1634,8 +1634,8 @@ namespace Vast
 
     // get a candidate origin matcher to use
     bool 
-    VASTMatcher::findCandidate (Addr &new_origin)
-    {        
+    VASTMatcher::findCandidate (Addr &new_origin, float level)
+    {
         // simply return the first available
         // TODO: better method? (newest, oldest, etc.?)
         map<id_t, MatcherInfo>::iterator it = _matchers.begin ();
@@ -1647,12 +1647,13 @@ namespace Vast
                 new_origin = info.addr;
                 info.state = PROMOTING;
 
-                printf ("[%llu] promoting [%llu] as new origin matcher\n\n", _self.id, new_origin.host_id);
+                printf ("[%llu] promoting [%llu] as new matcher\n\n", _self.id, new_origin.host_id);
 
                 return true;
             }
         }
 
+        // TODO: do something about it (e.g. create matcher node at gateway)
         printf ("[%llu] no candidate matcher can be found\n", _self.id);
 
         return false;

@@ -57,15 +57,15 @@ NodeState   g_state = ABSENT;   // the join state of this node
 char        g_lastcommand = 0;  // last keyboard character typed 
 size_t      g_count = 0;        // # of ticks so far (# of times the main loop has run)
 int         g_node_no = (-1);   // which node to simulate (-1 indicates none, manual control)
-long long   joining_msec;       // record the time for begining to join  by lee
-long long   joined_msec;        // record the time for joined  by lee
+unsigned long long   joining_msec;       // record the time for begining to join  by lee
+unsigned long long   joined_msec;        // record the time for joined  by lee
 
 VASTPara_Net g_netpara;         // network parameters
 
 MovementGenerator g_movement;
 FILE       *g_position_log = NULL;     // logfile for node positions
 FILE	   *g_neighbor_log = NULL;	   // logfile for node neighbors
-FILE	   *g_gateway_log  = NULL;	   // logfile for gateway
+FILE	   *g_message_log  = NULL;	   // logfile for gateway
 
 // VAST-specific variables
 VASTVerse *     g_world = NULL;
@@ -175,7 +175,9 @@ void checkJoin ()
             //record the time joined   by lee
             // current time in milliseconds
             ACE_Time_Value joined_time = ACE_OS::gettimeofday ();
-            joined_msec = (long long) (joined_time.sec () * 1000 + joined_time.usec () / 1000);                
+            joined_msec = (unsigned long long) (joined_time.sec () * 1000 + joined_time.usec () / 1000);
+    
+            
         }
         break;
 
@@ -183,7 +185,6 @@ void checkJoin ()
         break;
     }
 
-    // if we just join then record the join time in various logs
     if (g_state == JOINED)
     {
         Node *self;
@@ -194,7 +195,7 @@ void checkJoin ()
 
         recordJoinTime (g_position_log, nodeID);
         recordJoinTime (g_neighbor_log, nodeID);
-        recordJoinTime (g_gateway_log, nodeID);
+        recordJoinTime (g_message_log, nodeID);
        
         if (g_position_log)
         {
@@ -220,25 +221,25 @@ void checkJoin ()
         if(g_position_log != NULL)
         {
             fprintf(g_position_log, 
-                "%lld,\"%llu,joining\",%d\n",joining_msec,nodeID,g_node_no);
+                "%llu,\"%llu,joining\",%d\n",joining_msec,nodeID,g_node_no);
             fprintf(g_position_log, 
-                "%lld,\"%llu,joined\",%d\n",joined_msec,nodeID,g_node_no);
+                "%llu,\"%llu,joined\",%d\n",joined_msec,nodeID,g_node_no);
             fflush(g_position_log);
         }
       
         if(g_neighbor_log != NULL)
         {
             fprintf(g_neighbor_log, 
-                "%lld,\"%llu,joining\"\n",joining_msec,nodeID);
+                "%llu,\"%llu,joining\"\n",joining_msec,nodeID);
             fprintf(g_neighbor_log, 
-                "%lld,\"%llu,joined\"\n",joined_msec,nodeID);
+                "%llu,\"%llu,joined\"\n",joined_msec,nodeID);
             fflush(g_neighbor_log); 
         }
     }
 }
 
 // print out current list of observed neighbors
-void printNeighbors (long long curr_msec, Vast::id_t selfID)
+void printNeighbors (unsigned long long curr_msec, Vast::id_t selfID)
 {
     // record neighbor position to log if joined
     if (g_state == JOINED)
@@ -246,16 +247,19 @@ void printNeighbors (long long curr_msec, Vast::id_t selfID)
 		//vector<Node *>& neighbors = g_self->getLogicalNeighbors ();
         vector<Node *>& neighbors = g_self->list ();
 	
-		printf ("Neighbors:\n");
+		printf ("Neighbors:");
 
         if (g_neighbor_log != NULL)
-		    fprintf (g_neighbor_log, "%lld,%llu,", curr_msec, selfID);
+		    fprintf (g_neighbor_log, "%llu,%llu,", curr_msec, selfID);
 
 		for (size_t i = 0; i < neighbors.size (); i++)
 		{
-			printf ("[%llu] (%d, %d)\n", (neighbors[i]->id), 
-					(int)neighbors[i]->aoi.center.x, (int)neighbors[i]->aoi.center.y);
+            if (i%2 == 0)
+                printf ("\n");
 
+			printf ("[%llu] (%d, %d) ", (neighbors[i]->id), 
+					(int)neighbors[i]->aoi.center.x, (int)neighbors[i]->aoi.center.y);
+            
             if (g_neighbor_log)
             {
 			    fprintf (g_neighbor_log, "\"%llu,%d,%d\"", (neighbors[i]->id), 
@@ -353,7 +357,7 @@ int main (int argc, char *argv[])
     }
     
     // force all clients to default join at world 2, unless specified other than 2
-    if (!is_gateway && g_world_id <= 1)
+    if (!is_gateway && g_world_id == 1)
     {
         g_world_id = 2;
     }
@@ -365,11 +369,12 @@ int main (int argc, char *argv[])
     g_prev_aoi = g_aoi;
 
     // process interval
-    printf ("interval to pause is: %d seconds\n", interval);
+    
     //sleep a little to let nodes move at different time  by lee
     //printf ("sleep for %d seconds\n", 1000000*g_node_no / 1000000);
     //ACE_Time_Value tv (0, 1000000*g_node_no); 
-    ACE_Time_Value tv (0, 1000000 * interval); 
+    ACE_Time_Value tv (0, 1000000 * interval*(g_node_no%5));
+    printf ("interval to pause is: %d seconds\n", interval*(g_node_no%5)); 
     ACE_OS::sleep (tv);
     
     // create VAST node factory    
@@ -379,7 +384,7 @@ int main (int argc, char *argv[])
     //record "begin to join" in position.log  by lee
     // current time in milliseconds
     ACE_Time_Value joining_time = ACE_OS::gettimeofday ();
-    joining_msec = (long long) (joining_time.sec () * 1000 + joining_time.usec () / 1000);
+    joining_msec = (unsigned long long) (joining_time.sec () * 1000 + joining_time.usec () / 1000);
     
     
 
@@ -426,9 +431,14 @@ int main (int argc, char *argv[])
     if (is_gateway) 
     {
         char GWlog[] = "gateway";
-        g_gateway_log = LogManager::open (GWlog, "stat");
-        LogManager::instance ()->setLogFile (g_gateway_log);
+        g_message_log = LogManager::open (GWlog, "stat");        
     }
+    else
+    {
+        char clientlog[] = "client";
+        g_message_log = LogManager::open (clientlog, "stat");        
+    }
+    LogManager::instance ()->setLogFile (g_message_log);
 
     //
     // main loop
@@ -460,7 +470,7 @@ int main (int argc, char *argv[])
         ACE_Time_Value curr_time = ACE_OS::gettimeofday ();
 
         // current time in milliseconds
-        long long curr_msec = (long long) (curr_time.sec () * 1000 + curr_time.usec () / 1000);
+        unsigned long long curr_msec = (unsigned long long) (curr_time.sec () * 1000 + curr_time.usec () / 1000);
 
         // check whether we need to perform per-second task in this cycle
         bool persec_task = false;
@@ -492,7 +502,6 @@ int main (int argc, char *argv[])
             id = g_sub_no;
         }
 
-        // determine if we should perform joining or normal actions
         if (g_state != JOINED)
         {            
             checkJoin ();
@@ -515,6 +524,15 @@ int main (int argc, char *argv[])
 
                 num_moves++;      
             }
+
+            // type 1: origin, 2: matcher, 3: client
+                listsize_t type = CLIENT;
+                if (g_world->isMatcher ())
+                {
+                    type = MATCHER;
+                    if (g_world->isGateway ())
+                        type = GATEWAY;
+                }
            
             // perform movements, but move only if position changes
             if (!(g_prev_aoi == g_aoi))
@@ -525,11 +543,12 @@ int main (int argc, char *argv[])
                 // if I'm not gateway & need to record position
                 if (g_position_log != NULL)
                 {
-                    fprintf (g_position_log, "%lld,\"%llu,%d,%d\",%lld [%lu,%lu]\n", 
+                    fprintf (g_position_log, "%llu,\"%llu,%d,%d\",%lld,%s,[%lu,%lu]\n", 
                              curr_msec, 
                              id,
                              (int)self->aoi.center.x, (int)self->aoi.center.y, 
-                             elapsed,
+                             elapsed, (type == GATEWAY ? "GATEWAY" : (type == MATCHER ?
+                             "MATCHER": "CLIENT")),
                              g_world->getSendStat ().total, g_world->getReceiveStat ().total);
                     fflush (g_position_log);
                 }
@@ -627,7 +646,7 @@ int main (int argc, char *argv[])
                 for (size_t i=0; i < remove_list.size (); i++)
                     last_update.erase (remove_list[i]);
 
-                LogManager::instance ()->writeLogFile ("GW-STAT: %lu concurrent at %lld\n", last_update.size (), curr_msec);
+                LogManager::instance ()->writeLogFile ("GW-STAT: %lu concurrent at %llu\n", last_update.size (), curr_msec);
             }
 
             // show message to indicate liveness
@@ -674,11 +693,11 @@ int main (int argc, char *argv[])
         g_neighbor_log = NULL;
 	}
 
-    if (g_gateway_log)
+    if (g_message_log)
     {
         LogManager::instance ()->unsetLogFile ();
-		LogManager::close (g_gateway_log);
-        g_gateway_log = NULL;
+		LogManager::close (g_message_log);
+        g_message_log = NULL;
     }
 
     return 0;

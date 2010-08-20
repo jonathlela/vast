@@ -159,8 +159,8 @@ namespace Vast
         // VSOPolicy
         //
 
-        // whether the current node can be a spare node for load balancing
-        bool isCandidate ();
+        // get a candidate origin matcher to use (gateway-only)
+        bool findCandidate (Addr &new_origin, float level = 0);
 
         // obtain the ID of the gateway node
         id_t getGatewayID ();
@@ -211,6 +211,9 @@ namespace Vast
         // Matcher maintain functions
         //
 
+        // whether the current node can be a spare node for load balancing
+        bool isCandidate ();
+
         // notify the gateway that I can be available as origin matchers
         bool notifyCandidacy ();
 
@@ -235,9 +238,6 @@ namespace Vast
         //
         // helper functions
         //
-
-        // get a candidate origin matcher to use (gateway-only)
-        bool findCandidate (Addr &new_origin);
 
         // send a message to clients (optional flag to send directly)
         // returns # of targets successfully sent, optional to return failed targets
