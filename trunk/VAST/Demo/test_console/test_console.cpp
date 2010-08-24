@@ -239,7 +239,7 @@ void checkJoin ()
 }
 
 // print out current list of observed neighbors
-void printNeighbors (unsigned long long curr_msec, Vast::id_t selfID)
+void printNeighbors (unsigned long long curr_msec, Vast::id_t selfID, bool screen_only = false)
 {
     // record neighbor position to log if joined
     if (g_state == JOINED)
@@ -249,7 +249,7 @@ void printNeighbors (unsigned long long curr_msec, Vast::id_t selfID)
 	
 		printf ("Neighbors:");
 
-        if (g_neighbor_log != NULL)
+        if (g_neighbor_log != NULL && screen_only == false)
 		    fprintf (g_neighbor_log, "%llu,%llu,", curr_msec, selfID);
 
 		for (size_t i = 0; i < neighbors.size (); i++)
@@ -260,7 +260,7 @@ void printNeighbors (unsigned long long curr_msec, Vast::id_t selfID)
 			printf ("[%llu] (%d, %d) ", (neighbors[i]->id), 
 					(int)neighbors[i]->aoi.center.x, (int)neighbors[i]->aoi.center.y);
             
-            if (g_neighbor_log)
+            if (g_neighbor_log && screen_only == false)
             {
 			    fprintf (g_neighbor_log, "\"%llu,%d,%d\"", (neighbors[i]->id), 
 				    	(int)neighbors[i]->aoi.center.x, (int)neighbors[i]->aoi.center.y);			
@@ -272,7 +272,7 @@ void printNeighbors (unsigned long long curr_msec, Vast::id_t selfID)
 		
         printf ("\n");
 
-        if (g_neighbor_log) 
+        if (g_neighbor_log && screen_only == false)
         {
             fprintf (g_neighbor_log, "\n");
 		    fflush (g_neighbor_log);
@@ -329,13 +329,10 @@ int main (int argc, char *argv[])
         strcat (cmd, argv[i]);
         strcat (cmd, " ");
     }
-
     
     // store default gateway address
     string str ("127.0.0.1:1037");
     g_gateway = *VASTVerse::translateAddress (str);
-    //g_gateway.fromString (str);
-    //g_gateway.host_id = ((Vast::id_t)g_gateway.publicIP.host << 32) | ((Vast::id_t)g_gateway.publicIP.port << 16) | NET_ID_RELAY;
 
     // initialize parameters
     SimPara simpara;
@@ -353,7 +350,7 @@ int main (int argc, char *argv[])
     if (g_node_no != 0 && !is_gateway)
     {
         //obtain parameters by random  by lee
-        g_node_no=rand()%(simpara.NODE_SIZE-1)+1;    
+        g_node_no = rand() % (simpara.NODE_SIZE-1)+1;    
     }
     
     // force all clients to default join at world 2, unless specified other than 2
@@ -371,8 +368,6 @@ int main (int argc, char *argv[])
     // process interval
     
     //sleep a little to let nodes move at different time  by lee
-    //printf ("sleep for %d seconds\n", 1000000*g_node_no / 1000000);
-    //ACE_Time_Value tv (0, 1000000*g_node_no); 
     ACE_Time_Value tv (0, 1000000 * interval*(g_node_no%5));
     printf ("interval to pause is: %d seconds\n", interval*(g_node_no%5)); 
     ACE_OS::sleep (tv);
@@ -385,9 +380,7 @@ int main (int argc, char *argv[])
     // current time in milliseconds
     ACE_Time_Value joining_time = ACE_OS::gettimeofday ();
     joining_msec = (unsigned long long) (joining_time.sec () * 1000 + joining_time.usec () / 1000);
-    
-    
-
+        
     //
     // open logs
     //
@@ -425,19 +418,13 @@ int main (int argc, char *argv[])
 		g_position_log = LogManager::open (poslog);
 		g_neighbor_log = LogManager::open (neilog);    
     }
-
     
-    // open gateway log
-    if (is_gateway) 
-    {
-        char GWlog[] = "gateway";
-        g_message_log = LogManager::open (GWlog, "stat");        
-    }
+    // open message log (both gateway & client)
+    if (is_gateway)
+        g_message_log = LogManager::open ("gateway", "stat");
     else
-    {
-        char clientlog[] = "client";
-        g_message_log = LogManager::open (clientlog, "stat");        
-    }
+        g_message_log = LogManager::open ("client", "stat");
+
     LogManager::instance ()->setLogFile (g_message_log);
 
     //
@@ -502,6 +489,17 @@ int main (int argc, char *argv[])
             id = g_sub_no;
         }
 
+        // determine what type of node am I
+        // type 1: origin, 2: matcher, 3: client
+        listsize_t self_type = CLIENT;
+        if (g_world->isMatcher ())
+        {
+            self_type = MATCHER;
+            if (g_world->isGateway ())
+                self_type = GATEWAY;
+        }
+
+        // perform join check or movement
         if (g_state != JOINED)
         {            
             checkJoin ();
@@ -515,24 +513,15 @@ int main (int argc, char *argv[])
                         
             // check if automatic movement should be performed                                   
             if (simulate_behavior && to_move)
-            {   //printf("for check /n");                                               
+            {                                            
                 g_aoi.center = *g_movement.getPos (g_node_no, num_moves);
-                //printf("for check2 /n");
+                
                 // in simulated mode, we only move TIME_STEPS times
                 if (num_moves >= simpara.TIME_STEPS)
                     g_finished = true;
 
                 num_moves++;      
             }
-
-            // type 1: origin, 2: matcher, 3: client
-                listsize_t type = CLIENT;
-                if (g_world->isMatcher ())
-                {
-                    type = MATCHER;
-                    if (g_world->isGateway ())
-                        type = GATEWAY;
-                }
            
             // perform movements, but move only if position changes
             if (!(g_prev_aoi == g_aoi))
@@ -547,7 +536,7 @@ int main (int argc, char *argv[])
                              curr_msec, 
                              id,
                              (int)self->aoi.center.x, (int)self->aoi.center.y, 
-                             elapsed, (type == GATEWAY ? "GATEWAY" : (type == MATCHER ?
+                             elapsed, (self_type == GATEWAY ? "GATEWAY" : (self_type == MATCHER ?
                              "MATCHER": "CLIENT")),
                              g_world->getSendStat ().total, g_world->getReceiveStat ().total);
                     fflush (g_position_log);
@@ -588,8 +577,7 @@ int main (int argc, char *argv[])
 
                     // record last update time for this node
                     last_update[msg->from] = curr_msec;
-                }
-                
+                }                
             }
         }
        
@@ -611,17 +599,8 @@ int main (int argc, char *argv[])
                 Message msg (1);
                 StatType sendstat = g_world->getSendStat (true);
                 StatType recvstat = g_world->getReceiveStat (true);
-
-                // type 1: origin, 2: matcher, 3: client
-                listsize_t type = CLIENT;
-                if (g_world->isMatcher ())
-                {
-                    type = MATCHER;
-                    if (g_world->isGateway ())
-                        type = GATEWAY;
-                }
                         
-                msg.store (type);
+                msg.store (self_type);
                 msg.store (sendstat);
                 msg.store (recvstat);
             
@@ -648,6 +627,10 @@ int main (int argc, char *argv[])
 
                 LogManager::instance ()->writeLogFile ("GW-STAT: %lu concurrent at %llu\n", last_update.size (), curr_msec);
             }
+
+            // show current neighbors (even if we have no movmment) debug purpose
+            if (self != NULL && is_gateway == false)                
+                printNeighbors (curr_msec, g_sub_no, true);
 
             // show message to indicate liveness
             printf ("%ld s, tick %lu, tick_persec %lu, last_sleep: %lu us, time_left: %d\n", curr_sec, g_count, tick_per_sec, sleep_time, time_left);
