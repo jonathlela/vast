@@ -368,8 +368,8 @@ int main (int argc, char *argv[])
     // process interval
     
     //sleep a little to let nodes move at different time  by lee
-    ACE_Time_Value tv (0, 1000000 * interval*(g_node_no%5));
-    printf ("interval to pause is: %d seconds\n", interval*(g_node_no%5)); 
+    ACE_Time_Value tv (0, 1000000 * interval*(g_node_no/5));
+    printf ("interval to pause is: %d seconds\n", interval*(g_node_no/5)); 
     ACE_OS::sleep (tv);
     
     // create VAST node factory    
