@@ -72,14 +72,6 @@ VASTVerse *     g_world = NULL;
 VAST *          g_self  = NULL;
 Vast::id_t      g_sub_no = 0;        // subscription # for my client (peer)  
 
-// types of node
-typedef enum 
-{
-    GATEWAY = 1,        // gateway
-    ORIGIN,             // origin matcher
-    MATCHER,            // regular matcher
-    CLIENT              // regular client
-} NodeType;
 
 #ifdef WIN32
 void getInput ()
@@ -135,6 +127,7 @@ void getInput ()
 }
 #endif
 
+// record the time this node joins
 bool recordJoinTime (FILE *fp, Vast::id_t nodeID)
 {
     if (fp == NULL || nodeID == 0)
@@ -175,9 +168,7 @@ void checkJoin ()
             //record the time joined   by lee
             // current time in milliseconds
             ACE_Time_Value joined_time = ACE_OS::gettimeofday ();
-            joined_msec = (unsigned long long) (joined_time.sec () * 1000 + joined_time.usec () / 1000);
-    
-            
+            joined_msec = (unsigned long long) (joined_time.sec () * 1000 + joined_time.usec () / 1000);              
         }
         break;
 
@@ -185,6 +176,7 @@ void checkJoin ()
         break;
     }
 
+    // do things immediately when join is successful
     if (g_state == JOINED)
     {
         Node *self;
@@ -205,35 +197,26 @@ void checkJoin ()
         
 			// format
 			fprintf (g_position_log, "\n");
-			// fprintf (g_position_log, "# count,curr_sec (per second)\n"); 
 			fprintf (g_position_log, "# millisec,\"posX,posY\",elapsed (per step)\n\n");
-            fflush (g_position_log); 
+
+            // joinining & joined time
+            fprintf (g_position_log, "%llu,\"%llu,joining\",%d\n",joining_msec,nodeID,g_node_no);
+            fprintf (g_position_log, "%llu,\"%llu,joined\",%d\n",joined_msec,nodeID,g_node_no);
+
+            fflush (g_position_log);
         }
 
         if (g_neighbor_log)
         {
+            // format
 			fprintf (g_neighbor_log, "\n");
-			// fprintf (g_neighbor_log, "# count,curr_sec (per second)\n"); 
 			fprintf (g_neighbor_log, "# millisec,\"nodeID,posX,posY\", ... (per step)\n\n");		
-			fflush (g_neighbor_log);	
-        }
 
-        if(g_position_log != NULL)
-        {
-            fprintf(g_position_log, 
-                "%llu,\"%llu,joining\",%d\n",joining_msec,nodeID,g_node_no);
-            fprintf(g_position_log, 
-                "%llu,\"%llu,joined\",%d\n",joined_msec,nodeID,g_node_no);
-            fflush(g_position_log);
-        }
-      
-        if(g_neighbor_log != NULL)
-        {
-            fprintf(g_neighbor_log, 
-                "%llu,\"%llu,joining\"\n",joining_msec,nodeID);
-            fprintf(g_neighbor_log, 
-                "%llu,\"%llu,joined\"\n",joined_msec,nodeID);
-            fflush(g_neighbor_log); 
+            // join & joining time
+            fprintf(g_neighbor_log, "%llu,\"%llu,joining\"\n",joining_msec,nodeID);
+            fprintf(g_neighbor_log, "%llu,\"%llu,joined\"\n",joined_msec,nodeID);
+
+            fflush(g_neighbor_log);
         }
     }
 }
@@ -280,22 +263,9 @@ void printNeighbors (unsigned long long curr_msec, Vast::id_t selfID, bool scree
 	}
 }
 
-int main (int argc, char *argv[])
-{   
-    // 
-    // Initialization
-    //
-
-    ACE::init ();
-
-    // initialize random seed
-
-    // NOTE: do not use time () as nodes at different sites may have very close time () values
-    ACE_Time_Value now = ACE_OS::gettimeofday ();
-    printf ("Setting random seed as: %d\n", (int)now.usec ());
-    srand (now.usec ());
-    
-   /* printf ("sizeof sizes:\n");
+void printSizes ()
+{    
+    printf ("sizeof sizes:\n");
     printf ("VASTheader: %zu id_t: %zu timestamp_t: %zu length_t: %zu coord_t: %zu\nPosition: %zu Area: %zu IPaddr: %zu Addr: %zu Node: %zu\n\n",
         sizeof (VASTHeader),
         sizeof (Vast::id_t),
@@ -317,9 +287,27 @@ int main (int argc, char *argv[])
         b.sizeOf (),
         c.sizeOf (),
         d.sizeOf (),
-        e.sizeOf ());*/
+        e.sizeOf ());
+}
 
-  
+int main (int argc, char *argv[])
+{   
+    // 
+    // Initialization
+    //
+
+    ACE::init ();
+
+    // initialize random seed
+
+    // NOTE: do not use time () as nodes at different sites may have very close time () values
+    ACE_Time_Value now = ACE_OS::gettimeofday ();
+    printf ("Setting random seed as: %d\n", (int)now.usec ());
+    srand (now.usec ());
+ 
+    // print out size of different data types, useful for debug transmit sizes
+    // printSizes ();
+ 
     // initialize parameters
     char cmd[255];
     cmd[0] = 0;
@@ -347,9 +335,9 @@ int main (int argc, char *argv[])
     if ((g_node_no = InitPara (VAST_NET_ACE, g_netpara, simpara, cmd, &is_gateway, &g_world_id, &g_aoi, &g_gateway, &entries, &interval)) == (-1))
         exit (0);
 
+    // randomize selected join path  by lee
     if (g_node_no != 0 && !is_gateway)
     {
-        //obtain parameters by random  by lee
         g_node_no = rand() % (simpara.NODE_SIZE-1)+1;    
     }
     
@@ -367,16 +355,17 @@ int main (int argc, char *argv[])
 
     // process interval
     
-    //sleep a little to let nodes move at different time  by lee
-    ACE_Time_Value tv (0, 1000000 * interval*(g_node_no/5));
-    printf ("interval to pause is: %d seconds\n", interval*(g_node_no/5)); 
+    // sleep a little to let nodes move at different time  by lee
+    ACE_Time_Value tv (0, 1000000 * interval * (g_node_no / 5));
+    printf ("interval to pause is: %d seconds\n", interval * (g_node_no / 5)); 
+    
     ACE_OS::sleep (tv);
     
-    // create VAST node factory    
+    // create VAST node factory
     g_world = new VASTVerse (entries, &g_netpara, NULL);
     g_world->createVASTNode (g_gateway.publicIP, g_aoi, VAST_EVENT_LAYER, g_world_id);
 
-    //record "begin to join" in position.log  by lee
+    // record "begin to join" in position.log  by lee
     // current time in milliseconds
     ACE_Time_Value joining_time = ACE_OS::gettimeofday ();
     joining_msec = (unsigned long long) (joining_time.sec () * 1000 + joining_time.usec () / 1000);
@@ -489,7 +478,7 @@ int main (int argc, char *argv[])
             id = g_sub_no;
         }
 
-        // determine what type of node am I
+        // determine what type of node am I (NOTE: each time may be different)
         // type 1: origin, 2: matcher, 3: client
         listsize_t self_type = CLIENT;
         if (g_world->isMatcher ())
