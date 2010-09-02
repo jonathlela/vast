@@ -33,6 +33,7 @@
 #include "Config.h"
 #include "VAST.h"           // provides spatial publish / subscribe (SPS)
 #include "VASTRelay.h"      // provides physical coordinate, IP address, and public IP
+#include "VASTCallback.h"   // callback for handling incoming message at a VAST node
 
 #define VASTVERSE_RETRY_PERIOD  (10)     // # of seconds if we're stuck in a state, revert to the previous
 
@@ -104,7 +105,7 @@ namespace Vast
 
         // create & destroy a VASTNode
         // currently only supports one per VASTVerse
-        bool createVASTNode (const IPaddr &gateway, Area &area, layer_t layer, world_t world_id = 0);
+        bool createVASTNode (const IPaddr &gateway, Area &area, layer_t layer, world_t world_id = 0, VASTCallback *callback = NULL);
         bool destroyVASTNode (VAST *node);
 
         // obtain a reference to the created VASTNode
@@ -117,8 +118,9 @@ namespace Vast
         // advance one time-step for all nodes to process messages  
         // input time budget for this tick in microseconds, 10^-6, specify 0 for unlimited budget
         // returns time left in microseconds, 0 for no more time, (-1) for unlimited budget
+        // 'per_sec' indicates whether per-second tasks were performed 
         // NOTE: currently only (-1) would return
-        int     tick (int time_budget = 0);
+        int     tick (int time_budget = 0, bool *per_sec = NULL);
 
         // move logical clock forward (mainly for simulation purpose, but also records per-second tasks)
         void    tickLogicalClock ();

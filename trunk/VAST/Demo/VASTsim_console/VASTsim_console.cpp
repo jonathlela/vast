@@ -20,7 +20,7 @@
 using namespace std;
 using namespace Vast;
 
-#define PRINT_MSG_
+#define PRINT_MSG
 
 
 int main (int argc, char *argv[])
@@ -62,7 +62,6 @@ int main (int argc, char *argv[])
 		if (NextStep () < 0)
             break;
   
-/*
         // obtain positions of my current neighbors        
         for (int j=0; j < simpara.NODE_SIZE; ++j)
         {
@@ -75,14 +74,13 @@ int main (int argc, char *argv[])
 #ifdef PRINT_MSG
             if (neighbors != NULL)
             {
-                for (unsigned int i=0; i < neighbors->size (); i++)
-                    printf ("[%d] (%d, %d) ", neighbors->at (i)->id, (int)neighbors->at (i)->aoi.center.x, (int)neighbors->at (i)->aoi.center.y);
+                for (size_t i=0; i < neighbors->size (); i++)
+                    printf ("[%llu] (%d, %d) ", neighbors->at (i)->id, (int)neighbors->at (i)->aoi.center.x, (int)neighbors->at (i)->aoi.center.y);
             }
 
             printf ("\n");
 #endif
         }     
-*/
 
         // do various stat calculations/collection here
         printf ("step %d\n", steps);

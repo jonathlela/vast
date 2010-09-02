@@ -2,6 +2,7 @@
 
 VAST C++ 0.4.6
 --------------
+2010/09/02      add VASTCallback interface to handle app-specific messages & per-second tasks
 2010/07/12      added report () to VAST interface, to send arbitrary message to gateway server
 2010/06/22      C# sample program added (calling C wrapper class VASTWrapperC)
 2010/06/18      C wrapper class (VASTWrapperC) and test program (demo_console_C) added

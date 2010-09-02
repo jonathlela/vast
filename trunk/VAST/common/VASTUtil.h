@@ -253,8 +253,8 @@ private:
 
     static TimeMonitor *_instance;   // static instance of the class
 
-    long long          _budget;     // time left in current budget
-    long long          _start;      // start time of setting the budget
+    long long _budget;              // time left in current budget
+    unsigned long long _start;      // start time of setting the budget
     bool               _first;      // budget has just been set
 };
 

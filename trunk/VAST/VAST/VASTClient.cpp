@@ -246,7 +246,7 @@ namespace Vast
             if (update_only == false)
             {
                 // MOVE can be delivered unreliably
-                //msg.reliable = false;
+                // msg.reliable = false;
 
                 sendMatcherMessage (msg, 3);
             }

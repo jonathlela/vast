@@ -99,7 +99,6 @@ MovementGenerator::destroyInstance ()
     }
 }
 
-
 bool
 MovementGenerator::initModel (int model, SectionedFile *record, bool replay,
                               Position top_left, Position bottom_right,
@@ -188,6 +187,39 @@ MovementGenerator::initModel (int model, SectionedFile *record, bool replay,
 
     return true;
 }
+
+// read or create new movement model from file
+bool
+MovementGenerator::initModelFromFile (SimPara &simpara, const char *fname)
+{
+    // create / open position log file, if doesn't exist
+    char filename[80];
+
+    if (fname == NULL)
+        sprintf (filename, VAST_POSFILE_FORMAT, simpara.NODE_SIZE, simpara.WORLD_WIDTH, simpara.WORLD_HEIGHT, simpara.TIME_STEPS);
+    else
+        strcpy (filename, fname);
+
+    FileClassFactory fcf;
+    SectionedFile *pos_record = fcf.CreateFileClass (0);
+    bool replay = true;
+    if (pos_record->open (filename, SFMode_Read) == false)
+    {
+        replay = false;
+        pos_record->open (filename, SFMode_Write);
+    }
+    
+    // create behavior model
+    bool result = this->initModel (VAST_MOVEMENT_CLUSTER, pos_record, replay,
+                                   Position (0,0), Position ((coord_t)simpara.WORLD_WIDTH, (coord_t)simpara.WORLD_HEIGHT),
+                                   simpara.NODE_SIZE, simpara.TIME_STEPS, simpara.VELOCITY);
+
+    // close position log file
+    fcf.DestroyFileClass (pos_record);
+
+    return result;
+}
+
 
 Position *MovementGenerator::getPos (int node, int step)
 {

@@ -63,6 +63,7 @@ namespace Vast
         VAST *          client;         // clients that enter an overlay
         VASTRelay *     relay;          // physical coordinate locator & joiner
         VASTMatcher *   matcher;        // a relay node to the network
+        VASTCallback *  callback;       // callback for processing incoming app messages
     };
 
     //
@@ -244,7 +245,7 @@ namespace Vast
     // here we only records the info for the new VASTNode, 
     // actual creation will occur during tick ()
     bool  
-    VASTVerse::createVASTNode (const IPaddr &gateway, Area &area, layer_t layer, world_t world_id)
+    VASTVerse::createVASTNode (const IPaddr &gateway, Area &area, layer_t layer, world_t world_id, VASTCallback *callback)
     {
         // right now can only create one
         if (_vastinfo.size () > 0)
@@ -262,6 +263,10 @@ namespace Vast
         info.world_id = world_id;
 
         _vastinfo.push_back (info);
+
+        // store callback
+        VASTPointer *handlers   = (VASTPointer *)_pointers;
+        handlers->callback      = callback;
         
         printf ("VASTVerse::createVASTNode world_id: %u layer: %u\n", world_id, layer);
 
@@ -442,7 +447,7 @@ namespace Vast
 
     // advance one time-step 
 	int
-    VASTVerse::tick (int time_budget)
+    VASTVerse::tick (int time_budget, bool *per_sec)
     {        
         VASTPointer *handlers = (VASTPointer *)_pointers;
 
@@ -525,7 +530,7 @@ namespace Vast
         }
 
         //
-        // perform ticking
+        // perform ticking (process incoming messages)
         //
 
         // if no time is available, at least give a little time to run at least once
@@ -540,30 +545,62 @@ namespace Vast
             handlers->msgqueue->tick ();
            
         //
-        // perform per-second tasks
+        // perform other tasks
         //
+
+        // whether to perform per-second tasks
+        bool do_per_sec = false;
 
         if (handlers->net != NULL)
         {
-            // check if we need to perform per-second task
-            timestamp_t now = handlers->net->getTimestamp ();
+            VASTnet *net = handlers->net;
+
+            // check if we need to perform per-second task (get time in millisecond)
+            timestamp_t now = net->getTimestamp ();            
         
             if (now >= _next_periodic)
             {
-                _next_periodic = now + handlers->net->getTimestampPerSecond ();
+                do_per_sec = true;
+
+                // next time to enter this is one second later
+                _next_periodic = (now / net->getTimestampPerSecond () + 1) * net->getTimestampPerSecond ();
+
+                //_next_periodic = now + handlers->net->getTimestampPerSecond ();
 
                 // record network stat for this node
-                size_t size = handlers->net->getSendSize (0);            
+                size_t size = net->getSendSize (0);            
                 _sendstat.addRecord (size - _lastsend);
                 _sendstat_interval.addRecord (size - _lastsend);
                 _lastsend = size;
             
-                size = handlers->net->getReceiveSize (0);
+                size = net->getReceiveSize (0);
                 _recvstat.addRecord (size - _lastrecv);
                 _recvstat_interval.addRecord (size - _lastrecv);
                 _lastrecv = size;
+
+                // call callback to perform per-second task, if any
+                if (handlers->callback)
+                {
+                    handlers->callback->performPerSecondTasks (now);
+                }
             }
+
+            // process incoming messages by calling app-specific message handlers, if any
+            if (_state == JOINED && handlers->callback)
+            {
+                // process input messages, if any
+                Message *msg;
+            
+                while ((msg = handlers->client->receive ()) != NULL)
+                {
+                    handlers->callback->processMessage (*msg);
+                }
+            }            
         }
+
+        // return whether per_second tasks were performed
+        if (per_sec != NULL)
+            *per_sec = do_per_sec;
 
         return TimeMonitor::instance ()->available ();
     }
@@ -578,7 +615,7 @@ namespace Vast
         if (g_bridge != NULL)
         {
             g_bridge->tick ();
-        }      
+        }
     }
 
     // stop operations on this node

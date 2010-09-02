@@ -218,6 +218,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\VASTCallback.h"
+				>
+			</File>
+			<File
 				RelativePath=".\VASTTypes.h"
 				>
 			</File>

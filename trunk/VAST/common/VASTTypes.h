@@ -101,6 +101,33 @@ typedef struct
 
 } VONPosition;
 
+// parameters for running simulations
+typedef struct {
+    int     VAST_MODEL;
+    int     NET_MODEL;
+    int     MOVE_MODEL;
+    int     WORLD_WIDTH;    
+    int     WORLD_HEIGHT; 
+    int     NODE_SIZE;   
+    int     RELAY_SIZE;         // # of relays
+    int     MATCHER_SIZE;       // # of matchers
+    int     TIME_STEPS;         // total # of timesteps
+    int     STEPS_PERSEC;       // # of steps per second
+    int     AOI_RADIUS;
+    int     AOI_BUFFER;
+    int     CONNECT_LIMIT;      
+    int     VELOCITY;           // movement speed of node
+    int     STABLE_SIZE;        // # of nodes in stable state
+    int     JOIN_RATE;          // # of steps before a new node join
+    int     LOSS_RATE;
+    int     FAIL_RATE;          // # of steps before a node fails
+    int     UPLOAD_LIMIT;       // upload limit 
+    int     DOWNLOAD_LIMIT;     // download bandwidth limitation
+    int     PEER_LIMIT;         // max # of peers hosted at each relay
+    int     RELAY_LIMIT;        // max # of relays each node keeps
+    int     OVERLOAD_LIMIT;     // limit to consider as overloaded
+} SimPara;
+
 // status on known nodes in the neighbor list, can be either just inserted / deleted / updated
 typedef enum  
 {
@@ -120,6 +147,15 @@ typedef enum
     JOINING_3,
     JOINED,
 } NodeState;
+
+// types of node
+typedef enum 
+{
+    GATEWAY = 1,        // gateway
+    MATCHER,            // regular matcher
+    CLIENT              // regular client
+
+} NodeType;
 
 
 // failure method for simulations

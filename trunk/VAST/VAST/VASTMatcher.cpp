@@ -1628,7 +1628,7 @@ namespace Vast
         if (it == _matchers.end ())
         {
             _origins.erase (world_id);
-            LogManager::instance ()->writeLogFile ("originDisconnected: no backup origin matcher can be found for world [%u], simply remove [%llu]", world_id, matcher_id);
+            LogManager::instance ()->writeLogFile ("originDisconnected: no backup origin for world [%u], remove [%llu]", world_id, matcher_id);
         }
     }
 

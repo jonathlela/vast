@@ -54,6 +54,7 @@ bool LogManager::setLogFile(FILE *fp)
 }
 
 
+// TODO: make it thread-safe
 // example from:
 // http://www.ozzu.com/cpp-tutorials/tutorial-writing-custom-printf-wrapper-function-t89166.html
 bool LogManager::writeLogFile (const char *format, ...)
@@ -119,7 +120,7 @@ TimeMonitor::TimeMonitor ()
     _budget = 0;
 
     ACE_Time_Value time = ACE_OS::gettimeofday ();
-    _start = (long long)time.sec () * 1000000 + time.usec ();
+    _start = (unsigned long long)time.sec () * 1000000 + time.usec ();
 }
 
 
@@ -134,7 +135,7 @@ TimeMonitor::setBudget (int time_budget)
 
     _budget = time_budget;
     ACE_Time_Value time = ACE_OS::gettimeofday();
-    _start = (long long)time.sec () * 1000000 + time.usec ();
+    _start = (unsigned long long)time.sec () * 1000000 + time.usec ();
     _first = true;
 }
 
@@ -151,7 +152,7 @@ TimeMonitor::available ()
 
     // check how much time has elapsed since setBudget was called
     ACE_Time_Value time = ACE_OS::gettimeofday();
-    long long elapsed = (long long)((long long)time.sec () * 1000000 + time.usec ()) - _start;
+    long long elapsed = (long long)(((unsigned long long)time.sec () * 1000000 + time.usec ()) - _start);
 
     //if (elapsed > 0)
     //    printf ("available (): elapsed %ld budget: %ld\n", (long)elapsed, (long)_budget);

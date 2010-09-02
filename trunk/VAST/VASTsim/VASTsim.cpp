@@ -64,7 +64,7 @@ int InitPara (VAST_NetModel model, VASTPara_Net &netpara, SimPara &simpara, cons
     Area aoi;
     vector<IPaddr> entries;
 
-    // default default values
+    // set default values
     aoi.center.x = (coord_t)(rand () % DIM_X);
     aoi.center.y = (coord_t)(rand () % DIM_Y);
     aoi.radius   = (length_t)DEFAULT_AOI;
@@ -171,14 +171,6 @@ int InitPara (VAST_NetModel model, VASTPara_Net &netpara, SimPara &simpara, cons
     if (ReadPara (simpara) == true)
     {
         // override defaults
-/*
-#ifndef VAST_ONLY
-        para.default_aoi        = simpara.AOI_RADIUS;
-        para.world_height       = simpara.WORLD_HEIGHT;
-        para.world_width        = simpara.WORLD_WIDTH;        
-        para.overload_limit     = simpara.OVERLOAD_LIMIT;
-#endif
-*/
         netpara.step_persec    = simpara.STEPS_PERSEC;           
         netpara.overload_limit = simpara.OVERLOAD_LIMIT;
 
@@ -195,8 +187,7 @@ int InitPara (VAST_NetModel model, VASTPara_Net &netpara, SimPara &simpara, cons
             return (-1);
         }
     }
-
-    //bool is_gateway = false;
+    
     is_gateway = false;
 
     // default gateway set to localhost
@@ -205,7 +196,7 @@ int InitPara (VAST_NetModel model, VASTPara_Net &netpara, SimPara &simpara, cons
         is_gateway = true;
         netpara.is_entry = true;
         sprintf (GWstr, "127.0.0.1:%d", netpara.port);
-    }        
+    }
         
     // if physical coordinate is not supplied, VAST will need to obtain it itself
     //g_vastnetpara.phys_coord = g_aoi.center;    

@@ -178,7 +178,11 @@ public:
     static MovementGenerator *createInstance ();
     static void destroyInstance ();
 
+    // build a movement model given parameters
     bool initModel (int model, SectionedFile *record, bool replay, Position top_left, Position bottom_right, int num_nodes, int num_steps, double speed);
+
+    // read or create new movement model from file
+    bool initModelFromFile (SimPara &simpara, const char *filename = NULL);
 
     // get the positin for a given node at a given step
     // NOTE that both node number and step begin from 0
