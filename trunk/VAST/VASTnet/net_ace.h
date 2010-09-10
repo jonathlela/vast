@@ -142,11 +142,8 @@ namespace Vast {
         // returns NET_ID_UNASSIGNED if failed
         id_t register_conn (id_t id, void *stream);
         id_t unregister_conn (id_t id);
-        //id_t update_conn (id_t prev_id, id_t curr_id);
 
         uint16_t              _port_self;
-
-
 
         // condition to ensure server thread is running before proceeding
         // to avoid remote nodes not able to connect

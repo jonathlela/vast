@@ -99,7 +99,10 @@ namespace Vast
         Message *   receive ();
 
         // report some message to gateway (to be processed or recorded)
-        bool        report (Message &message);
+        bool        reportGateway (Message &message);
+
+        // report some message to origin matcher
+        bool        reportOrigin (Message &message);
 
         // get current statistics about this node (a NULL-terminated string)
         char * getStat (bool clear = false);

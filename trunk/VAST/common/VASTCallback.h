@@ -49,6 +49,13 @@ namespace Vast
 
         // perform some per-second tasks
         virtual void performPerSecondTasks (timestamp_t now) = 0;
+
+        // perform some per-tick tasks
+        virtual void performPerTickTasks () = 0;
+
+        // notify the successful join of the VAST node
+        virtual void nodeJoined (VAST *vastnode) = 0;
+
     };
 
 } // namespace Vast

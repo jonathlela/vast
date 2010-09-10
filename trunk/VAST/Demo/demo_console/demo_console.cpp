@@ -26,11 +26,14 @@
 // use VAST for functions
 #include "VASTVerse.h"
 #include "VASTUtil.h"
-#include "VASTsim.h"
 #include "VASTCallback.h"       // for creating callback handler
 
 #define VAST_EVENT_LAYER    1                   // layer ID for sending events 
 #define VAST_UPDATE_LAYER   2                   // layer ID for sending updates
+
+// user-defined message types
+#define DEMO_MSGTYPE_BANDWIDTH_REPORT   1
+#define DEMO_MSGTYPE_KEYPRESS           2
 
 using namespace Vast;
 using namespace std;
@@ -39,8 +42,6 @@ using namespace std;
 #error "ACE needs to be enabled to build demo_console, please modify /common/Config.h"
 #endif
 
-// target cycles per second
-const int FRAMES_PER_SECOND      = 20;
 
 // number of seconds elasped before a bandwidth usage is reported to gateway
 const int REPORT_INTERVAL        = 10;     
@@ -48,23 +49,14 @@ const int REPORT_INTERVAL        = 10;
 // global
 Area        g_aoi;              // my AOI (with center as current position)
 Area        g_prev_aoi;         // previous AOI (to detect if AOI has changed)
-Addr        g_gateway;          // address for gateway
 world_t     g_world_id = 0;     // world ID
 bool        g_finished = false; // whether we're done for this program execution
-NodeState   g_state = ABSENT;   // the join state of this node
 char        g_lastcommand = 0;  // last keyboard character typed 
-size_t      g_tick = 0;         // # of ticks so far (# of times the main loop has run)
-int         g_node_no = (-1);   // which node to simulate (-1 indicates none, manual control)
-
-VASTPara_Net g_netpara;         // network parameters
-
-MovementGenerator g_movement;
 
 // VAST-specific variables
-VASTVerse *     g_world = NULL;
-VAST *          g_self  = NULL;
-Vast::id_t      g_sub_id = 0;        // subscription # for my client (peer)  
-
+VASTVerse *     g_world = NULL;     // factory for creating a VAST node
+VAST *          g_self  = NULL;     // pointer to VAST
+Vast::id_t      g_sub_id = 0;       // subscription # for my client (peer)  
 
 // obtain keyboard input, currently only available under Win32
 void getInput ()
@@ -83,14 +75,6 @@ void getInput ()
             g_finished = true;
             break;
 
-        // leave overlay
-        case 'l':
-            break;
-
-        // join at current position
-        case 'j':
-            break;
-        
         // movements
         case -32:
             switch (getch ())
@@ -102,7 +86,7 @@ void getInput ()
             // RIGHT
             case 77:
                 g_aoi.center.x += 5;
-                break;                            
+                break;
             // UP
             case 72:
                 g_aoi.center.y -= 5;
@@ -123,28 +107,12 @@ void getInput ()
 
 }
 
-void checkJoin ()
-{    
-    // create the VAST node
-    switch (g_state)
-    {
-    case ABSENT:
-        if ((g_self = g_world->getVASTNode ()) != NULL)
-        {   
-            g_sub_id = g_self->getSubscriptionID (); 
-            g_state = JOINED;
-        }
-        break;
-
-    default:
-        break;
-    }
-}
 
 // print out current list of observed neighbors
 void printNeighbors (unsigned long long curr_msec, Vast::id_t selfID, bool screen_only = false)
 {
-    if (g_state != JOINED)
+    // if we havn't joined successfully
+    if (g_self == NULL)
         return;
     
     vector<Node *>& neighbors = g_self->list ();
@@ -155,9 +123,7 @@ void printNeighbors (unsigned long long curr_msec, Vast::id_t selfID, bool scree
         if (i % 2 == 0)
             printf ("\n");
 
-		printf ("[%llu] (%d, %d) ", (neighbors[i]->id), 
-                                    (int)neighbors[i]->aoi.center.x, 
-                                    (int)neighbors[i]->aoi.center.y);            
+		printf ("[%llu] (%d, %d) ", (neighbors[i]->id), (int)neighbors[i]->aoi.center.x, (int)neighbors[i]->aoi.center.y);            
 	}
     printf ("\n");	
 }
@@ -171,11 +137,12 @@ public:
         _report_countdown = REPORT_INTERVAL;
     }
 
+    // process incoming messages
     bool processMessage (Message &msg)
     {
         // gateway-task
         // right now we only recognize msgtype = 1 (bandwidth report)
-        if (msg.msgtype == 1)
+        if (msg.msgtype == DEMO_MSGTYPE_BANDWIDTH_REPORT)
         {
             StatType sendstat, recvstat;
 
@@ -190,9 +157,19 @@ public:
             sendstat.calculateAverage ();
             recvstat.calculateAverage ();
 
-            LogManager::instance ()->writeLogFile ("[%llu] %s send: (%u,%u,%.2f) recv: (%u,%u,%.2f)", msg.from, (type == GATEWAY ? "GATEWAY" : (type == MATCHER ? "MATCHER" : "CLIENT")), 
-                                                    sendstat.minimum, sendstat.maximum, sendstat.average, recvstat.minimum, recvstat.maximum, recvstat.average);
-            
+            LogManager::instance ()->writeLogFile ("[%llu] %s send: (%u,%u,%.2f) recv: (%u,%u,%.2f)", msg.from, (type == GATEWAY ? "GATEWAY" : (type == MATCHER ? "MATCHER" : "CLIENT")), sendstat.minimum, sendstat.maximum, sendstat.average, recvstat.minimum, recvstat.maximum, recvstat.average);            
+        }
+
+        // origin matcher's keypress
+        else if (msg.msgtype == DEMO_MSGTYPE_KEYPRESS)
+        {
+            char str[80];
+
+            // specify '0' as size to indicate we don't know the size
+            size_t size = msg.extract (str, 0);
+            str[size] = 0;
+
+            printf ("ORIGIN_MATCHER receives: %s\n", str);
         }
 
         // means that we can handle another message
@@ -204,14 +181,15 @@ public:
     {
         _report_countdown--;
                     
-        // check if we should report to gateway bandwidth usage (client-task)
+        // client-task
+        // check if we should report to gateway bandwidth usage 
         if (g_self && _report_countdown <= 0)
         {
             _report_countdown = REPORT_INTERVAL;
 
             // report bandwidth usage stat to gateway
             // message type 1 = bandwidth
-            Message msg (1);
+            Message msg (DEMO_MSGTYPE_BANDWIDTH_REPORT);
             StatType sendstat = g_world->getSendStat (true);
             StatType recvstat = g_world->getReceiveStat (true);
                     
@@ -229,20 +207,64 @@ public:
             msg.store (sendstat);
             msg.store (recvstat);
         
-            g_self->report (msg);
+            g_self->reportGateway (msg);
         
             // reset stat collection (interval as per second)
             g_world->clearStat ();
         }
-
-        ACE_Time_Value curr_time = ACE_OS::gettimeofday ();
-                
-        // current time in milliseconds
-        unsigned long long curr_msec = (unsigned long long) (curr_time.sec () * 1000 + curr_time.usec () / 1000);
-        
+                        
         // show current neighbors (even if we have no movmment) debug purpose
         if (g_world->isGateway () == false)
-            printNeighbors (curr_msec, g_sub_id, true);                
+            printNeighbors (now, g_sub_id, true);                
+    }
+
+    // perform some per-tick tasks
+    void performPerTickTasks ()
+    {
+        if (g_self == NULL)
+            return;
+
+        // obtain keyboard movement input
+        getInput ();
+        
+        // perform movements if position changes (due to input or simulated movement)
+        // NOTE we don't necessarily move in every tick (# of ticks > # of moves per second)
+        if (!(g_prev_aoi == g_aoi))
+        {
+            g_prev_aoi = g_aoi;               
+            g_self->move (g_sub_id, g_aoi);
+    
+            // print out movement 
+            printf ("[%llu] moves to (%d, %d)\n", g_sub_id, (int)g_aoi.center.x, (int)g_aoi.center.y);
+        }
+
+        // send keypress to origin matcher
+        if (g_lastcommand != 0)
+        {
+            if (isalpha (g_lastcommand))
+            {
+                // build message string
+                char str[80];
+                sprintf (str, "[%llu] has pressed '%c'\0", g_sub_id, g_lastcommand);
+    
+                Message msg (DEMO_MSGTYPE_KEYPRESS);
+                msg.store (str, strlen (str), true);
+    
+                // send to origin matcher
+                g_self->reportOrigin (msg);
+            }
+    
+            g_lastcommand = 0;
+        }
+    }
+
+    // notify the successful join of the VAST node
+    void nodeJoined (VAST *vastnode)
+    {
+        g_self = vastnode;
+
+        // obtain subscription ID, so that movement can be correct
+        g_sub_id = g_self->getSubscriptionID ();
     }
 
 private:
@@ -254,7 +276,8 @@ int main (int argc, char *argv[])
     // 
     // Initialization
     //
-
+    
+    // for using ACE (get current time in platform-independent way)
     ACE::init ();
 
     // initialize random seed
@@ -262,161 +285,81 @@ int main (int argc, char *argv[])
     ACE_Time_Value now = ACE_OS::gettimeofday ();
     printf ("Setting random seed as: %d\n", (int)now.usec ());
     srand (now.usec ());
-  
-    // combine command line parameters
-    char cmd[255];
-    cmd[0] = 0;
+                      
+    //
+    // set default values
+    //
+    g_world_id     = VAST_DEFAULT_WORLD_ID;
+
+    g_aoi.center.x = (coord_t)(rand () % 100);
+    g_aoi.center.y = (coord_t)(rand () % 100);
+    g_aoi.radius   = 200;
+
+    VASTPara_Net netpara (VAST_NET_ACE);
+    netpara.port = GATEWAY_DEFAULT_PORT;
+
+    //
+    // load command line parameters, if any
+    //
+    char GWstr[80];     // gateway string
+    GWstr[0] = 0;
+
+    // port
+    if (argc > 1)        
+        netpara.port = (unsigned short)atoi (argv[1]);
     
-    for (int i=1; i < argc; i++)
-    {        
-        strcat (cmd, argv[i]);
-        strcat (cmd, " ");
+    // gateway's IP 
+    if (argc > 2)        
+        sprintf (GWstr, "%s:%d", argv[2], netpara.port);
+
+    // world id
+    if (argc > 3)
+        g_world_id = (world_t)atoi (argv[3]);
+
+    //
+    // setup gateway
+    //
+
+    bool is_gateway = false;
+
+    // default gateway set to localhost
+    if (GWstr[0] == 0)
+    {
+        is_gateway = true;
+        netpara.is_entry = true;
+        sprintf (GWstr, "127.0.0.1:%d", netpara.port);
     }
-    
-    // initialize parameters
-    SimPara simpara;
-    vector<IPaddr> entries;
-
-    bool is_gateway;
-
-    // obtain parameters from command line and/or INI file
-    if ((g_node_no = InitPara (VAST_NET_ACE, g_netpara, simpara, cmd, &is_gateway, &g_world_id, &g_aoi, &g_gateway, &entries)) == (-1))
-        exit (0);
     
     // force all clients to default join at world 2, unless specified other than 2
-    if (!is_gateway && g_world_id == 1)
+    if (!is_gateway && g_world_id == VAST_DEFAULT_WORLD_ID)
     {
-        g_world_id = 2;
+        g_world_id = VAST_DEFAULT_WORLD_ID + 1;
     }
-
-    // if g_node_no is specified, this node will simulate user movements
-    bool simulate_move = (g_node_no > 0 && is_gateway == false);
     
     // make backup of AOI, to detect position change so we need to move the client
     g_prev_aoi = g_aoi;
             
-    // create VAST node factory and pass in callback
+    // ESSENTIAL: create VAST node factory and pass in callback
     StatHandler handler;
-    g_world = new VASTVerse (entries, &g_netpara, NULL);
-    g_world->createVASTNode (g_gateway.publicIP, g_aoi, VAST_EVENT_LAYER, g_world_id, &handler);
+    g_world = new VASTVerse (&netpara, NULL);
+    g_world->createVASTNode (is_gateway, string (GWstr), g_aoi, VAST_EVENT_LAYER, g_world_id, &handler, 20);
 
     //
-    // create simulated movement model
+    // main loop (do nothing, or can be a windows loop)
     //
-
-    // for simulated behavior, we will use position log to move the nodes
-    if (simulate_move)
-    {
-        // create a file-based movement model
-        g_movement.initModelFromFile (simpara);
-
-        // load initial position
-        g_aoi.center = *g_movement.getPos (g_node_no, 0);
-    }
-    
-    //
-    // main loop
-    //
-    
-    int num_moves = 0;                                              // which movement
-
-    size_t time_budget = 1000000/FRAMES_PER_SECOND;                 // how much time in microseconds for each frame
-    size_t microsec_per_move = (1000000 / (simpara.STEPS_PERSEC));  // microseconds elapsed for one move    
-
-    ACE_Time_Value last_movement = ACE_OS::gettimeofday();  // time of last movement 
-
-    size_t  sleep_time = 0;             // time to sleep (in microseconds)
-    int     time_left = 0;              // how much time left for ticking VAST, in microseconds
-
-    size_t tick_per_sec = 0;            // tick count per second
-
-
-    // entering main loop
-    // NOTE we don't necessarily move in every loop (# of loops > # of moves per second)
     while (!g_finished)
-    {   
-        g_tick++;
-        tick_per_sec++;
-
-        // make sure this cycle doesn't exceed the time budget
-        TimeMonitor::instance ()->setBudget (time_budget);
-
-        ACE_Time_Value curr_time = ACE_OS::gettimeofday ();
-
-        // elapsed time in microseconds
-        long long elapsed = (long long)(curr_time.sec () - last_movement.sec ()) * 1000000 + (curr_time.usec () - last_movement.usec ());
-
-        // if we should move in this frame
-        bool to_move = false;
-        if (elapsed >= microsec_per_move)
-        {
-            // re-record last_movement
-            last_movement = curr_time;
-            to_move = true;
-        }
-
-        // perform join check or movement
-        if (g_state != JOINED)
-        {            
-            checkJoin ();
-        }
-        else 
-        {
-            // obtain keyboard movement input
-            getInput ();
-                        
-            // check if automatic movement should be performed                                   
-            if (simulate_move && to_move)
-            {                                            
-                g_aoi.center = *g_movement.getPos (g_node_no, num_moves++);
-                
-                // in simulated mode, we only move TIME_STEPS times
-                if (num_moves > simpara.TIME_STEPS)
-                    g_finished = true;
-            }
-           
-            // perform movements, but move only if position changes
-            if (!(g_prev_aoi == g_aoi))
-            {
-                g_prev_aoi = g_aoi;               
-                g_self->move (g_sub_id, g_aoi);
-
-                // print out movement 
-                printf ("[%llu] moves to (%d, %d)\n", g_sub_id, (int)g_aoi.center.x, (int)g_aoi.center.y);
-            }
-        }       
-    
-        // whether per-sec tasks were performed
-        bool per_sec = false;
-
-        // execute tick while obtaining time left, sleep out the remaining time
-        time_left = TimeMonitor::instance ()->available ();
-        sleep_time = g_world->tick (time_left, &per_sec);
-
-        // show message to indicate liveness
-        if (per_sec)
-        {            
-            printf ("%ld s, tick %lu, tick_persec %lu, sleep: %lu us, time_left: %d\n", (long)curr_time.sec (), g_tick, tick_per_sec, sleep_time, time_left);
-            tick_per_sec = 0;
-        }
-
-        if (sleep_time > 0)
-        {
-            // NOTE the 2nd parameter is specified in microseconds (us) not milliseconds
-            ACE_Time_Value duration (0, sleep_time);            
-            ACE_OS::sleep (duration); 
-        }
+    {
+        // NOTE the 2nd parameter is specified in microseconds (us) not milliseconds
+        ACE_Time_Value duration (1, 0);            
+        ACE_OS::sleep (duration); 
     }
-
+    
     //
     // depart & clean up
     //
 
-    g_self->leave ();
-    g_world->tick ();
-    
-    g_world->destroyVASTNode (g_self);
-            
+    // ESSENTIAL: before we leave must clean up resources
+    g_world->destroyVASTNode (g_self);            
     delete g_world;        
 
     return 0;

@@ -35,7 +35,7 @@ using namespace std;        // vector
 using namespace Vast;       // vast
 
 SimPara             g_para;
-VASTPara_Net        g_vastnetpara;
+VASTPara_Net        g_vastnetpara (VAST_NET_EMULATED);
 statistics          g_stat;
 vector<SimNode *>   g_nodes;            // pointer to all simulation nodes
 vector<bool>        g_as_relay;
@@ -70,7 +70,6 @@ int InitPara (VAST_NetModel model, VASTPara_Net &netpara, SimPara &simpara, cons
     aoi.radius   = (length_t)DEFAULT_AOI;
 
     netpara.port  = GATEWAY_DEFAULT_PORT;
-    netpara.step_persec = STEPS_PER_SECOND;
 
     netpara.relay_limit     = 0;
     netpara.client_limit    = 0;
@@ -84,6 +83,7 @@ int InitPara (VAST_NetModel model, VASTPara_Net &netpara, SimPara &simpara, cons
     netpara.is_static = false;
 
     simpara.NODE_SIZE = 10;
+    simpara.STEPS_PERSEC = STEPS_PER_SECOND;
 
     // which node to simulate, (0) means manual
     int node_no = 0; 
@@ -170,8 +170,7 @@ int InitPara (VAST_NetModel model, VASTPara_Net &netpara, SimPara &simpara, cons
     // see if simulation behavior file exists for simulated behavior            
     if (ReadPara (simpara) == true)
     {
-        // override defaults
-        netpara.step_persec    = simpara.STEPS_PERSEC;           
+        // override defaults         
         netpara.overload_limit = simpara.OVERLOAD_LIMIT;
 
         // command line radius takes precedence than INI radius
@@ -304,7 +303,6 @@ int InitSim (SimPara &para, VASTPara_Net &netpara)
     g_vastnetpara.conn_limit   = para.CONNECT_LIMIT;
     g_vastnetpara.recv_quota   = para.DOWNLOAD_LIMIT;
     g_vastnetpara.send_quota   = para.UPLOAD_LIMIT;
-    g_vastnetpara.step_persec  = para.STEPS_PERSEC;
 
     // create / open position log file
     char filename[80];

@@ -36,6 +36,9 @@
 #include "net_ace.h"
 #endif
 
+// for starting separate thread for running VAST node
+#include "VASTThread.h"
+
 
 namespace Vast
 {  
@@ -45,7 +48,7 @@ namespace Vast
     //       a better mechanism?
     static net_emubridge *g_bridge     = NULL;
     int                   g_bridge_ref = 0;            // reference count for the bridge
-   
+
     class VASTPointer
     {
     public:
@@ -56,6 +59,8 @@ namespace Vast
             client      = NULL;
             relay       = NULL;
             matcher     = NULL;
+            callback    = NULL;
+            thread      = NULL;
         }
 
         VASTnet *       net;            // network interface
@@ -64,6 +69,7 @@ namespace Vast
         VASTRelay *     relay;          // physical coordinate locator & joiner
         VASTMatcher *   matcher;        // a relay node to the network
         VASTCallback *  callback;       // callback for processing incoming app messages
+        VASTThread *    thread;         // thread for running a VASTNode
     };
 
     //
@@ -73,14 +79,8 @@ namespace Vast
     // TODO: better interface? (don't use global functions)
    
     VASTnet *
-    createNet (unsigned short port, VASTPara_Net &para, vector<IPaddr> &entries)
+    createNet (unsigned short port, VASTPara_Net &para, vector<IPaddr> &entries, int step_persec)
     {
-        if (para.step_persec == 0)
-        {
-            printf ("VASTnet::createNet () VASTPara_Net's step_persec == 0, error\n");
-            return NULL;
-        }
-
         VASTnet *net = NULL;
         if (para.model == VAST_NET_EMULATED)
             net = new net_emu (*g_bridge);
@@ -96,19 +96,30 @@ namespace Vast
 #endif        
 
         net->addEntries (entries);
-        net->setTimestampPerSecond (para.step_persec);
 
-		// set the bandwidth limitation after the net is created
-		if (para.model == VAST_NET_EMULATED_BL)
-		{
-			Bandwidth bw;
-
-			bw.UPLOAD   = para.send_quota;
-			bw.DOWNLOAD = para.recv_quota;				
-
-			net->setBandwidthLimit (BW_UPLOAD,   bw.UPLOAD  / para.step_persec);
-			net->setBandwidthLimit (BW_DOWNLOAD, bw.DOWNLOAD/ para.step_persec);
-		}
+        // set step persec for simulated network
+        if (para.model == VAST_NET_EMULATED || para.model == VAST_NET_EMULATED_BL)
+        {
+            if (step_persec == 0)
+            {
+                printf ("VASTnet::createNet () steps per second not specified, set to default: 10\n");
+                step_persec = 10;
+            }
+            
+            net->setTimestampPerSecond (step_persec);
+                
+		    // set the bandwidth limitation after the net is created
+			if (para.model == VAST_NET_EMULATED_BL)
+			{
+				Bandwidth bw;
+        
+				bw.UPLOAD   = para.send_quota;
+				bw.DOWNLOAD = para.recv_quota;				
+        
+				net->setBandwidthLimit (BW_UPLOAD,   bw.UPLOAD  / step_persec);
+				net->setBandwidthLimit (BW_DOWNLOAD, bw.DOWNLOAD/ step_persec);
+			}
+        }
 
         return net;
     }
@@ -153,17 +164,14 @@ namespace Vast
     }
 
     VASTVerse::
-    VASTVerse (vector<IPaddr> &entries, VASTPara_Net *netpara, VASTPara_Sim *simpara)
+    VASTVerse (VASTPara_Net *netpara, VASTPara_Sim *simpara)
+        :_netpara (*netpara)
     {
         _state = ABSENT;
         _lastsend = _lastrecv = 0;
         _next_periodic = 0;
 
         _timeout = 0;
-
-        // make the local copy of the parameters
-        _entries = entries;
-        _netpara = *netpara;
 
         if (simpara != NULL)
             _simpara = *simpara;
@@ -184,9 +192,9 @@ namespace Vast
             // create a shared net-bridge (used in simulation to locate other simulated nodes)
             // NOTE: g_bridge may be shared across different VASTVerse instances   
             if (_netpara.model == VAST_NET_EMULATED)                            
-                g_bridge = new net_emubridge (_simpara.loss_rate, _simpara.fail_rate, 1, _netpara.step_persec, 1);           
+                g_bridge = new net_emubridge (_simpara.loss_rate, _simpara.fail_rate, 1, _simpara.step_persec, 1);           
 		    else if (_netpara.model == VAST_NET_EMULATED_BL)		
-			    g_bridge = new net_emubridge_bl (_simpara.loss_rate, _simpara.fail_rate, 1, _netpara.step_persec);        
+			    g_bridge = new net_emubridge_bl (_simpara.loss_rate, _simpara.fail_rate, 1, _simpara.step_persec);        
         }
 
         g_bridge_ref++;
@@ -245,7 +253,15 @@ namespace Vast
     // here we only records the info for the new VASTNode, 
     // actual creation will occur during tick ()
     bool  
-    VASTVerse::createVASTNode (const IPaddr &gateway, Area &area, layer_t layer, world_t world_id, VASTCallback *callback)
+    VASTVerse::createVASTNode (bool is_gateway, const string &GWstr, Area &area, layer_t layer, world_t world_id, VASTCallback *callback, int tick_persec)
+    {
+        // perform address translation
+        Addr *addr = VASTVerse::translateAddress (GWstr);
+        return createVASTNode (is_gateway, addr->publicIP, area, layer, world_id, callback, tick_persec);
+    }
+
+    bool 
+    VASTVerse::createVASTNode (bool is_gateway, const IPaddr &gateway, Area &area, layer_t layer, world_t world_id, VASTCallback *callback, int tick_persec)
     {
         // right now can only create one
         if (_vastinfo.size () > 0)
@@ -255,8 +271,8 @@ namespace Vast
         size_t id = _vastinfo.size () + 1;  // NOTE: id is mainly useful for simulation lookup
 
         // store info about the VASTNode to be created
-        // NOTE we store gateway's info in relay
-        info.relay.publicIP = gateway; 
+        // NOTE we store gateway's info in relay        
+        info.relay.publicIP = gateway;
         info.aoi = area;
         info.layer = layer;
         info.id = id;
@@ -264,11 +280,23 @@ namespace Vast
 
         _vastinfo.push_back (info);
 
+        // store gateway as an entry point if I'm client
+        // (will be used by network layer to decide whether to join as gateway or client)
+        if (is_gateway == false)
+            _entries.push_back (gateway);
+
         // store callback
         VASTPointer *handlers   = (VASTPointer *)_pointers;
         handlers->callback      = callback;
         
         printf ("VASTVerse::createVASTNode world_id: %u layer: %u\n", world_id, layer);
+
+        // start thread if tick_persec is specified
+        if (tick_persec > 0)
+        {
+            handlers->thread = new VASTThread (tick_persec);
+            handlers->thread->open (this);
+        }
 
         return true;
     }
@@ -276,8 +304,19 @@ namespace Vast
     bool 
     VASTVerse::destroyVASTNode (VAST *node)
     {
+        // perform leave if client exists
+        node->leave ();
+
         // send unsent messages
         this->tick ();
+
+        // close down thread
+        VASTPointer *handlers   = (VASTPointer *)_pointers;
+        if (handlers->thread)
+        {
+            handlers->thread->close (0);
+            handlers->thread = NULL;
+        }
 
         if (_vastinfo.size () == 0)
             return false;
@@ -319,7 +358,7 @@ namespace Vast
             printf ("VASTVerse::isInitialized () creating VASTnet...\n");
 
             // create network layer
-            handlers->net = createNet (_netpara.port, _netpara, _entries);
+            handlers->net = createNet (_netpara.port, _netpara, _entries, _simpara.step_persec);
             if (handlers->net == NULL)
                 return false;
 
@@ -375,6 +414,27 @@ namespace Vast
         // by default init is not yet done
         return false;
     }
+
+    // to add entry points for this VAST node (should be called before createVASTNode)
+    // format is "IP:port" in string, returns the number of successfully added entries
+    int 
+    VASTVerse::addEntries (std::vector<std::string> entries)
+    {
+        int entries_added = 0;
+        Addr *addr;
+
+        for (size_t i=0; i < entries.size (); i++)
+        {
+            if ((addr = VASTVerse::translateAddress (entries[i])) != NULL)
+            {
+                _entries.push_back (addr->publicIP);
+                entries_added++;
+            }
+        }
+
+        return entries_added;
+    }
+
 
     VAST *
     VASTVerse::createClient (const IPaddr &gateway, world_t world_id)
@@ -511,6 +571,12 @@ namespace Vast
                         printf ("VASTVerse::getVASTNode () ID obtained\n");
                         printf ("state = JOINED\n");
                         _state = JOINED;
+
+                        // call callback to notify for join
+                        if (handlers->callback)
+                        {
+                            handlers->callback->nodeJoined (handlers->client);
+                        }
                     }
                     // check if this stage is timeout, revert to previous state
                     else
@@ -543,7 +609,13 @@ namespace Vast
         // perform routine procedures for each logical time-step
         if (handlers->msgqueue != NULL)
             handlers->msgqueue->tick ();
-           
+
+        // call callback to perform per-tick task, if any
+        if (handlers->callback)
+        {
+            handlers->callback->performPerTickTasks ();
+        }
+
         //
         // perform other tasks
         //
@@ -620,7 +692,7 @@ namespace Vast
 
     // stop operations on this node
     void     
-    VASTVerse::pause ()
+    VASTVerse::pauseNetwork ()
     {
         VASTPointer *handlers = (VASTPointer *)_pointers;
         if (handlers->net != NULL)
@@ -632,7 +704,7 @@ namespace Vast
 
     // resume operations on this node
     void     
-    VASTVerse::resume ()
+    VASTVerse::resumeNetwork ()
     {
         VASTPointer *handlers = (VASTPointer *)_pointers;
         if (handlers->net != NULL)

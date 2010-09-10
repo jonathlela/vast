@@ -203,76 +203,7 @@ namespace Vast {
         
         return 0;
     }
-
-    /*
-    int processmsg (VASTHeader &header, const char *msg)
-    {    
-        // if the remote node doesn't have an id yet, we should
-        //  1. assign a new id if I'm the relay
-        //  2. reject connection if I'm not relay or the message isn't a request for ID
-
-        // store the incoming message
-        size_t n = size - (sizeof (id_t) + sizeof (timestamp_t));
-        id_t             fromhost;
-        timestamp_t      senttime;        
-        char *p = (char *)msg;
-
-        // extract id
-        memcpy (&fromhost, p, sizeof (id_t));
-        p += sizeof (id_t);
-        
-        // extract time stamp
-        memcpy (&senttime, p, sizeof (timestamp_t));
-        p += sizeof (timestamp_t);
-        
-        // if the message comes from a reliable (TCP) connection
-        if (_udp == NULL) 
-        {
-            // check if we're getting a new ID
-            if (fromhost == NET_ID_NEWASSIGNED)
-            {
-                ((VASTnet *)_msghandler)->processHandshake (p, n);
-                return;
-            }
-
-            // check if it's a new incoming connection
-            else if (_remote_id == NET_ID_UNASSIGNED)
-            {
-                // simply a new connection with valid ID
-                if (fromhost != NET_ID_UNASSIGNED)
-                {
-                    _remote_id = fromhost;
-                    ((net_ace *)_msghandler)->register_conn (_remote_id, this); 
-                }
-                // the remote host just joins the network and needs an ID
-                else
-                {
-                    ((VASTnet *)_msghandler)->extractIDRequest (p, n);
-                    // we do not process any message further
-                    return;
-                }
-            }        
-            // remote node has obtained a new id (or corrupted?)
-            else if (_remote_id != fromhost)
-            {
-                printf ("net_ace_handler::processmsg () remote HostID has changed from [%lld] to [%lld]\n", _remote_id, fromhost);                
-                //_remote_id = ((net_ace *)_msghandler)->update_conn (_remote_id, fromhost);
-
-                return;
-            }
-        }
-        else
-            // NOTE we assume that any UDP connection has an accompanying TCP connection
-            //      already made
-            _remote_id = fromhost;
-
-        // store to message queue
-        if (_remote_id != NET_ID_UNASSIGNED)        
-            ((net_ace *)_msghandler)->storeRawMessage (_remote_id, p, n, senttime, ((net_ace *)_msghandler)->getTimestamp ());
-    }
-    */
-        
-
+       
 } // end namespace Vast
 
 

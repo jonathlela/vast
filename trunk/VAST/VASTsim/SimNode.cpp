@@ -52,25 +52,21 @@
 
         _simpara.fail_rate    = _para.FAIL_RATE;
         _simpara.loss_rate    = _para.LOSS_RATE;
-
-        // create fake entry points
-        vector<IPaddr> entries;
+        _simpara.step_persec  = _para.STEPS_PERSEC;
                 
         // if not gateway, store some IPs to home
         if (id != 1)
         {
-            _is_gateway = false;
-            entries.push_back (_gateway.publicIP);
+            _is_gateway = false;            
         }
         else
             _is_gateway = true;
         
-        _world = new VASTVerse (entries, &_netpara, &_simpara);
-        _world->createVASTNode (_gateway.publicIP, _self.aoi, LAYER_UPDATE);
+        _world = new VASTVerse (&_netpara, &_simpara);
+        _world->createVASTNode (_is_gateway, _gateway.publicIP, _self.aoi, LAYER_UPDATE);
 
         state = WAITING;
 
-        //_last_recv = _last_send = 0;        
         clearVariables ();
     }
     
@@ -160,7 +156,7 @@
         if (state == NORMAL)
         {
             //vnode->leave ();
-            _world->pause ();
+            _world->pauseNetwork ();
             state = FAILED;
         }
     }

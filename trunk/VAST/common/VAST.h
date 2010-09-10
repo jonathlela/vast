@@ -47,11 +47,7 @@ namespace Vast
         MATCHER_CANDIDATE = VON_MAX_MSG,// notify gateway of willingness to be origin matcher
         MATCHER_INIT,                   // call up a candidate origin matcher to start up a new world
         MATCHER_ALIVE,                  // keepalive messages from matchers to gateway
-        MATCHER_WORLD_ID,               // notify a matcher of its world_id
-        //MATCHER_JOIN,                 // join the overlay as a matcher
-        //MATCHER_JOIN_R,               // reply to the joining matcher        
-        //MATCHER_JOINED,               // notify gateway a matcher has joined successfully
-        //MATCHER_LEFT,                 // notify gateway a matcher is leaving
+        MATCHER_WORLD_INFO,               // notify a matcher of its world_id
         NOTIFY_MATCHER,                 // current matcher notifying client of new current matcher
         NOTIFY_CLOSEST,                 // current matcher notifying client of closest alternative matcher
         JOIN,                           // client request to gateway for joining a world (find first "origin matcher")
@@ -66,6 +62,7 @@ namespace Vast
         NEIGHBOR,                       // send back a list of known neighbors
         NEIGHBOR_REQUEST,               // request full info for an unknown neighbor
         SEND,                           // send a particular message to certain targets        
+        ORIGIN_MESSAGE,                 // messsage to origin matcher
         MESSAGE,                        // deliver a message to a node
         SUBSCRIBE_NOTIFY,               // client notifying a relay of its subscription
         STAT,                           // sending statistics for gateway to record
@@ -118,26 +115,26 @@ namespace Vast
         //virtual ~VAST () = 0;
         
         // join by specifying the gateway to contact, and an optional worldID (default to be 1)
-        virtual bool        join (const IPaddr &gateway, world_t worldID) = 0;
+        virtual bool            join (const IPaddr &gateway, world_t worldID) = 0;
 
         // quit the overlay
-        virtual void        leave () = 0;
+        virtual void            leave () = 0;
         
         // specify a subscription area for point or area publications 
-        virtual bool        subscribe (Area &area, layer_t layer) = 0;
+        virtual bool            subscribe (Area &area, layer_t layer) = 0;
 
         // send a message to all subscribers within a publication area
-        virtual bool        publish (Area &area, layer_t layer, Message &message) = 0;
+        virtual bool            publish (Area &area, layer_t layer, Message &message) = 0;
             
         // move a subscription area to a new position
         // returns actual AOI in case the position is already taken, or NULL if subscription does not exist
-        virtual Area *      move (id_t subID, Area &aoi, bool update_only = false) = 0;
+        virtual Area *          move (id_t subID, Area &aoi, bool update_only = false) = 0;
 
         // send a custom message to a particular VAST node (ID obtained from list ())
         // returns the number of successful send, 
         // optionally obtains the failed targets, and indicate if the send should be 'directly' (end-to-end, without relays)
         // TODO: send () now only sends to matcher, so target is always 1
-        virtual int         send (Message &message, vector<id_t> *failed = NULL, bool direct = false) = 0;
+        virtual int             send (Message &message, vector<id_t> *failed = NULL, bool direct = false) = 0;
 
         // obtain a list of subscribers with an area
         virtual vector<Node *>& list (Area *area = NULL) = 0;
@@ -149,28 +146,31 @@ namespace Vast
         virtual vector<Node *>& getLogicalNeighbors () = 0;
 
         // get a message from the network queue
-        virtual Message *   receive () = 0;
+        virtual Message *       receive () = 0;
 
         // report some message to gateway (to be processed or recorded)
-        virtual bool        report (Message &message) = 0;
+        virtual bool            reportGateway (Message &message) = 0;
     
+        // report some message to origin matcher
+        virtual bool            reportOrigin (Message &message) = 0;
+
         // get current statistics about this node (a NULL-terminated string)
-        virtual char * getStat (bool clear = false) = 0;
+        virtual char *          getStat (bool clear = false) = 0;
         
         // get the current node's information
-        virtual Node * getSelf () = 0;
+        virtual Node *          getSelf () = 0;
 
         // whether the current node is joined (part of relay mesh)
-        virtual bool isJoined () = 0;
+        virtual bool            isJoined () = 0;
 
         // whether the current node is listening for publications
-        virtual id_t getSubscriptionID () = 0;
+        virtual id_t            getSubscriptionID () = 0;
 
         // whether I am a relay node
-        virtual bool isRelay () = 0;
+        virtual bool            isRelay () = 0;
 
         // whether I have public IP
-        virtual bool hasPublicIP () = 0;
+        virtual bool            hasPublicIP () = 0;
         
         //
         // accessor (non-essential) functions for GUI display
@@ -188,10 +188,6 @@ namespace Vast
         // get message latencies, currently support PUBLISH & MOVE
         // msgtype == 0 indicates clear up existing latency records
         virtual StatType *getMessageLatency (msgtype_t msgtype) = 0;
-
-        // get # of peers hosted at this relay, returns NULL for no record (at non-relays)
-        //virtual StatType *getPeerStat () = 0;
-
     };
 
 } // end namespace Vast

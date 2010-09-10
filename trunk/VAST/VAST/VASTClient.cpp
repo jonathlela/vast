@@ -387,7 +387,7 @@ namespace Vast
     // report some message to gateway (to be processed or recorded)
     // NOTE: works similar as send () but only to gateway
     bool
-    VASTClient::report (Message &message)
+    VASTClient::reportGateway (Message &message)
     {
         if (_state != JOINED)
             return 0;
@@ -405,6 +405,26 @@ namespace Vast
         return sendGatewayMessage (msg, MSG_GROUP_VAST_CLIENT);
     }
 
+    // report some message to origin matcher
+    // NOTE: works similar as send () but only to current origin matcher
+    bool
+    VASTClient::reportOrigin (Message &message)
+    {
+        if (_state != JOINED)
+            return 0;
+
+        // prepare message to send to matcher
+        Message msg (message);
+
+        // we clear out the targets field so only origin will receive it
+        msg.targets.clear ();
+
+        // modify the msgtype to indicate this is an app-specific message
+        msg.msgtype = (msg.msgtype << VAST_MSGTYPE_RESERVED) | ORIGIN_MESSAGE;
+       
+        // if message is sent out successfully
+        return sendMatcherMessage (msg);
+    }
 
     // get current statistics about this node (a NULL-terminated string)
     char *
@@ -894,11 +914,6 @@ namespace Vast
         // if we've lost connection to gateway, make sure it's re-establish
         if (_net->isConnected (_gateway.host_id) == false)
             notifyMapping (_gateway.host_id, &_gateway); 
-
-        // record my subscription ID as the default 'from' field, if not already specified
-        // NOTE: this is to allow the recipiant to properly identify me and send reply back
-        //if (msg.from == 0)
-        //    msg.from = _sub.id;
               
         // if at least one message is sent, then it's successful
         return (sendMessage (msg) > 0);
@@ -919,15 +934,6 @@ namespace Vast
         // set timeout to a small number to indicate we need to re-subscribe
         _timeout_subscribe = 1;
     }
-
-    /*
-    // re-update our position every once in a while
-    void 
-    VASTClient::sendKeepAlive ()
-    {
-        
-    }
-    */
 
     // remove ghost subscribers (those no longer updating)
     void 

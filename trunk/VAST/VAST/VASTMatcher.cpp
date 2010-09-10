@@ -296,7 +296,8 @@ namespace Vast
                 {
                     // NOTE: normally this should not happen, unless a timeout matcher has re-join again as matcher,
                     //       in such case we treat it as a new matcher
-                    LogManager::instance ()->writeLogFile ("[%llu] MATCHER_CANDIDATE found matcher [%llu] already exists, replacing record", _self.id, matcher_id);
+                    LogManager::instance ()->writeLogFile ("[%llu] MATCHER_CANDIDATE found matcher [%llu] already exists, ignore request", _self.id, matcher_id);
+                    break;
                 }
 
                 MatcherInfo info;
@@ -325,7 +326,13 @@ namespace Vast
                 // assign origin_id as notified
                 // NOTE that it could differ from self
                 if (origin != _self.id)
+                {
                     LogManager::instance ()->writeLogFile ("[%llu] MATCHER_INIT: lose origin matcher status to [%llu] for world [%u]", _self.id, origin, world_id);
+
+                    // I'm probably outdated, prepare to re-join
+                    leave ();
+                    join (_gateway.publicIP);
+                }
                 else if (isActive ())
                     LogManager::instance ()->writeLogFile ("[%llu] MATCHER_INIT: promoted from regular to origin matcher for world [%u]", _self.id, world_id);
 
@@ -352,12 +359,14 @@ namespace Vast
                 }
 
                 // record matcher info
+                bool    request_reply;
                 world_t world_id;
                 Addr    matcher_addr;
                 id_t    origin_id;
                 size_t  sendsize;
                 size_t  recvsize;
 
+                in_msg.extract ((char *)&request_reply, sizeof (bool));
                 in_msg.extract (world_id);
                 in_msg.extract (matcher_addr);                
                 in_msg.extract (origin_id);
@@ -375,27 +384,43 @@ namespace Vast
                         break;
                     }
                     
-                    world_id = _matchers[origin_id].world_id;
-                    
+                    world_id = _matchers[origin_id].world_id;                    
+                }
+
+                // send back world info if requested
+                if (request_reply)
+                {
                     // notify matcher of its world_id
-                    Message msg (MATCHER_WORLD_ID);
+                    Message msg (MATCHER_WORLD_INFO);
                     msg.priority = 1;
                     msg.store (world_id);
+                    msg.store (_matchers[origin_id].addr);
                     msg.addTarget (in_msg.from);
-                    sendMessage (msg);                    
+                    sendMessage (msg);
                 }
 
                 // check if we know this matcher (we should unless it's keepalive)
+                // will occur if a live matcher has lost contact for a while, it needs to re-join
+                // in order to get in touch with possibly a new origin matcher for this world
                 if (_matchers.find (matcher_id) == _matchers.end ())
-                {
-                    LogManager::instance ()->writeLogFile ("[%llu] MATCHER_ALIVE unknown matcher [%llu] received, update to record", _self.id, matcher_id);
+                {                    
+                    if (_origins.find (world_id) != _origins.end ())
+                    {
+                        LogManager::instance ()->writeLogFile ("[%llu] MATCHER_ALIVE unknown matcher [%llu], re-init the matcher with its origin [%llu]", _self.id, matcher_id, _origins[world_id]);
+                        initMatcher (world_id, _origins[world_id], in_msg.from);
+                        break;
+                    }
+                    else
+                    {
+                        LogManager::instance ()->writeLogFile ("[%llu] MATCHER_ALIVE unknown matcher [%llu], possibly a lost origin for world [%d], record back", _self.id, matcher_id, world_id);
 
-                    MatcherInfo minfo;
-                    minfo.addr      = matcher_addr;
-                    minfo.state     = ACTIVE;
-
-                    // insert new record
-                    _matchers[matcher_id] = minfo;
+                        MatcherInfo minfo;
+                        minfo.addr      = matcher_addr;
+                        minfo.state     = ACTIVE;
+                    
+                        // insert new record
+                        _matchers[matcher_id] = minfo;
+                    }
                 }
                 
                 // update info for keepalive record
@@ -425,17 +450,20 @@ namespace Vast
                     // case 2: an unresponding origin matcher responds again
                     //         (equivalent to a regular matcher thinking that it's the origin
                     else if (info.state != ORIGIN)
-                    {
-                        LogManager::instance ()->writeLogFile ("MATCHER_ALIVE: matcher [%llu] demoted from origin for world [%u]\n", matcher_id, world_id);
-
-                        Message msg (MATCHER_INIT);
-                        msg.priority = 1;
-                        msg.store (world_id);
-                        msg.store (_origins[world_id]);
-                        msg.addTarget (in_msg.from);
-                
-                        sendMessage (msg);
-                        break;
+                    {                        
+                        // if mapping doesn't exist, means it's a origin that has lost contact
+                        if (_origins.find (world_id) == _origins.end ())
+                        {
+                            LogManager::instance ()->writeLogFile ("MATCHER_ALIVE: matcher [%llu] re-assigned as origin for world [%u]\n", matcher_id, world_id);
+                            info.state = ORIGIN;
+                        }
+                        // otherwise we should demote this previous origin
+                        else
+                        {                        
+                            LogManager::instance ()->writeLogFile ("MATCHER_ALIVE: matcher [%llu] demoted from origin for world [%u]\n", matcher_id, world_id);                        
+                            initMatcher (world_id, _origins[world_id], in_msg.from);
+                            break;
+                        }
                     }
 
                     // notify clients of this origin matcher, if any pending
@@ -471,7 +499,7 @@ namespace Vast
                     else if (_origins[world_id] != matcher_id)
                     {
                         // should not happen by current design
-                        LogManager::instance ()->writeLogFile ("MATCHER_ALIVE: world [%u]'s origin replaced by [%llu] from [%llu]", world_id, matcher_id, _origins[world_id]);
+                        LogManager::instance ()->writeLogFile ("MATCHER_ALIVE: world [%u]'s origin replaced by [%llu] from [%llu] *shouldn't happen*", world_id, matcher_id, _origins[world_id]);
                         _origins[world_id] = matcher_id;
                     }
                 }
@@ -488,14 +516,18 @@ namespace Vast
             }
             break;
 
-        case MATCHER_WORLD_ID:
+        // learn of the world_id of my current world & origin matcher's address
+        case MATCHER_WORLD_INFO:
             {
                 world_t world_id;
+                Addr    addr;
                 in_msg.extract (world_id);
+                in_msg.extract (addr);
 
-                LogManager::instance ()->writeLogFile ("[%llu] MATCHER_WORLD_ID: learn world_id as [%u] previous world_id [%u]", _self.id, world_id, _world_id);
-
-                _world_id = world_id;                
+                LogManager::instance ()->writeLogFile ("[%llu] MATCHER_WORLD_INFO: learn world_id as [%u] previous world_id [%u]", _self.id, world_id, _world_id);
+                
+                _world_id    = world_id;                
+                _origin_addr = addr;
             }
             break;
 
@@ -544,25 +576,18 @@ namespace Vast
                     bool promote_success = false;
                     while (findCandidate (new_origin))
                     {                                       
-                        Message msg (MATCHER_INIT);
-                        msg.priority = 1;
-                        msg.store (world_id);
-                        msg.store (new_origin.host_id);
-                
                         // send promotion message
                         notifyMapping (new_origin.host_id, &new_origin);
-                        msg.addTarget (new_origin.host_id);
-                
+
                         // record the init if send was success
-                        if (sendMessage (msg) > 0)
-                        {
+                        if (initMatcher (world_id, new_origin.host_id, new_origin.host_id))
+                        {                                                                
                             //_promote_requests[new_node.id] = requester;
                             promote_success = true;
 
-                            // we still specify the world to matcher_id mapping, as if 
-                            // other clients wishing to join this world, they can be attached to the request list
+                            // we still specify the world to matcher_id mapping, 
+                            // so other clients wishing to join this world can be attached to the request list
                             _origins[world_id] = new_origin.host_id;
-
                             break;
                         }
                     }
@@ -832,6 +857,33 @@ namespace Vast
                 vector<id_t> failed_targets;                
                 sendClientMessage (in_msg, 0, &failed_targets);
                 removeFailedSubscribers (failed_targets);
+            }
+            break;
+
+        // message specific to the origin matcher
+        case ORIGIN_MESSAGE:
+            {
+                // check if we've gotten origin matcher's address via MATCHER_WORLD_INFO
+                if (_origin_id != _origin_addr.host_id)
+                {
+                    LogManager::instance ()->writeLogFile ("ORIGIN_MESSAGE origin [%llu] address not known, cannot send for [%llu]\n", _origin_id, in_msg.from);
+                    break;
+                }
+
+                // forward to the origin matcher's client component directly
+                in_msg.msgtype = (app_msgtype << VAST_MSGTYPE_RESERVED) | MESSAGE;
+                in_msg.msggroup = MSG_GROUP_VAST_CLIENT;
+
+                // prepare target
+                in_msg.addTarget (_origin_id);
+
+                // if we don't yet have connection to origin, make sure we have
+                if (_net->isConnected (_origin_id) == false)
+                    notifyMapping (_origin_addr.host_id, &_origin_addr); 
+
+                // if at least one message is sent, then it's successful
+                // NOTE: there's no handling in case of failure
+                sendMessage (in_msg);
             }
             break;
 
@@ -1378,6 +1430,12 @@ namespace Vast
             Message msg (MATCHER_ALIVE);
             msg.priority = 1;
 
+            // if world_id or origin matcher's address is unknown, request from gateway
+            bool request_reply = false;
+            if (_world_id == 0 || _origin_id != _origin_addr.host_id)
+                request_reply = true;
+
+            msg.store ((char *)&request_reply, sizeof (bool));
             msg.store (_world_id);
             msg.store (_self.addr);
             msg.store (_origin_id);
@@ -1608,14 +1666,8 @@ namespace Vast
                 // replace mapping from world_id to origin matcher
                 _origins[world_id] = it->first;               
 
-                // send MATCHER_INIT to the new origin to let it know
-                Message msg (MATCHER_INIT);
-                msg.priority = 1;
-                msg.store (world_id);
-                msg.store (info.addr.host_id);                
-                msg.addTarget (info.addr.host_id);
-
-                sendMessage (msg);
+                // notify new origin of its promotion
+                initMatcher (world_id, info.addr.host_id, info.addr.host_id);
 
                 break;
             }
@@ -1699,6 +1751,19 @@ namespace Vast
             for (size_t i=0; i < list.size (); i++)
                 removeSubscription (list[i]);
         }
+    }
+
+    // initialize a new matcher (also serve to notify existing matcher of new origin)
+    bool 
+    VASTMatcher::initMatcher (world_t world_id, id_t origin_id, id_t target)
+    {
+        Message msg (MATCHER_INIT);
+        msg.priority = 1;
+        msg.store (world_id);
+        msg.store (origin_id);
+        msg.addTarget (target);
+
+        return (sendMessage (msg) > 0);
     }
 
     // set the gateway node for this world
@@ -1891,16 +1956,6 @@ namespace Vast
 
         // send positive reply back to gateway
         sendKeepAlive ();
-
-        /*
-        Message msg (MATCHER_JOINED);
-        msg.store (_world_id);
-        msg.store (_self.addr);
-        msg.store (origin_id);
-        msg.priority = 1;
-        msg.addTarget (_gateway.host_id);
-        sendMessage (msg);
-        */
         
         return true;
     }

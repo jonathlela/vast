@@ -246,6 +246,10 @@ namespace Vast
         // deal with unsuccessful send targets
         void removeFailedSubscribers (vector<id_t> &list);
 
+        // initialize a new matcher (also serve to notify existing matcher of new origin)
+        // returns whether send was successful
+        bool initMatcher (world_t world_id, id_t origin_id, id_t target);
+
         // set the gateway node for this world
         bool setGateway (const IPaddr &gatewayIP);
 
@@ -265,6 +269,7 @@ namespace Vast
 
         world_t             _world_id;      // which world I'm currently in (default to VAST_DEFAULT_WORLD_ID)
         id_t                _origin_id;     // id for the origin matcher
+        Addr                _origin_addr;   // address for origin matcher
 
         map<id_t, Node *>   _neighbors;     // list of neighboring matchers, NOTE: pointers refer to data in VSOPeer, so do not need to be released upon destruction
                                                                                                             

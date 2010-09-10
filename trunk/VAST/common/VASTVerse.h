@@ -29,11 +29,20 @@
 
 #ifndef VASTVERSE_H
 #define VASTVERSE_H
+/*
+// for running a separate thread that executes tick ()
+#include "ace/ACE.h"
+#include "ace/OS.h"
+#include "ace/Task.h"
+#include "ace/Reactor.h"
+#include "ace/Condition_T.h"        // ACE_Condition
+*/
 
 #include "Config.h"
 #include "VAST.h"           // provides spatial publish / subscribe (SPS)
 #include "VASTRelay.h"      // provides physical coordinate, IP address, and public IP
 #include "VASTCallback.h"   // callback for handling incoming message at a VAST node
+
 
 #define VASTVERSE_RETRY_PERIOD  (10)     // # of seconds if we're stuck in a state, revert to the previous
 
@@ -46,8 +55,27 @@ namespace Vast
         VAST_NET_ACE
     } VAST_NetModel;
 
-    struct VASTPara_Net
+    class VASTPara_Net
     {
+    public:
+
+        // set default values
+        VASTPara_Net (VAST_NetModel netmodel)
+        {
+            this->model     = netmodel;
+            is_entry        = true;
+            is_relay        = true;
+            is_matcher      = true;
+            is_static       = false;
+            port            = 0;
+            client_limit    = 0;
+            relay_limit     = 0;
+            overload_limit  = 20;
+            conn_limit      = 0;
+            send_quota      = 0;
+            recv_quota      = 0;
+        }
+
         VAST_NetModel   model;          // network model
         bool            is_entry;       // whether current node is an entry point to the overlay (assigns ID, determine physical coordinates)
 	    bool            is_relay;       // whether this node should join as a relay (may not succeed depend on public IP is available)
@@ -60,13 +88,13 @@ namespace Vast
         int             relay_limit;    // max number of relays each node maintains
         int             overload_limit; // max number of subscriptions at each matcher
         int             conn_limit;     // connection limit
-        int             step_persec;    // step/ sec (network layer)
         size_t          send_quota;     // upload quota (bandwidth limit)
         size_t          recv_quota;     // download quota (bandwidth limit)        
     };
 
     struct VASTPara_Sim
     {
+        int     step_persec;    // step/ sec (simulated network layer)
         int     loss_rate;      // packet loss rate
         int     fail_rate;      // node fail rate
         bool    with_latency;   // latency among nodes' connection
@@ -87,30 +115,37 @@ namespace Vast
     
     // TODO: need to cleanup current implementation (too ugly for hiding internal classes from user)
 
-    class EXPORT VASTVerse
+    class EXPORT VASTVerse //: public ACE_Task<ACE_MT_SYNCH>
     {
+    friend class VASTThread;
+
     public:
 
         // specify a number of entry points (hostname / IP) to the overlay, 
         // also the network & simulation parameters
-        VASTVerse (vector<IPaddr> &entries, VASTPara_Net *netpara, VASTPara_Sim *simpara);
+        VASTVerse (VASTPara_Net *netpara, VASTPara_Sim *simpara);
         ~VASTVerse ();
         
         // NOTE: to run a gateway-like entry point only, there's no need to call
         //       createVASTNode (), as long as isInitialized () returns success
-
+       
         // check if we're ready to create a VASTNode
         // (all init and the creation of Relay, Matcher are ready)
         bool isInitialized ();
 
+        // to add entry points for this VAST node (should be called before createVASTNode)
+        // format is "IP:port" in string, returns the number of successfully added entries
+        int addEntries (std::vector<std::string>);            
+
         // create & destroy a VASTNode
         // currently only supports one per VASTVerse
-        bool createVASTNode (const IPaddr &gateway, Area &area, layer_t layer, world_t world_id = 0, VASTCallback *callback = NULL);
+        bool createVASTNode (bool is_gateway, const string &GWstr, Area &area, layer_t layer, world_t world_id = 0, VASTCallback *callback = NULL, int tick_persec = 0);
+        bool createVASTNode (bool is_gateway, const IPaddr &gateway, Area &area, layer_t layer, world_t world_id = 0, VASTCallback *callback = NULL, int tick_persec = 0);
         bool destroyVASTNode (VAST *node);
 
         // obtain a reference to the created VASTNode
-        VAST *getVASTNode ();
-       
+        VAST *getVASTNode ();       
+
         // TODO: support this function? so clients can enter a different world
         //       without having to destroyClient?
         // bool switchWorld (IPaddr &gateway);
@@ -126,10 +161,10 @@ namespace Vast
         void    tickLogicalClock ();
 
         // stop operations on this node
-        void    pause ();
+        void    pauseNetwork ();
 
         // resume operations on this node
-        void    resume ();
+        void    resumeNetwork ();
 
 
         //
@@ -172,9 +207,6 @@ namespace Vast
 
         // translate a string-based address into Addr object
         static Addr *translateAddress (const string &addr);
-
-        // read default parameters from command line
-        //bool parseCommandLine (const char *cmd, 
 
     private:
 

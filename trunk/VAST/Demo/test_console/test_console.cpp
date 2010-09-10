@@ -266,7 +266,8 @@ void printNeighbors (unsigned long long curr_msec, Vast::id_t selfID, bool scree
 void printSizes ()
 {    
     printf ("sizeof sizes:\n");
-    printf ("VASTheader: %zu id_t: %zu timestamp_t: %zu length_t: %zu coord_t: %zu\nPosition: %zu Area: %zu IPaddr: %zu Addr: %zu Node: %zu\n\n",
+    printf ("bool: %u, VASTheader: %u id_t: %u timestamp_t: %u length_t: %u coord_t: %u\nPosition: %u Area: %u IPaddr: %u Addr: %u Node: %u\n\n",
+        sizeof (bool),
         sizeof (VASTHeader),
         sizeof (Vast::id_t),
         sizeof (timestamp_t),
@@ -280,7 +281,7 @@ void printSizes ()
  
     Position a; Area b; IPaddr c; Addr d; Node e;
     printf ("transfer sizes:\n");
-    printf ("VASTheader: %zu coord_t: %zu Position: %zu Area: %zu IPaddr: %zu Addr: %zu Node: %zu\n\n",
+    printf ("VASTheader: %u coord_t: %u Position: %u Area: %u IPaddr: %u Addr: %u Node: %u\n\n",
         sizeof (VASTHeader),
         sizeof (coord_t),
         a.sizeOf (),
@@ -306,7 +307,7 @@ int main (int argc, char *argv[])
     srand (now.usec ());
  
     // print out size of different data types, useful for debug transmit sizes
-    // printSizes ();
+    //printSizes ();
  
     // initialize parameters
     char cmd[255];
@@ -593,7 +594,7 @@ int main (int argc, char *argv[])
                 msg.store (sendstat);
                 msg.store (recvstat);
             
-                g_self->report (msg);
+                g_self->reportGateway (msg);
             
                 // reset stat collection (interval as per second)
                 g_world->clearStat ();

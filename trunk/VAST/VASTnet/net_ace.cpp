@@ -505,30 +505,4 @@ namespace Vast {
         return id;
     }
 
-    /*
-    id_t 
-    net_ace::
-    update_conn (id_t prev_id, id_t curr_id)
-    {
-        if (isConnected (prev_id) == false || curr_id == NET_ID_UNASSIGNED)
-            return NET_ID_UNASSIGNED;
-        
-        _conn_mutex.acquire ();
-        void *stream = _id2conn[prev_id];
-        _id2conn.erase (prev_id);
-        _id2conn[curr_id] = stream;
-
-        Addr a = _id2addr[prev_id];
-        _id2addr.erase (prev_id);
-        _id2addr[curr_id] = a; 
-        _conn_mutex.release ();
-
-#ifdef DEBUG_DETAIL
-        printf ("update_conn [%d] changed to [%d]\n", (int)prev_id, (int)curr_id);
-#endif
-        
-        return curr_id;
-    }
-    */
-
 } // end namespace Vast

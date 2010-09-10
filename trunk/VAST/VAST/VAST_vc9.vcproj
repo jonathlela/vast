@@ -226,6 +226,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\VASTThread.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\VASTVerse.cpp"
 				>
 			</File>
@@ -256,6 +260,10 @@
 			</File>
 			<File
 				RelativePath="..\common\VASTRelay.h"
+				>
+			</File>
+			<File
+				RelativePath=".\VASTThread.h"
 				>
 			</File>
 			<File
