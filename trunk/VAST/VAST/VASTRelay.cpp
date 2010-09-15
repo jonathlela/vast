@@ -22,7 +22,6 @@ namespace Vast
              _timeout_join (0),
              _ping_all_count (0)
     {     
-        //_as_relay = true;
 
         _client_limit = client_limit;     // if 0 means unlimited
         _relay_limit  = relay_limit;      // if 0 means unlimited
@@ -553,8 +552,15 @@ namespace Vast
                 {
                     id_t target = in_msg.targets[i];
 
+                    // mapping of subscription to clientID found
                     if (_sub2client.find (target) != _sub2client.end ())
                         clients.push_back (_sub2client[target]);
+
+                    // check for message to self 
+                    else if (target == _net->getHostID ())
+                    {
+                        clients.push_back (target);
+                    }
                     else
                     {
                         // record unresolved client targets
@@ -613,9 +619,7 @@ namespace Vast
 
             // obtain some relays from network layer if no known relays
             if (_relays.size () == 0)
-            {
-                printf ("VASTRelay: relay list is empty, get some from network layer\n");
-
+            {                
                 // using network entry points as initial relays 
                 vector<IPaddr> &entries = _net->getEntries ();
                 Node relay;
@@ -626,6 +630,12 @@ namespace Vast
                     relay.addr.publicIP = entries[i];
         
                     addRelay (relay);
+                }
+
+                // if still no relays found
+                if (_relays.size () == 0)
+                {
+                    printf ("VASTRelay: relay list is empty, got none from network layer\n");
                 }
             }
 

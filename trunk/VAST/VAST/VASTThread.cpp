@@ -20,7 +20,7 @@ namespace Vast
         // otherwise there might be conflict in data access by two threads
         
         ACE_Thread_Mutex mutex;
-        _cond = new ACE_Condition<ACE_Thread_Mutex>(mutex);
+        _up_cond = new ACE_Condition<ACE_Thread_Mutex>(mutex);
         
         printf ("VASTThread::open (), before activate thread count: %lu\n", this->thr_count ()); 
         
@@ -31,10 +31,11 @@ namespace Vast
             
         // wait until server is up and running (e.g. svc() is executing)
         mutex.acquire ();
-        _cond->wait ();
+        _up_cond->wait ();
         mutex.release ();
         
-        delete _cond;
+        delete _up_cond;
+        _up_cond = NULL;
                     
         printf ("VASTThread::open (), after activate thread count: %lu\n", this->thr_count ()); 
 
@@ -52,20 +53,22 @@ namespace Vast
             //_world  = NULL;
 
             ACE_Thread_Mutex mutex;
-            _cond = new ACE_Condition<ACE_Thread_Mutex>(mutex);
+            _down_cond = new ACE_Condition<ACE_Thread_Mutex>(mutex);
                    
             printf ("VASTThread::close () thread count: %lu (before closing)\n", this->thr_count ()); 
-            
+
             // allow the reactor to leave its event handling loop
             _active = false;
-            _world = NULL;            
-                            
+
             // wait until the svc() thread terminates
             mutex.acquire ();
-            _cond->wait ();
+            _down_cond->wait ();
             mutex.release ();
             
-            delete _cond;
+            delete _down_cond;
+            _down_cond = NULL;
+
+            _world = NULL;
 
             printf ("VASTThread::close (), thread count: %lu (after closing)\n", this->thr_count ()); 
         }
@@ -77,8 +80,10 @@ namespace Vast
     int 
     VASTThread::svc (void)
     {
+        // NEW_THREAD
+
         // continue execution of original thread in open ()
-        _cond->signal ();
+        _up_cond->signal ();
 
         // how much time in microseconds for each frame
         size_t  time_budget = 1000000/_ticks_persec;
@@ -121,34 +126,14 @@ namespace Vast
             }
         }
 
+        printf ("VASTThread::svc () leave ticking loop\n");
+
         // continue execution of original thread in close ()
         // to ensure that svc () will exit
-        if (_cond != NULL)
-            _cond->signal ();
+        if (_down_cond != NULL)
+            _down_cond->signal ();
 
         return 0;
     }
-
-    /*
-    void 
-    VASTThread::checkJoin ()
-    {    
-        // obtain a created VAST node, if any
-        switch (_state)
-        {
-        case ABSENT:
-            if ((_vastnode = ((VASTVerse *)_world)->getVASTNode ()) != NULL)
-            {   
-                _sub_id = _vastnode->getSubscriptionID (); 
-                _state = JOINED;
-            }
-            break;
-    
-        default:
-            break;
-        }
-    }
-    */
-
 
 } // namespace Vast

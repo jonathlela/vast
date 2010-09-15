@@ -44,6 +44,7 @@ public:
 
     int open (const ACE_INET_Addr &addr, ACE_Reactor *reactor) 
     {
+        // NEW_THREAD acceptor open?
         if (_acceptor.open (addr, 1) == -1)
             return -1;
 

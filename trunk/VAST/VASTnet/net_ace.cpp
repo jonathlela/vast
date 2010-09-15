@@ -33,7 +33,14 @@ namespace Vast {
     {
         // necessary to avoid crash when using ACE with WinMain
         ACE::init ();
-   
+
+        // get hostname
+        _hostname[0] = 0;
+        _IPaddr[0] = 0;
+
+        // NEW_THREAD will be created (ACE_OS called for 1st time?)
+        ACE_OS::hostname (_hostname, 255);
+           
         _udphandler = NULL;
         
         printf ("net_ace::net_ace(): Host IP: %s\n", getIPFromHost ());
@@ -120,6 +127,7 @@ namespace Vast {
     net_ace::
     svc (void)
     {        
+        // NEW_THREAD net_ace runs as ACE_TASK
         _reactor = new ACE_Reactor;                
         _acceptor = new net_ace_acceptor (this);
         
@@ -130,14 +138,16 @@ namespace Vast {
         // obtain a valid server TCP listen port        
         while (true) 
         {
+            // NEW_THREAD (ACE_DEBUG called for 1st time?)
             ACE_DEBUG ((LM_DEBUG, "(%5t) attempting to start server at %s:%d\n", addr.get_host_addr (), addr.get_port_number ()));
+
             if (_acceptor->open (addr, _reactor) == 0)
                 break;
             
             _port_self++;
             addr.set_port_number (_port_self);
         }        
-        
+                
         ACE_DEBUG ((LM_DEBUG, "net_ace::svc() called. actual port binded: %d\n", _port_self));
         
         //addr.set (addr.get_port_number (), getIP ());
@@ -145,6 +155,7 @@ namespace Vast {
         //ACE_DEBUG ((LM_DEBUG, "(%5t) server at %s:%d\n", addr.get_host_addr (), addr.get_port_number ()));
         
         // create new handler for listening to UDP packets        
+        // NEW_THREAD will be created (new handler that will listen to port?)
         ACE_NEW_RETURN (_udphandler, net_ace_handler, -1);
         _udp = _udphandler->openUDP (addr);
         _udphandler->open (_reactor, this);
@@ -216,19 +227,25 @@ namespace Vast {
     // get IP address from host name
     const char *
     net_ace::getIPFromHost (const char *host)
-    {
+    {        
         char hostname[255];
         
         // if host is NULL then we use our own hostname
         if (host == NULL)
         {            
-            ACE_OS::hostname (hostname, 255);
+            // if we've already looked up, return previous record
+            if (_IPaddr[0] != 0)
+                return _IPaddr;
+
+            //ACE_OS::hostname (hostname, 255);
+            strcpy (hostname, _hostname);
         }
         else
             strcpy (hostname, host);
  
         //printf ("hostname=%s, calling gethostbyname ()\n", hostname);
         hostent *remoteHost = ACE_OS::gethostbyname (hostname);
+
         //printf ("net_ace::getIPFromHost (): gethostbyname () success!\n");
 
         //printf("\tOfficial name: %s\n", remoteHost->h_name);
@@ -252,7 +269,9 @@ namespace Vast {
         if (remoteHost->h_addr_list[0] != 0)
         {
             addr.s_addr = *(u_long *) remoteHost->h_addr_list[0];
-            return ACE_OS::inet_ntoa (addr);
+            strcpy (_IPaddr, ACE_OS::inet_ntoa (addr));
+
+            return _IPaddr;
         }        
         else
             return NULL;

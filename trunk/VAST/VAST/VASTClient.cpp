@@ -457,6 +457,13 @@ namespace Vast
             return _sub.id; 
     }
 
+    // get the world_id I'm currently joining
+    world_t 
+    VASTClient::getWorldID ()
+    {
+        return _world_id;
+    }
+
     // if myself is a relay
     bool 
     VASTClient::isRelay ()

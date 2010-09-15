@@ -147,6 +147,7 @@ namespace Vast
         return true;
     }
     
+    /*
     MessageQueue *
     createQueue (VASTnet *net)
     {
@@ -162,9 +163,10 @@ namespace Vast
         delete queue;
         return true;
     }
+    */
 
     VASTVerse::
-    VASTVerse (VASTPara_Net *netpara, VASTPara_Sim *simpara)
+    VASTVerse (bool is_gateway, const string &GWstr, VASTPara_Net *netpara, VASTPara_Sim *simpara, VASTCallback *callback, int tick_persec)
         :_netpara (*netpara)
     {
         _state = ABSENT;
@@ -173,6 +175,16 @@ namespace Vast
 
         _timeout = 0;
 
+        // record gateway info here, actual connection will be made in tick ()
+        Addr *addr = VASTVerse::translateAddress (GWstr);
+        _gateway = addr->publicIP;
+
+        if (is_gateway == false)
+            _entries.push_back (_gateway);
+
+        _GWconnected = false;
+
+        // record simulation parameters, if any
         if (simpara != NULL)
             _simpara = *simpara;
         else
@@ -182,6 +194,10 @@ namespace Vast
         // zero all pointers
         _pointers = new VASTPointer ();
         memset (_pointers, 0, sizeof (VASTPointer));
+
+        // store callback, if any
+        VASTPointer *handlers   = (VASTPointer *)_pointers;
+        handlers->callback      = callback;
 
         // initialize rand generator (for node fail simulation, NOTE: same seed is used to produce exactly same results)
         //srand ((unsigned int)time (NULL));
@@ -198,16 +214,30 @@ namespace Vast
         }
 
         g_bridge_ref++;
+
+        // start thread if both callback & tick_persec is specified
+        if (callback && tick_persec > 0)
+        {
+            handlers->thread = new VASTThread (tick_persec);
+            handlers->thread->open (this);
+        }
     }
 
     VASTVerse::~VASTVerse ()
     {
         VASTPointer *handlers = (VASTPointer *)_pointers;
 
+        // stop the running thread
+        if (handlers->thread != NULL)
+        {
+            handlers->thread->close (0);
+            handlers->thread = NULL;
+        }
+
         // delete those vast_nodes not yet deleted
         if (handlers->client != NULL)
         {
-            destroyClient (handlers->client);
+            destroyVASTNode (handlers->client);
             handlers->client = NULL;
         }
 
@@ -225,7 +255,8 @@ namespace Vast
 
         if (handlers->msgqueue != NULL)
         {
-            destroyQueue (handlers->msgqueue);
+            //destroyQueue (handlers->msgqueue);
+            delete handlers->msgqueue;
             handlers->msgqueue = NULL;
         }
 
@@ -252,16 +283,8 @@ namespace Vast
     // create & destroy a VASTNode
     // here we only records the info for the new VASTNode, 
     // actual creation will occur during tick ()
-    bool  
-    VASTVerse::createVASTNode (bool is_gateway, const string &GWstr, Area &area, layer_t layer, world_t world_id, VASTCallback *callback, int tick_persec)
-    {
-        // perform address translation
-        Addr *addr = VASTVerse::translateAddress (GWstr);
-        return createVASTNode (is_gateway, addr->publicIP, area, layer, world_id, callback, tick_persec);
-    }
-
     bool 
-    VASTVerse::createVASTNode (bool is_gateway, const IPaddr &gateway, Area &area, layer_t layer, world_t world_id, VASTCallback *callback, int tick_persec)
+    VASTVerse::createVASTNode (world_t world_id, Area &area, layer_t layer)
     {
         // right now can only create one
         if (_vastinfo.size () > 0)
@@ -272,7 +295,6 @@ namespace Vast
 
         // store info about the VASTNode to be created
         // NOTE we store gateway's info in relay        
-        info.relay.publicIP = gateway;
         info.aoi = area;
         info.layer = layer;
         info.id = id;
@@ -282,21 +304,10 @@ namespace Vast
 
         // store gateway as an entry point if I'm client
         // (will be used by network layer to decide whether to join as gateway or client)
-        if (is_gateway == false)
-            _entries.push_back (gateway);
+        //if (_is_gateway == false)
+        //    _entries.push_back (gateway);        
 
-        // store callback
-        VASTPointer *handlers   = (VASTPointer *)_pointers;
-        handlers->callback      = callback;
-        
         printf ("VASTVerse::createVASTNode world_id: %u layer: %u\n", world_id, layer);
-
-        // start thread if tick_persec is specified
-        if (tick_persec > 0)
-        {
-            handlers->thread = new VASTThread (tick_persec);
-            handlers->thread->open (this);
-        }
 
         return true;
     }
@@ -304,19 +315,14 @@ namespace Vast
     bool 
     VASTVerse::destroyVASTNode (VAST *node)
     {
+        if (node == NULL)
+            return false;
+
         // perform leave if client exists
         node->leave ();
 
         // send unsent messages
         this->tick ();
-
-        // close down thread
-        VASTPointer *handlers   = (VASTPointer *)_pointers;
-        if (handlers->thread)
-        {
-            handlers->thread->close (0);
-            handlers->thread = NULL;
-        }
 
         if (_vastinfo.size () == 0)
             return false;
@@ -363,7 +369,8 @@ namespace Vast
                 return false;
 
             printf ("VASTVerse::isInitialized () creating MessageQueue...\n");
-            handlers->msgqueue = createQueue (handlers->net);
+            //handlers->msgqueue = createQueue (handlers->net);
+            handlers->msgqueue = new MessageQueue (handlers->net);
         }
 
         // wait for the network layer to join properly
@@ -415,6 +422,7 @@ namespace Vast
         return false;
     }
 
+    /*
     // to add entry points for this VAST node (should be called before createVASTNode)
     // format is "IP:port" in string, returns the number of successfully added entries
     int 
@@ -434,11 +442,12 @@ namespace Vast
 
         return entries_added;
     }
-
+    */
 
     VAST *
     VASTVerse::createClient (const IPaddr &gateway, world_t world_id)
     {
+        // no need to check every time?
         if (isInitialized () == false)
             return NULL;
 
@@ -451,7 +460,7 @@ namespace Vast
         // make sure matcher has joined first
         if (handlers->matcher->isJoined () == false)
         {
-            handlers->matcher->join (gateway);           
+            handlers->matcher->join (gateway);
             return NULL;
         }
 
@@ -517,81 +526,108 @@ namespace Vast
         //
         // perform init & joining tasks
         //
-
-        // check if a createVASTNode has been called
-        if (_vastinfo.size () > 0 && _state != JOINED)
+          
+        if (_state != JOINED && isInitialized ())
         {
-            Subscription &info = _vastinfo[0];
-
-            switch (_state)
+            // connect to gateway for the first time
+            if (_GWconnected == false)
             {
-            // try to create VASTClient and let it start joining
-            case ABSENT:
-                {
-                    printf ("state = ABSENT\n");
-                    if ((createClient (info.relay.publicIP, info.world_id)) != NULL)
-                    {                            
-                        printf ("VASTVerse::tick () client created\n");
-                        _state = JOINING;
-                    }
+                // notify callback
+                if (handlers->callback)
+                {                    
+                    handlers->callback->gatewayConnected (handlers->net->getHostID ());
                 }
-                break;
+                _GWconnected = true;
+            }
 
-            // try to perform subscription after the client has joined
-            case JOINING:
+            // check if a createVASTNode has been called
+            if (_vastinfo.size () > 0)
+            {
+                Subscription &info = _vastinfo[0];
+        
+                switch (_state)
                 {
-                    printf ("state = JOINING\n");
-                    if (handlers->client->isJoined ())
+                // try to create VASTClient and let it start joining
+                case ABSENT:
                     {
-                        printf ("VASTVerse::tick () subscribing ... \n");
-                        handlers->client->subscribe (info.aoi, info.layer);
-                        _state = JOINING_2;
-                    }
-                    // check if this stage is timeout, revert to previous state
-                    else
-                    {
-                        _timeout++;
-                        if (_timeout > timeout_period)
-                        {
-                            LogManager::instance ()->writeLogFile ("VASTVerse::tick () VASTClient join timeout after %d seconds, revert to ABSENT state", VASTVERSE_RETRY_PERIOD);
-                            _timeout = 0;
-                            destroyClient (handlers->client);
-                            _state = ABSENT;
-                        }
-                    }
-                }
-                break;
-
-            // wait until subscription is successful
-            case JOINING_2:
-                {
-                    printf ("state = JOINING_2\n");
-                    if (handlers->client->getSubscriptionID () != NET_ID_UNASSIGNED)
-                    {
-                        printf ("VASTVerse::getVASTNode () ID obtained\n");
-                        printf ("state = JOINED\n");
-                        _state = JOINED;
-
-                        // call callback to notify for join
-                        if (handlers->callback)
-                        {
-                            handlers->callback->nodeJoined (handlers->client);
-                        }
-                    }
-                    // check if this stage is timeout, revert to previous state
-                    else
-                    {
-                        _timeout++;
-
-                        if (_timeout > timeout_period)
-                        {
-                            LogManager::instance ()->writeLogFile ("VASTVerse::tick () wait for subscription ID timeout after %d seconds, revert to JOINING state", VASTVERSE_RETRY_PERIOD);
-                            _timeout = 0;
+                        printf ("state = ABSENT\n");
+                        if ((createClient (_gateway, info.world_id)) != NULL)
+                        {                            
+                            printf ("VASTVerse::tick () VASTclient created\n");
                             _state = JOINING;
                         }
                     }
+                    break;
+        
+                // try to perform subscription after the client has joined
+                case JOINING:
+                    {
+                        printf ("state = JOINING\n");
+                        if (handlers->client->isJoined ())
+                        {
+                            printf ("VASTVerse::tick () subscribing ... \n");
+                            handlers->client->subscribe (info.aoi, info.layer);
+                            _state = JOINING_2;
+                        }
+                        // check if this stage is timeout, revert to previous state
+                        else
+                        {
+                            _timeout++;
+                            if (_timeout > timeout_period)
+                            {
+                                LogManager::instance ()->writeLogFile ("VASTVerse::tick () VASTClient join timeout after %d seconds, revert to ABSENT state", VASTVERSE_RETRY_PERIOD);
+                                _timeout = 0;
+                                destroyClient (handlers->client);
+                                _state = ABSENT;
+                            }
+                        }
+                    }
+                    break;
+        
+                // wait until subscription is successful
+                case JOINING_2:
+                    {
+                        printf ("state = JOINING_2\n");
+                        if (handlers->client->getSubscriptionID () != NET_ID_UNASSIGNED)
+                        {
+                            printf ("VASTVerse::getVASTNode () ID obtained\n");
+                            printf ("state = JOINED\n");
+                            _state = JOINED;
+        
+                            // call callback to notify for join
+                            if (handlers->callback)
+                            {
+                                handlers->callback->nodeJoined (handlers->client);
+                            }
+                        }
+                        // check if this stage is timeout, revert to previous state
+                        else
+                        {
+                            _timeout++;
+        
+                            if (_timeout > timeout_period)
+                            {
+                                LogManager::instance ()->writeLogFile ("VASTVerse::tick () wait for subscription ID timeout after %d seconds, revert to JOINING state", VASTVERSE_RETRY_PERIOD);
+                                _timeout = 0;
+                                _state = JOINING;
+                            }
+                        }
+                    }
+                    break;
                 }
-                break;
+
+            } // end creating VASTNode
+        }
+        // we've left the network
+        else if (_state == JOINED && handlers->client == NULL)
+        {
+            _state = ABSENT;
+            printf ("Node left\nstate = ABSENT\n");
+
+            // call callback to notify for leave
+            if (handlers->callback)
+            {
+                handlers->callback->nodeLeft ();
             }
         }
 
@@ -658,7 +694,7 @@ namespace Vast
             }
 
             // process incoming messages by calling app-specific message handlers, if any
-            if (_state == JOINED && handlers->callback)
+            if (_state == JOINED && handlers->client && handlers->callback)
             {
                 // process input messages, if any
                 Message *msg;

@@ -163,8 +163,11 @@ namespace Vast
         // whether the current node is joined (part of relay mesh)
         virtual bool            isJoined () = 0;
 
-        // whether the current node is listening for publications
+        // subscription id indicates subscribe success
         virtual id_t            getSubscriptionID () = 0;
+
+        // get the world_id I'm currently joining
+        virtual world_t         getWorldID () = 0;
 
         // whether I am a relay node
         virtual bool            isRelay () = 0;

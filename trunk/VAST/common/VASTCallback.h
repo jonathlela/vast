@@ -53,8 +53,14 @@ namespace Vast
         // perform some per-tick tasks
         virtual void performPerTickTasks () = 0;
 
+        // notify of successful connection with gateway
+        virtual void gatewayConnected (id_t host_id) = 0;
+
         // notify the successful join of the VAST node
         virtual void nodeJoined (VAST *vastnode) = 0;
+
+        // notify the successful leave of the VAST node
+        virtual void nodeLeft () = 0;
 
     };
 

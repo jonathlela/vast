@@ -62,8 +62,11 @@
         else
             _is_gateway = true;
         
-        _world = new VASTVerse (&_netpara, &_simpara);
-        _world->createVASTNode (_is_gateway, _gateway.publicIP, _self.aoi, LAYER_UPDATE);
+        char str[80];
+        _gateway.publicIP.getString (str);
+
+        _world = new VASTVerse (_is_gateway, string (str), &_netpara, &_simpara);
+        _world->createVASTNode (VAST_DEFAULT_WORLD_ID, _self.aoi, LAYER_UPDATE);
 
         state = WAITING;
 

@@ -75,6 +75,18 @@ void getInput ()
             g_finished = true;
             break;
 
+        // join matcher
+        case 'j':
+            // ESSENTIAL: must specify which world to join
+            g_world->createVASTNode (g_world_id, g_aoi, VAST_EVENT_LAYER);
+            break;
+
+        // leave matcher
+        case 'l':
+            // ESSENTIAL: before we leave must clean up resources
+            g_world->destroyVASTNode (g_self);
+            break;
+
         // movements
         case -32:
             switch (getch ())
@@ -221,11 +233,11 @@ public:
     // perform some per-tick tasks
     void performPerTickTasks ()
     {
-        if (g_self == NULL)
-            return;
-
         // obtain keyboard movement input
         getInput ();
+
+        if (g_self == NULL)
+            return;
         
         // perform movements if position changes (due to input or simulated movement)
         // NOTE we don't necessarily move in every tick (# of ticks > # of moves per second)
@@ -258,6 +270,13 @@ public:
         }
     }
 
+    // notify of successful connection with gateway
+    void gatewayConnected (id_t host_id)
+    {
+        printf ("gatewayConnected () hostID: [%llu]\n", host_id);
+        //g_world->createVASTNode (g_world_id, g_aoi, VAST_EVENT_LAYER);
+    }
+
     // notify the successful join of the VAST node
     void nodeJoined (VAST *vastnode)
     {
@@ -265,6 +284,15 @@ public:
 
         // obtain subscription ID, so that movement can be correct
         g_sub_id = g_self->getSubscriptionID ();
+
+        printf ("nodeJoined () id: [%llu]\n", g_sub_id);
+    }
+
+    void nodeLeft ()
+    {
+        printf ("nodeLeft () id: [%llu]\n", g_sub_id);
+        g_self = NULL;
+        g_sub_id = 0;
     }
 
 private:
@@ -295,6 +323,10 @@ int main (int argc, char *argv[])
     g_aoi.center.y = (coord_t)(rand () % 100);
     g_aoi.radius   = 200;
 
+    // make backup of AOI, to detect position change so we can move the client
+    g_prev_aoi = g_aoi;
+
+    // set network parameters
     VASTPara_Net netpara (VAST_NET_ACE);
     netpara.port = GATEWAY_DEFAULT_PORT;
 
@@ -335,14 +367,10 @@ int main (int argc, char *argv[])
     {
         g_world_id = VAST_DEFAULT_WORLD_ID + 1;
     }
-    
-    // make backup of AOI, to detect position change so we need to move the client
-    g_prev_aoi = g_aoi;
-            
+                
     // ESSENTIAL: create VAST node factory and pass in callback
     StatHandler handler;
-    g_world = new VASTVerse (&netpara, NULL);
-    g_world->createVASTNode (is_gateway, string (GWstr), g_aoi, VAST_EVENT_LAYER, g_world_id, &handler, 20);
+    g_world = new VASTVerse (is_gateway, string (GWstr), &netpara, NULL, &handler, 20);
 
     //
     // main loop (do nothing, or can be a windows loop)
@@ -358,8 +386,6 @@ int main (int argc, char *argv[])
     // depart & clean up
     //
 
-    // ESSENTIAL: before we leave must clean up resources
-    g_world->destroyVASTNode (g_self);            
     delete g_world;        
 
     return 0;

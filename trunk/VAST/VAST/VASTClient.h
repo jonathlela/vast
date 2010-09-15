@@ -117,6 +117,9 @@ namespace Vast
         // returns subscription ID, 0 indicates no subscription
         id_t getSubscriptionID ();
 
+        // get the world_id I'm currently joining
+        world_t getWorldID ();
+
         // if I'm a relay
         inline bool isRelay ();
 

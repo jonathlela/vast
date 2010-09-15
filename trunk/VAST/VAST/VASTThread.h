@@ -58,6 +58,8 @@ namespace Vast
             _state  = ABSENT;
             _world  = NULL;
             _sub_id = 0;
+
+            _up_cond = _down_cond = NULL;
         }
 
         ~VASTThread ()
@@ -80,19 +82,17 @@ namespace Vast
 
     private:
 
-        //void checkJoin ();
-
         int         _ticks_persec;      // # of ticks this thread should execute per second
 
         bool        _active;            // whether the currnet play thread is alive.
         NodeState   _state;             // the join state of this node
         VAST       *_vastnode;          // pointer to vastnode
-        //VASTVerse  *_world;             // pointer to world
         void       *_world;             // pointer to world
         id_t        _sub_id;            // client's subscription ID
 
         // condition to ensure thread is running before proceeding
-        ACE_Condition<ACE_Thread_Mutex> *_cond;    
+        ACE_Condition<ACE_Thread_Mutex> *_up_cond;    
+        ACE_Condition<ACE_Thread_Mutex> *_down_cond;    
     };
 
 } // end namespace Vast

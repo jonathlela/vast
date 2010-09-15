@@ -524,7 +524,7 @@ namespace Vast
                 in_msg.extract (world_id);
                 in_msg.extract (addr);
 
-                LogManager::instance ()->writeLogFile ("[%llu] MATCHER_WORLD_INFO: learn world_id as [%u] previous world_id [%u]", _self.id, world_id, _world_id);
+                LogManager::instance ()->writeLogFile ("[%llu] MATCHER_WORLD_INFO: new world_id [%u] previous [%u]", _self.id, world_id, _world_id);
                 
                 _world_id    = world_id;                
                 _origin_addr = addr;

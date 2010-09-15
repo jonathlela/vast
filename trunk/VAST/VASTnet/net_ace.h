@@ -170,7 +170,9 @@ namespace Vast {
         // for obtaining current time (millisecond accuracy)
         ACE_Time_Value              _start_time;
 
-       
+        // hostname & IP of current host
+        char                        _hostname[255];
+        char                        _IPaddr[17];       
     };
 
 } // end namespace Vast

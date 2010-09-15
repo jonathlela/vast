@@ -123,7 +123,7 @@ namespace Vast
 
         // specify a number of entry points (hostname / IP) to the overlay, 
         // also the network & simulation parameters
-        VASTVerse (VASTPara_Net *netpara, VASTPara_Sim *simpara);
+        VASTVerse (bool is_gateway, const string &GWstr, VASTPara_Net *netpara, VASTPara_Sim *simpara, VASTCallback *callback = NULL, int tick_persec = 0);
         ~VASTVerse ();
         
         // NOTE: to run a gateway-like entry point only, there's no need to call
@@ -135,12 +135,11 @@ namespace Vast
 
         // to add entry points for this VAST node (should be called before createVASTNode)
         // format is "IP:port" in string, returns the number of successfully added entries
-        int addEntries (std::vector<std::string>);            
+        //int addEntries (std::vector<std::string>);            
 
         // create & destroy a VASTNode
         // currently only supports one per VASTVerse
-        bool createVASTNode (bool is_gateway, const string &GWstr, Area &area, layer_t layer, world_t world_id = 0, VASTCallback *callback = NULL, int tick_persec = 0);
-        bool createVASTNode (bool is_gateway, const IPaddr &gateway, Area &area, layer_t layer, world_t world_id = 0, VASTCallback *callback = NULL, int tick_persec = 0);
+        bool createVASTNode (world_t world_id, Area &area, layer_t layer);
         bool destroyVASTNode (VAST *node);
 
         // obtain a reference to the created VASTNode
@@ -227,6 +226,8 @@ namespace Vast
 
         vector<Subscription> _vastinfo;     // info about a VASTNode to be created
         vector<IPaddr>      _entries;       // entry points for the overlay
+        IPaddr              _gateway;       // gateway for entering the VAST network
+        bool                _GWconnected;   // whether I've connected to gateway
 
         // stat collection class
         timestamp_t         _next_periodic; // next timestamp when per-second task is executed
