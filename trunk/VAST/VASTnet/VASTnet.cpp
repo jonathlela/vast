@@ -59,7 +59,7 @@ namespace Vast
         if (_active == false)
             return;
 
-        printf ("VASTnet::stop () for node %d\n", (int)_id);
+        printf ("VASTnet::stop () for node [%llu]\n", _id);
 
         // close all active connections
         // NOTE: we still need the message receiving thread to be running 

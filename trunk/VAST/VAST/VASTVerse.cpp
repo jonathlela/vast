@@ -241,6 +241,17 @@ namespace Vast
             handlers->client = NULL;
         }
 
+        // notify disconnection from gateway
+        if (_GWconnected == true)
+        {
+            // notify callback
+            if (handlers->callback)
+            {                    
+                handlers->callback->gatewayDisconnected ();
+            }
+            _GWconnected = false;
+        }
+
         if (handlers->matcher != NULL)
         {
             delete handlers->matcher;
@@ -321,13 +332,13 @@ namespace Vast
         // perform leave if client exists
         node->leave ();
 
-        // send unsent messages
-        this->tick ();
-
         if (_vastinfo.size () == 0)
             return false;
 
         _vastinfo.clear ();
+
+        // send unsent messages & notify callback of node leave
+        this->tick ();
       
         return destroyClient (node);
     }
@@ -526,8 +537,9 @@ namespace Vast
         //
         // perform init & joining tasks
         //
-          
-        if (_state != JOINED && isInitialized ())
+
+        // if we've joined to gateway
+        if (isInitialized ())
         {
             // connect to gateway for the first time
             if (_GWconnected == false)
@@ -540,8 +552,8 @@ namespace Vast
                 _GWconnected = true;
             }
 
-            // check if a createVASTNode has been called
-            if (_vastinfo.size () > 0)
+            // if a createVASTNode has been called
+            if (_state != JOINED && _vastinfo.size () > 0)
             {
                 Subscription &info = _vastinfo[0];
         
@@ -615,21 +627,22 @@ namespace Vast
                     }
                     break;
                 }
-
             } // end creating VASTNode
-        }
-        // we've left the network
-        else if (_state == JOINED && handlers->client == NULL)
-        {
-            _state = ABSENT;
-            printf ("Node left\nstate = ABSENT\n");
 
-            // call callback to notify for leave
-            if (handlers->callback)
+            // we've left the network
+            else if (_state == JOINED && _vastinfo.size () == 0)
             {
-                handlers->callback->nodeLeft ();
-            }
-        }
+                _state = ABSENT;
+                printf ("Node left\nstate = ABSENT\n");
+        
+                // call callback to notify for leave
+                if (handlers->callback)
+                {
+                    // notify callback
+                    handlers->callback->nodeLeft ();
+                }
+            }            
+        }                       
 
         //
         // perform ticking (process incoming messages)

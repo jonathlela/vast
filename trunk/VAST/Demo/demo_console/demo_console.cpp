@@ -274,7 +274,12 @@ public:
     void gatewayConnected (id_t host_id)
     {
         printf ("gatewayConnected () hostID: [%llu]\n", host_id);
-        //g_world->createVASTNode (g_world_id, g_aoi, VAST_EVENT_LAYER);
+    }
+
+    // notify of successful connection with gateway
+    void gatewayDisconnected ()
+    {
+        printf ("gatewayDisonnected ()\n");
     }
 
     // notify the successful join of the VAST node

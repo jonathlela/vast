@@ -56,6 +56,9 @@ namespace Vast
         // notify of successful connection with gateway
         virtual void gatewayConnected (id_t host_id) = 0;
 
+        // notify of successful disconnection from gateway
+        virtual void gatewayDisconnected () = 0;
+
         // notify the successful join of the VAST node
         virtual void nodeJoined (VAST *vastnode) = 0;
 
