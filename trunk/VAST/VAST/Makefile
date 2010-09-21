@@ -10,7 +10,7 @@ ACE_ROOT = ../../ACE_wrappers/
 CFLAGS = -static -c -Wall -I../common -I../VASTnet  -I../../ACE_wrappers
 #CFLAGS = -fPIC -c -Wall -I../common -I../VASTnet  -I$(ACE_ROOT)
 
-sources = VASTClient.cpp  VASTMatcher.cpp  VASTRelay.cpp  VASTVerse.cpp  VONPeer.cpp  VSOPeer.cpp
+sources = VASTClient.cpp  VASTMatcher.cpp  VASTRelay.cpp  VASTVerse.cpp  VASTThread.cpp VONPeer.cpp  VSOPeer.cpp
  
 objects = $(subst .cpp,.o,$(sources))
 
