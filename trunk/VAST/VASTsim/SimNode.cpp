@@ -9,8 +9,8 @@
 #include "SimNode.h"
 
     
-    SimNode::SimNode (int id, MovementGenerator *move_model, Addr &gateway, SimPara &para, VASTPara_Net &netpara) //, bool as_relay)
-        :_move_model (move_model), _gateway (gateway), _para (para), _netpara (netpara) //, _as_relay (as_relay)
+    SimNode::SimNode (int id, MovementGenerator *move_model, const char *GWstr, SimPara &para, VASTPara_Net &netpara) //, bool as_relay)
+        :_move_model (move_model), _para (para), _netpara (netpara) //, _as_relay (as_relay)
     {                     
         _self.id = NET_ID_UNASSIGNED;
         _nodeindex = id;
@@ -62,10 +62,7 @@
         else
             _is_gateway = true;
         
-        char str[80];
-        _gateway.publicIP.getString (str);
-
-        _world = new VASTVerse (_is_gateway, string (str), &_netpara, &_simpara);
+        _world = new VASTVerse (_is_gateway, GWstr, &_netpara, &_simpara);
         _world->createVASTNode (VAST_DEFAULT_WORLD_ID, _self.aoi, LAYER_UPDATE);
 
         state = WAITING;

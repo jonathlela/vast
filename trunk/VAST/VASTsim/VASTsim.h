@@ -67,7 +67,7 @@ typedef enum
 } SimNodeState;
 
 // initialize parameters, returns which node index to simulate, -1 for error, 0 for manual control
-EXPORT int                  InitPara (VAST_NetModel model, VASTPara_Net &netpara, SimPara &simpara, const char *cmdline = NULL, bool *is_gateway = NULL, world_t *world_id = 0, Area *aoi = NULL, Addr *gateway = NULL, vector<IPaddr> *entries = NULL, int *interval = NULL);
+EXPORT int                  InitPara (VAST_NetModel model, VASTPara_Net &netpara, SimPara &simpara, const char *cmdline = NULL, bool *is_gateway = NULL, world_t *world_id = 0, Area *aoi = NULL, char *GWstr = NULL, int *interval = NULL);
 EXPORT bool                 ReadPara (SimPara &para);
 EXPORT int                  InitSim (SimPara &para, VASTPara_Net &netpara);
 EXPORT bool                 CreateNode (bool wait_till_ready = true);

@@ -50,7 +50,6 @@ const int REPORT_INTERVAL        = 10;
 // global
 Area        g_aoi;              // my AOI (with center as current position)
 Area        g_prev_aoi;         // previous AOI (to detect if AOI has changed)
-Addr        g_gateway;          // address for gateway
 world_t     g_world_id = 0;     // world ID
 bool        g_finished = false; // whether we're done for this program execution
 NodeState   g_state = ABSENT;   // the join state of this node
@@ -60,7 +59,7 @@ int         g_node_no = (-1);   // which node to simulate (-1 indicates none, ma
 unsigned long long   joining_msec;       // record the time for begining to join  by lee
 unsigned long long   joined_msec;        // record the time for joined  by lee
 
-VASTPara_Net g_netpara;         // network parameters
+VASTPara_Net g_netpara (VAST_NET_ACE);   // network parameters
 
 MovementGenerator g_movement;
 FILE       *g_position_log = NULL;     // logfile for node positions
@@ -320,12 +319,11 @@ int main (int argc, char *argv[])
     }
     
     // store default gateway address
-    string str ("127.0.0.1:1037");
-    g_gateway = *VASTVerse::translateAddress (str);
+    char GWstr[80];
+    sprintf (GWstr, "127.0.0.1:1037");
 
     // initialize parameters
     SimPara simpara;
-    vector<IPaddr> entries;
 
     bool is_gateway;
 
@@ -333,7 +331,7 @@ int main (int argc, char *argv[])
     int interval = 0;
 
     // obtain parameters from command line and/or INI file
-    if ((g_node_no = InitPara (VAST_NET_ACE, g_netpara, simpara, cmd, &is_gateway, &g_world_id, &g_aoi, &g_gateway, &entries, &interval)) == (-1))
+    if ((g_node_no = InitPara (VAST_NET_ACE, g_netpara, simpara, cmd, &is_gateway, &g_world_id, &g_aoi, GWstr, &interval)) == (-1))
         exit (0);
 
     // randomize selected join path  by lee
@@ -363,8 +361,8 @@ int main (int argc, char *argv[])
     ACE_OS::sleep (tv);
     
     // create VAST node factory
-    g_world = new VASTVerse (entries, &g_netpara, NULL);
-    g_world->createVASTNode (g_gateway.publicIP, g_aoi, VAST_EVENT_LAYER, g_world_id);
+    g_world = new VASTVerse (is_gateway, GWstr, &g_netpara, NULL);
+    g_world->createVASTNode (g_world_id, g_aoi, VAST_EVENT_LAYER);
 
     // record "begin to join" in position.log  by lee
     // current time in milliseconds

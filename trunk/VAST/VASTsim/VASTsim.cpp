@@ -41,7 +41,7 @@ vector<SimNode *>   g_nodes;            // pointer to all simulation nodes
 vector<bool>        g_as_relay;
 vector<bool>        g_as_matcher;
 MovementGenerator   g_move_model;
-Addr                g_gateway_addr;          // address to gateway node
+char                g_GWstr[80];          // address to gateway node
 SectionedFile      *g_pos_record = NULL;
 
 //map<int, VAST *>    g_peermap;          // map from node index to the peer's relay id
@@ -54,7 +54,7 @@ bool                g_joining   = true;
 
 
 // Initilize parameters, including setting default values or read from INI file
-int InitPara (VAST_NetModel model, VASTPara_Net &netpara, SimPara &simpara, const char *cmdline, bool *p_is_gateway, world_t *p_world_id, Area *p_aoi, Addr *p_gateway, vector<IPaddr> *p_entries, int *p_interval)
+int InitPara (VAST_NetModel model, VASTPara_Net &netpara, SimPara &simpara, const char *cmdline, bool *p_is_gateway, world_t *p_world_id, Area *p_aoi, char *p_GWstr, int *p_interval)
 {
     netpara.model = model;
 
@@ -62,7 +62,7 @@ int InitPara (VAST_NetModel model, VASTPara_Net &netpara, SimPara &simpara, cons
     bool is_gateway;
     world_t world_id = VAST_DEFAULT_WORLD_ID;
     Area aoi;
-    vector<IPaddr> entries;
+
 
     // set default values
     aoi.center.x = (coord_t)(rand () % DIM_X);
@@ -201,17 +201,9 @@ int InitPara (VAST_NetModel model, VASTPara_Net &netpara, SimPara &simpara, cons
     //g_vastnetpara.phys_coord = g_aoi.center;    
 
     // translate gateway string to Addr object
-    string str (GWstr);
-    g_gateway_addr = *VASTVerse::translateAddress (str);
+    strcpy (g_GWstr, GWstr);
 
     // create VAST node factory (with default physical coordinate)          
-
-    // TODO: we may use more entries during join
-    // NOTE: the very first node does not know other existing relays
-    if (is_gateway == false)
-    {
-        entries.push_back (g_gateway_addr.publicIP);
-    }
 
     // return values, if needed
     if (p_is_gateway != NULL)
@@ -223,11 +215,8 @@ int InitPara (VAST_NetModel model, VASTPara_Net &netpara, SimPara &simpara, cons
     if (p_world_id != NULL)
         *p_world_id = world_id;
 
-    if (p_gateway != NULL)
-        *p_gateway = g_gateway_addr;
-
-    if (p_entries != NULL)
-        *p_entries = entries;
+    if (p_GWstr != NULL)
+        strcpy (p_GWstr, g_GWstr);
 
     if (p_interval != NULL)
         *p_interval = interval;
@@ -388,7 +377,7 @@ bool CreateNode (bool wait_till_ready)
     g_vastnetpara.is_matcher    = g_as_matcher[i];
     g_vastnetpara.is_static     = STATIC_PARTITIONING;
 
-    SimNode *n = new SimNode (i+1, &g_move_model, g_gateway_addr, g_para, g_vastnetpara);
+    SimNode *n = new SimNode (i+1, &g_move_model, g_GWstr, g_para, g_vastnetpara);
     g_nodes.push_back (n);
 
     // NOTE: it's important to advance the logical time here, because nodes would 
