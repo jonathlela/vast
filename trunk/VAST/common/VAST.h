@@ -170,7 +170,7 @@ namespace Vast
         virtual world_t         getWorldID () = 0;
 
         // whether I am a relay node
-        virtual bool            isRelay () = 0;
+        virtual int             isRelay () = 0;
 
         // whether I have public IP
         virtual bool            hasPublicIP () = 0;

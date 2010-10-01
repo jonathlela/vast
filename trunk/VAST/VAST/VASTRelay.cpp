@@ -186,6 +186,13 @@ namespace Vast
             return _curr_relay->id;
     }
 
+    // get # of clients connected
+    int
+    VASTRelay::getClientSize ()
+    {
+        return (int)_clients.size ();
+    }
+
     // perform initialization tasks for this handler (optional)
     // NOTE that all internal variables (such as handler_no) have been set at this point
     void 

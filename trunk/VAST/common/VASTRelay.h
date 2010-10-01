@@ -113,6 +113,9 @@ namespace Vast
         // obtain the ID of my relay node
         id_t getRelayID ();
 
+        // get size of clients connected
+        int getClientSize ();
+
     private:
 
         // perform initialization tasks for this handler (optional)

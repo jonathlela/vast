@@ -121,7 +121,7 @@ namespace Vast
         world_t getWorldID ();
 
         // if I'm a relay
-        inline bool isRelay ();
+        inline int isRelay ();
 
         // whether I have public IP
         bool hasPublicIP ();

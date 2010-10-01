@@ -190,13 +190,13 @@ void checkJoin ()
        
         if (g_position_log)
         {
-		    // simulating which node
-			fprintf (g_position_log, "# node path number simulated (-1 indicates manual control)\n");
-			fprintf (g_position_log, "%d\n", g_node_no);
+	    // simulating which node
+	    fprintf (g_position_log, "# node path number simulated (-1 indicates manual control)\n");
+	    fprintf (g_position_log, "%d\n", g_node_no);
         
-			// format
-			fprintf (g_position_log, "\n");
-			fprintf (g_position_log, "# millisec,\"posX,posY\",elapsed (per step)\n\n");
+            // format
+	    fprintf (g_position_log, "\n");
+	    fprintf (g_position_log, "# millisec,\"posX,posY\",elapsed (per step)\n\n");
 
             // joinining & joined time
             fprintf (g_position_log, "%llu,\"%llu,joining\",%d\n",joining_msec,nodeID,g_node_no);
@@ -208,8 +208,8 @@ void checkJoin ()
         if (g_neighbor_log)
         {
             // format
-			fprintf (g_neighbor_log, "\n");
-			fprintf (g_neighbor_log, "# millisec,\"nodeID,posX,posY\", ... (per step)\n\n");		
+	    fprintf (g_neighbor_log, "\n");
+            fprintf (g_neighbor_log, "# millisec,\"nodeID,posX,posY\", ... (per step)\n\n");		
 
             // join & joining time
             fprintf(g_neighbor_log, "%llu,\"%llu,joining\"\n",joining_msec,nodeID);
@@ -486,6 +486,10 @@ int main (int argc, char *argv[])
             if (g_world->isGateway ())
                 self_type = GATEWAY;
         }
+        else if (g_self && g_self->isRelay () > 1)
+        {
+            self_type = RELAY_CLIENT;
+        } 
 
         // perform join check or movement
         if (g_state != JOINED)
@@ -525,7 +529,7 @@ int main (int argc, char *argv[])
                              id,
                              (int)self->aoi.center.x, (int)self->aoi.center.y, 
                              elapsed, (self_type == GATEWAY ? "GATEWAY" : (self_type == MATCHER ?
-                             "MATCHER": "CLIENT")),
+                             "MATCHER": (self_type == RELAY_CLIENT ? "RELAY_CLIENT" : "CLIENT"))),
                              g_world->getSendStat ().total, g_world->getReceiveStat ().total);
                     fflush (g_position_log);
                 }
@@ -654,15 +658,15 @@ int main (int argc, char *argv[])
 
     if (g_position_log) 
     {
-		LogManager::close (g_position_log);
+	LogManager::close (g_position_log);
         g_position_log = NULL;
     }
 
     if (g_neighbor_log)
     {
-		LogManager::close (g_neighbor_log);
+	LogManager::close (g_neighbor_log);
         g_neighbor_log = NULL;
-	}
+    }
 
     if (g_message_log)
     {

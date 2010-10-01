@@ -465,10 +465,14 @@ namespace Vast
     }
 
     // if myself is a relay
-    bool 
+    int 
     VASTClient::isRelay ()
     {
-        return (_relay->getRelayID () == _self.id);
+        // if I'm not a relay 
+        if (_relay->getRelayID () != _self.id)
+            return 0;
+        else   
+            return _relay->getClientSize ();
     }
 
     // whether I have public IP
