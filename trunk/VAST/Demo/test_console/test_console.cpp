@@ -58,6 +58,7 @@ size_t      g_count = 0;        // # of ticks so far (# of times the main loop h
 int         g_node_no = (-1);   // which node to simulate (-1 indicates none, manual control)
 unsigned long long   joining_msec;       // record the time for begining to join  by lee
 unsigned long long   joined_msec;        // record the time for joined  by lee
+unsigned long long   leave_msec;
 
 VASTPara_Net g_netpara (VAST_NET_ACE);   // network parameters
 
@@ -643,7 +644,24 @@ int main (int argc, char *argv[])
 
     //
     // depart & clean up
-    //
+    // current time in milliseconds
+    ACE_Time_Value leave_time = ACE_OS::gettimeofday ();
+    leave_msec = (unsigned long long) (leave_time.sec () * 1000 + leave_time.usec () / 1000);
+    if(g_position_log != NULL)
+        {
+            
+            fprintf(g_position_log, 
+                "%llu,\"%llu,leave\"\n",leave_msec,g_sub_no);
+            fflush(g_position_log);
+        }
+      
+        if(g_neighbor_log != NULL)
+        {
+            
+            fprintf(g_neighbor_log, 
+                "%llu,\"%llu,leave\"\n",leave_msec,g_sub_no);
+            fflush(g_neighbor_log); 
+        }
 
     g_self->leave ();
     g_world->tick ();
