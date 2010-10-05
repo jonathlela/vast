@@ -565,7 +565,7 @@ int main (int argc, char *argv[])
                     sendstat.calculateAverage ();
                     recvstat.calculateAverage ();
 
-                    LogManager::instance ()->writeLogFile ("[%llu] %s send: (%u,%u,%.2f) recv: (%u,%u,%.2f)", msg->from, (type == GATEWAY ? "GATEWAY" : (type == MATCHER ? "MATCHER" : "CLIENT")), 
+                    LogManager::instance ()->writeLogFile ("[%llu] %s send: (%u,%u,%.2f) recv: (%u,%u,%.2f)", msg->from, (type == GATEWAY ? "GATEWAY" : (type == MATCHER ? "MATCHER" : (type == RELAY_CLIENT ? "RELAY_CLIENT" : "CLIENT"))), 
                                                             sendstat.minimum, sendstat.maximum, sendstat.average, recvstat.minimum, recvstat.maximum, recvstat.average);
 
                     // record last update time for this node
