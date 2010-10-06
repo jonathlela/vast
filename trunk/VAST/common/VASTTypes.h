@@ -152,6 +152,7 @@ typedef enum
 typedef enum 
 {
     GATEWAY = 1,        // gateway
+    RELAY_MATCHER,      // a relay + matcher 
     MATCHER,            // regular matcher
     RELAY_CLIENT,       // client with relay status
     CLIENT              // regular client

@@ -42,7 +42,7 @@ using namespace std;
 #endif
 
 // target game cycles per second
-const int FRAMES_PER_SECOND      = 20;
+const int FRAMES_PER_SECOND      = 40;
 
 // number of seconds elasped before a bandwidth usage is reported to gateway
 const int REPORT_INTERVAL        = 10;     
@@ -71,6 +71,17 @@ FILE	   *g_message_log  = NULL;	   // logfile for gateway
 VASTVerse *     g_world = NULL;
 VAST *          g_self  = NULL;
 Vast::id_t      g_sub_no = 0;        // subscription # for my client (peer)  
+
+// Node types
+    char NODE_TYPE[][20] = 
+    {
+        "UNKNOWN",
+        "GATEWAY",
+        "RELAY_MATCHER",
+        "MATCHER",
+        "RELAY_CLIENT",
+        "CLIENT"
+    };
 
 
 #ifdef WIN32
@@ -362,7 +373,7 @@ int main (int argc, char *argv[])
     ACE_OS::sleep (tv);
     
     // create VAST node factory
-    g_world = new VASTVerse (is_gateway, GWstr, &g_netpara, NULL);
+    g_world = new VASTVerse (is_gateway, GWstr, &g_netpara, NULL, NULL, 40);
     g_world->createVASTNode (g_world_id, g_aoi, VAST_EVENT_LAYER);
 
     // record "begin to join" in position.log  by lee
@@ -486,11 +497,14 @@ int main (int argc, char *argv[])
             self_type = MATCHER;
             if (g_world->isGateway ())
                 self_type = GATEWAY;
+            else if (g_self && g_self->isRelay () > 0)
+                self_type = RELAY_MATCHER;
         }
-        else if (g_self && g_self->isRelay () > 1)
+        else if (g_self && g_self->isRelay () > 0)
         {
             self_type = RELAY_CLIENT;
         } 
+
 
         // perform join check or movement
         if (g_state != JOINED)
@@ -529,8 +543,7 @@ int main (int argc, char *argv[])
                              curr_msec, 
                              id,
                              (int)self->aoi.center.x, (int)self->aoi.center.y, 
-                             elapsed, (self_type == GATEWAY ? "GATEWAY" : (self_type == MATCHER ?
-                             "MATCHER": (self_type == RELAY_CLIENT ? "RELAY_CLIENT" : "CLIENT"))),
+                             elapsed, NODE_TYPE[self_type],
                              g_world->getSendStat ().total, g_world->getReceiveStat ().total);
                     fflush (g_position_log);
                 }
@@ -553,6 +566,7 @@ int main (int argc, char *argv[])
                 if (msg->msgtype == 1)
                 {
                     StatType sendstat, recvstat;
+                    listsize_t client_size = 0;
 
                     // extract node type
                     listsize_t type;
@@ -562,11 +576,16 @@ int main (int argc, char *argv[])
                     msg->extract (sendstat);         
                     msg->extract (recvstat);
 
+                    // extract # of clients connected
+                    msg->extract (client_size);
+
                     sendstat.calculateAverage ();
                     recvstat.calculateAverage ();
 
-                    LogManager::instance ()->writeLogFile ("[%llu] %s send: (%u,%u,%.2f) recv: (%u,%u,%.2f)", msg->from, (type == GATEWAY ? "GATEWAY" : (type == MATCHER ? "MATCHER" : (type == RELAY_CLIENT ? "RELAY_CLIENT" : "CLIENT"))), 
-                                                            sendstat.minimum, sendstat.maximum, sendstat.average, recvstat.minimum, recvstat.maximum, recvstat.average);
+                    LogManager::instance ()->writeLogFile ("[%llu] %s clients: %u send: (%u,%u,%.2f) recv: (%u,%u,%.2f)", 
+                                                            msg->from, NODE_TYPE[type], client_size, 
+                                                            sendstat.minimum, sendstat.maximum, sendstat.average, 
+                                                            recvstat.minimum, recvstat.maximum, recvstat.average);
 
                     // record last update time for this node
                     last_update[msg->from] = curr_msec;
@@ -586,6 +605,9 @@ int main (int argc, char *argv[])
             if (g_self && seconds_to_report <= 0)
             {
                 seconds_to_report = REPORT_INTERVAL;
+                
+                listsize_t client_size = (listsize_t)g_self->isRelay ();
+                printf ("reporting to gateway, client_size: %u\n", client_size);
 
                 // report bandwidth usage stat to gateway
                 // message type 1 = bandwidth
@@ -596,6 +618,7 @@ int main (int argc, char *argv[])
                 msg.store (self_type);
                 msg.store (sendstat);
                 msg.store (recvstat);
+                msg.store (client_size);
             
                 g_self->reportGateway (msg);
             

@@ -469,10 +469,10 @@ namespace Vast
     VASTClient::isRelay ()
     {
         // if I'm not a relay 
-        if (_relay->getRelayID () != _self.id)
-            return 0;
-        else   
-            return _relay->getClientSize ();
+        //if (_relay->getRelayID () != _self.id)
+        //    return 0;
+        //else   
+        return _relay->getClientSize ();
     }
 
     // whether I have public IP

@@ -92,6 +92,8 @@ namespace Vast
     
         size_t  tick_per_sec = 0;       // tick count per second
         size_t  tick_count = 0;         // # of ticks so far (# of times the main loop has run)
+ 
+        printf ("\nVASTThread svc (): time_budget: %lu ticks_persec: %d\n\n", time_budget, _ticks_persec);
 
         // entering main loop
         while (_active)
@@ -114,7 +116,7 @@ namespace Vast
             if (per_sec)
             {
                 ACE_Time_Value curr_time = ACE_OS::gettimeofday ();
-                printf ("%ld s, tick %lu, tick_persec %lu, sleep: %lu us, time_left: %d\n", (long)curr_time.sec (), tick_count, tick_per_sec, sleep_time, time_left);
+                printf ("%ld s, tick %lu, tick_persec %lu, sleep: %lu us, time_left: %d budget: %u\n", (long)curr_time.sec (), tick_count, tick_per_sec, sleep_time, time_left, time_budget);
                 tick_per_sec = 0;
             }
 
