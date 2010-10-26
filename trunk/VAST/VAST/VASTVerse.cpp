@@ -29,12 +29,6 @@
 #include "VASTClient.h"
 #include "VASTMatcher.h"
 #include "VoronoiSF.h"
-#include "net_emu.h"        // TODO: cleaner way?
-#include "net_emu_bl.h"     // TODO: cleaner way?
-
-#ifndef ACE_DISABLED
-#include "net_ace.h"
-#endif
 
 // for starting separate thread for running VAST node
 #include "VASTThread.h"
@@ -43,12 +37,6 @@
 namespace Vast
 {  
 	
-    // currently we assume there's only one globally accessible netbridge (for simu only)
-    // TODO: once created, it will not be released until the program ends,
-    //       a better mechanism?
-    static net_emubridge *g_bridge     = NULL;
-    int                   g_bridge_ref = 0;            // reference count for the bridge
-
     class VASTPointer
     {
     public:
@@ -75,96 +63,37 @@ namespace Vast
     //
     //  Internal helper functions
     //
-
-    // TODO: better interface? (don't use global functions)
    
     VASTnet *
     createNet (unsigned short port, VASTPara_Net &para, vector<IPaddr> &entries, int step_persec)
     {
-        VASTnet *net = NULL;
-        if (para.model == VAST_NET_EMULATED)
-            net = new net_emu (*g_bridge);
-		else if (para.model == VAST_NET_EMULATED_BL)					
-			net = new net_emu_bl (*(net_emubridge_bl *)g_bridge);			
-		
-#ifndef ACE_DISABLED
-        else if (para.model == VAST_NET_ACE)
+        if (step_persec == 0)
         {
-            printf ("VASTnet::createNet, creating net_ace at port: %d\n", port);
-            net = new net_ace (port);
+            printf ("VASTnet::createNet () steps per second not specified, set to default: 10\n");
+            step_persec = 10;
         }
-#endif        
 
+        VASTnet *net = new VASTnet (para.model, port, step_persec);
+
+        // store initial entry points
         net->addEntries (entries);
-
-        // set step persec for simulated network
-        if (para.model == VAST_NET_EMULATED || para.model == VAST_NET_EMULATED_BL)
-        {
-            if (step_persec == 0)
-            {
-                printf ("VASTnet::createNet () steps per second not specified, set to default: 10\n");
-                step_persec = 10;
-            }
-            
-            net->setTimestampPerSecond (step_persec);
-                
-		    // set the bandwidth limitation after the net is created
-			if (para.model == VAST_NET_EMULATED_BL)
-			{
-				Bandwidth bw;
         
-				bw.UPLOAD   = para.send_quota;
-				bw.DOWNLOAD = para.recv_quota;				
-        
-				net->setBandwidthLimit (BW_UPLOAD,   bw.UPLOAD  / step_persec);
-				net->setBandwidthLimit (BW_DOWNLOAD, bw.DOWNLOAD/ step_persec);
-			}
-        }
+		net->setBandwidthLimit (BW_UPLOAD,   para.send_quota / step_persec);
+		net->setBandwidthLimit (BW_DOWNLOAD, para.recv_quota / step_persec);
 
         return net;
     }
 
     bool 
-    destroyNet (VASTnet *net, VASTPara_Net &para)
+    destroyNet (VASTnet *net)
     {
         if (net == NULL)
             return false;
-        else if (para.model == VAST_NET_EMULATED)
-            delete (net_emu *) net;
-		else if (para.model == VAST_NET_EMULATED_BL)
-			delete (net_emu_bl *) net;
-#ifndef ACE_DISABLED
-        else if (para.model == VAST_NET_ACE)
-        {
-            // force close (to terminate thread)
-            ((net_ace *) net)->close (0);
-            delete (net_ace *) net;
-        }
-#endif
-        else
-            return false;
 
+        delete net;
         return true;
     }
     
-    /*
-    MessageQueue *
-    createQueue (VASTnet *net)
-    {
-        return new MessageQueue (net);
-    }
-
-    bool
-    destroyQueue (MessageQueue *queue)
-    {
-        if (queue == NULL)
-            return false;
-        
-        delete queue;
-        return true;
-    }
-    */
-
     VASTVerse::
     VASTVerse (bool is_gateway, const string &GWstr, VASTPara_Net *netpara, VASTPara_Sim *simpara, VASTCallback *callback, int tick_persec)
         :_netpara (*netpara)
@@ -177,6 +106,11 @@ namespace Vast
 
         // record gateway info here, actual connection will be made in tick ()
         Addr *addr = VASTVerse::translateAddress (GWstr);
+        
+        // use localhost as default
+        if (addr == NULL)
+            addr = VASTVerse::translateAddress (string ("127.0.0.1:1037"));
+
         _gateway = addr->publicIP;
 
         if (is_gateway == false)
@@ -198,22 +132,6 @@ namespace Vast
         // store callback, if any
         VASTPointer *handlers   = (VASTPointer *)_pointers;
         handlers->callback      = callback;
-
-        // initialize rand generator (for node fail simulation, NOTE: same seed is used to produce exactly same results)
-        //srand ((unsigned int)time (NULL));
-        srand (0);
-
-        if (g_bridge == NULL)
-        {
-            // create a shared net-bridge (used in simulation to locate other simulated nodes)
-            // NOTE: g_bridge may be shared across different VASTVerse instances   
-            if (_netpara.model == VAST_NET_EMULATED)                            
-                g_bridge = new net_emubridge (_simpara.loss_rate, _simpara.fail_rate, 1, _simpara.step_persec, 1);           
-		    else if (_netpara.model == VAST_NET_EMULATED_BL)		
-			    g_bridge = new net_emubridge_bl (_simpara.loss_rate, _simpara.fail_rate, 1, _simpara.step_persec);        
-        }
-
-        g_bridge_ref++;
 
         // start thread if both callback & tick_persec is specified
         if (callback && tick_persec > 0)
@@ -273,21 +191,15 @@ namespace Vast
 
         if (handlers->net != NULL)
         {
-            destroyNet (handlers->net, _netpara);
+            destroyNet (handlers->net);
             handlers->net = NULL;
-        }
-        
-        g_bridge_ref--;
-
-        // only delete the bridge if no other VASTVerse's using it
-        if (g_bridge != NULL && g_bridge_ref == 0)
-        {
-            delete g_bridge;
-            g_bridge = NULL;
-        }
+        }        
 
         delete (VASTPointer *)_pointers;
         _pointers = NULL;
+
+        // destory TimeMonitor
+        TimeMonitor::terminateInstance ();
 
     }
 
@@ -380,7 +292,6 @@ namespace Vast
                 return false;
 
             printf ("VASTVerse::isInitialized () creating MessageQueue...\n");
-            //handlers->msgqueue = createQueue (handlers->net);
             handlers->msgqueue = new MessageQueue (handlers->net);
         }
 
@@ -532,7 +443,7 @@ namespace Vast
         VASTPointer *handlers = (VASTPointer *)_pointers;
 
         // # of ticks a joining stage is considered timeout
-        int timeout_period = (handlers->net != NULL ? (VASTVERSE_RETRY_PERIOD * handlers->net->getTimestampPerSecond ()) : 0);
+        timestamp_t timeout_period = (handlers->net != NULL ? (VASTVERSE_RETRY_PERIOD * handlers->net->getTimestampPerSecond ()) : 0);
 
         //
         // perform init & joining tasks
@@ -686,8 +597,6 @@ namespace Vast
                 // next time to enter this is one second later
                 _next_periodic = (now / net->getTimestampPerSecond () + 1) * net->getTimestampPerSecond ();
 
-                //_next_periodic = now + handlers->net->getTimestampPerSecond ();
-
                 // record network stat for this node
                 size_t size = net->getSendSize (0);            
                 _sendstat.addRecord (size - _lastsend);
@@ -730,6 +639,8 @@ namespace Vast
     void  
     VASTVerse::tickLogicalClock ()
     {
+        /* TO-DO: how to tick clock given that netbridge now is not really accessible from here
+
         // increase tick globally when the last node has processed its messages for this round
         // this will prevent its message be delayed one round in processing by other nodes
         // TODO: find a better way? 
@@ -737,27 +648,32 @@ namespace Vast
         {
             g_bridge->tick ();
         }
+
+        */
     }
 
     // stop operations on this node
     void     
     VASTVerse::pauseNetwork ()
-    {
+    {        
+        // TODO: no functions now
         VASTPointer *handlers = (VASTPointer *)_pointers;
         if (handlers->net != NULL)
         {
             //handlers->net->flush ();
             handlers->net->stop ();			
-        }
+        }        
     }
 
     // resume operations on this node
     void     
     VASTVerse::resumeNetwork ()
     {
+        
+        // TODO:
         VASTPointer *handlers = (VASTPointer *)_pointers;
         if (handlers->net != NULL)
-            handlers->net->start ();
+            handlers->net->start ();        
     }
 
     // obtain access to Voronoi class (usually for drawing purpose)
@@ -906,7 +822,7 @@ namespace Vast
         }
 
         // determine hostID based on IP
-        addr.host_id = VASTnet::resolveHostID (&addr.publicIP);
+        addr.host_id = net_manager::resolveHostID (&addr.publicIP);
 
         return &addr;
     }

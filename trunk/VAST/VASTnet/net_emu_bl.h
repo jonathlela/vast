@@ -122,7 +122,7 @@ namespace Vast {
         std::map<id_t, size_t>          _sendqueue_size;
 
         // map from message ID to its state for messages in send queue
-        std::map<netmsg*, int>             _msg2state;
+        std::map<netmsg*, int>          _msg2state;
 
         // id for last active sendqueue
         id_t                            _last_actqueue_id;

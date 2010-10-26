@@ -42,19 +42,12 @@
 #include "VAST.h"           // provides spatial publish / subscribe (SPS)
 #include "VASTRelay.h"      // provides physical coordinate, IP address, and public IP
 #include "VASTCallback.h"   // callback for handling incoming message at a VAST node
-
+#include "VASTnet.h"
 
 #define VASTVERSE_RETRY_PERIOD  (10)     // # of seconds if we're stuck in a state, revert to the previous
 
 namespace Vast
 {
-    typedef enum 
-    {
-        VAST_NET_EMULATED = 1,
-        VAST_NET_EMULATED_BL,
-        VAST_NET_ACE
-    } VAST_NetModel;
-
     class VASTPara_Net
     {
     public:
@@ -114,8 +107,9 @@ namespace Vast
     //
     
     // TODO: need to cleanup current implementation (too ugly for hiding internal classes from user)
-
-    class EXPORT VASTVerse //: public ACE_Task<ACE_MT_SYNCH>
+    
+    // NOTE: a general rule: avoid STL objects passing across DLL boundaries
+    class EXPORT VASTVerse 
     {
     friend class VASTThread;
 

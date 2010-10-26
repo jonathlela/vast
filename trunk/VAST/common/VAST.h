@@ -107,6 +107,9 @@ namespace Vast
         //          TIMEOUT_REMOVE_GHOST        in VASTClient.h
         //          TIMEOUT_REMOVE_CONNECTION   in VASTnet.h
 
+        // Warning: passing STL across DLL boundary may create problems, see:
+        // http://www.gamedev.net/community/forums/topic.asp?topic_id=486103
+
         VAST ()
             :MessageHandler (MSG_GROUP_VAST_CLIENT)
         {
@@ -160,14 +163,14 @@ namespace Vast
         // get the current node's information
         virtual Node *          getSelf () = 0;
 
-        // whether the current node is joined (part of relay mesh)
-        virtual bool            isJoined () = 0;
-
         // subscription id indicates subscribe success
         virtual id_t            getSubscriptionID () = 0;
 
         // get the world_id I'm currently joining
         virtual world_t         getWorldID () = 0;
+
+        // whether the current node is joined (part of relay mesh)
+        virtual bool            isJoined () = 0;
 
         // whether I am a relay node
         virtual int             isRelay () = 0;

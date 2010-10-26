@@ -37,19 +37,6 @@ namespace Vast {
     {
 
     public:
-        /*
-        net_emubridge (int loss_rate, int fail_rate, int seed, timestamp_t init_time)
-            :_loss_rate (loss_rate), _fail_rate (fail_rate), _time (init_time)
-        {
-            //srand (seed);
-            _last_seed = rand ();
-
-            // starting from the largest possible id for assigning temp ids
-            //_id_count = (id_t)(-1);
-            _id_count = 1;
-
-        }
-        */
 
 		net_emubridge (int loss_rate, int fail_rate, int seed, size_t net_spsc, timestamp_t init_time)
 			:_loss_rate (loss_rate), _fail_rate (fail_rate), _time (init_time), _net_step_per_sec(net_spsc)
@@ -57,8 +44,6 @@ namespace Vast {
 			//srand (seed);
 			_last_seed = rand ();
 
-			// starting from the largest possible id for assigning temp ids
-			//_id_count = (id_t)(-1);
             _id_count = 1;
 		}
 

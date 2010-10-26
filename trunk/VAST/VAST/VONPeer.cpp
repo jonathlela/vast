@@ -166,9 +166,8 @@ namespace Vast
             pos.x = _self.aoi.center.x;
             pos.y = _self.aoi.center.y;
 
-            msg.store ((char *)&pos, sizeof (VONPosition));
-            
             // NOTE: we use an optimized version of position with only x & y
+            msg.store ((char *)&pos, sizeof (VONPosition));                        
             msg.store (_self.time);
         }
 
@@ -293,8 +292,6 @@ namespace Vast
     void 
     VONPeer::tick ()
     {
-        //_tick_count++;
-
         // process incoming messages
         // NOTE: the alternative is to call handleMessage directly when there's incoming messages (current approach)
         timestamp_t senttime;
@@ -377,7 +374,7 @@ namespace Vast
 
                 // update existing or new neighbor status                                            
                 if (isNeighbor (in_msg.from))
-                    updateNode (node);                
+                    updateNode (node);
                 else                                      
                     insertNode (node);
 
@@ -521,11 +518,7 @@ namespace Vast
                 {   
                     _NEIGHBOR_Message.total++;
                     in_msg.extract (newnode);
-                    
-                    // potential BUG:
-                    // NOTE: we're using time to decide if a new node is fresher than an existing one
-                    //       but this requires well-synchronized clocks
-                    
+                                        
                     // store the new node and process later
                     // if there's existing notification, then replace only if newer     
                     if (_new_neighbors.find (newnode.id) == _new_neighbors.end () ||

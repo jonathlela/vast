@@ -61,18 +61,14 @@ const int RECONNECT_ATTEMPT = 0;
 
 namespace Vast {
     
-    class net_ace : public Vast::VASTnet, public ACE_Task<ACE_MT_SYNCH>
+    class net_ace : public Vast::net_manager, public ACE_Task<ACE_MT_SYNCH>
     {
     friend class net_ace_handler;
 
     public:
         
         net_ace (uint16_t port);
-
-        ~net_ace ()
-        {          
-            ACE::fini ();
-        }
+        ~net_ace ();
 
         //
         //  Standard ACE_Task methods (must implement)
@@ -91,58 +87,44 @@ namespace Vast {
         // inherent methods from class 'VASTnet'
         //
 
-        void start ()
-        {               
-            VASTnet::start ();
+        void start ();        
+        void stop ();
 
-            // record starting time of net_ace object
-            _start_time = ACE_OS::gettimeofday();
-
-            // open the listening thread, _active will be true after calling
-            this->open (0);
-        }
-        
-        void stop ()
-        {                
-            VASTnet::stop ();
-
-            // close the listening thread, _active will set to false after calling
-            this->close (0);
-        }
-               
-        // get current physical timestamp
+        // get current physical timestamp (in millisecond, 10^-6)
         timestamp_t getTimestamp ();
 
         // get IP address from host name
         const char *getIPFromHost (const char *hostname = NULL);
+          
+        // obtain the IP / port of a remotely connected host
+        bool getRemoteAddress (id_t host_id, IPaddr &addr);
 
-        // check the validity of an IP address, modify it if necessary
-        // (for example, translate "127.0.0.1" to actual IP)
-        bool validateIPAddress (IPaddr &addr);
-        
-    private:
+        // connect or disconnect a remote node
+        bool connect (id_t target, unsigned int host, unsigned short port);
+        bool disconnect (id_t target);      
 
-        // connect or disconnect a remote node (should check for redundency)
-        int connect (id_t target);
-        int disconnect (id_t target);      
-
-        // send an outgoing message to a remote host
+        // send an outgoing message to a remote host, if addr is specified, message is UDP
         // return the number of bytes sent
-        size_t send (id_t target, char const *msg, size_t size, bool reliable = true);
-
-        // receive an incoming message
-        // return pointer to next QMSG structure or NULL for no more message
-        QMSG *receive ();
+        size_t send (id_t target, char const *msg, size_t size, const Addr *addr = NULL);
         
+        // receive an incoming message
+        // return pointer to valid NetSocketMsg structure or NULL for no messages
+        NetSocketMsg *receive ();
+
+        // change the ID for a remote host
+        bool switchID (id_t prevID, id_t newID);
+
         // store a message into priority queue
         // returns success or not
-        bool store (QMSG *qmsg);
+        bool msg_received (id_t fromhost, const char *message, size_t size, timestamp_t recvtime = 0, bool in_front = false);
 
         // methods to keep track of active connections
-        // returns NET_ID_UNASSIGNED if failed
-        id_t register_conn (id_t id, void *stream);
-        id_t unregister_conn (id_t id);
+        bool socket_connected (id_t id, void *stream);
+        bool socket_disconnected (id_t id);
 
+    private:
+
+        // bind port for this node
         uint16_t              _port_self;
 
         // condition to ensure server thread is running before proceeding
@@ -166,9 +148,6 @@ namespace Vast {
         // for critical section access control 
         ACE_Thread_Mutex            _msg_mutex;
         ACE_Thread_Mutex            _conn_mutex;        // connection mutex
-
-        // for obtaining current time (millisecond accuracy)
-        ACE_Time_Value              _start_time;
 
         // hostname & IP of current host
         char                        _hostname[255];

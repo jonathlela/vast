@@ -50,9 +50,6 @@ namespace Vast {
 
         id_t obtain_id (void *pointer);
 
-        // replace the temp id with a new id
-        //void registerHostID (id_t temp_id, id_t id);
-
         void releaseHostID (id_t id);
 
         // Return remaining send/recv quota for the node #node_id

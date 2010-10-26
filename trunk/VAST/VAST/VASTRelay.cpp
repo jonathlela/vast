@@ -633,7 +633,7 @@ namespace Vast
 
                 for (size_t i=0; i < entries.size (); i++)
                 {            
-                    relay.id = relay.addr.host_id  = _net->resolveHostID (&entries[i]);
+                    relay.id = relay.addr.host_id  = net_manager::resolveHostID (&entries[i]);
                     relay.addr.publicIP = entries[i];
         
                     addRelay (relay);

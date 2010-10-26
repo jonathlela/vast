@@ -54,7 +54,6 @@ namespace Vast
     net_emu_bl::
     disconnect (id_t target)
     {
-
         int ret;
         if ((ret = net_emu::disconnect (target)) != 0)
             return ret;
@@ -84,10 +83,8 @@ namespace Vast
     }
 
 	size_t 
-	net_emu_bl::send (id_t target, char const*msg, size_t size, bool reliable)
+	net_emu_bl::send (id_t target, char const *msg, size_t size, bool reliable)
 	{
-        reliable = reliable;
-
 		if (_active == false || isConnected (target) == false)
 			return 0;
 
@@ -116,7 +113,8 @@ namespace Vast
 */
 		// create netmsg
 		netmsg *newm = new netmsg (_id, msg, size, this->getTimestamp (), NULL, NULL);
-		// push msg into _sendqueue (send will be done when flush called in near future)
+		
+        // push msg into _sendqueue (send will be done when flush called in near future)
 		if (_sendqueue.find (target) == _sendqueue.end ())
 		{
 			_sendqueue[target] = newm;
@@ -220,7 +218,6 @@ namespace Vast
 
 		size_t left_quota = 0, total_send_size = 0; // left quota from other peers
 		while ((it != end_it) 
-			   /*&& (rquota >= min_block_size) */
 			   && (_sendqueue.size () > remove_list.size () /* + dest_full_count */))
 		{
 			const id_t & dest_id = it->first;
@@ -303,25 +300,9 @@ namespace Vast
                 }
             }
             _sendqueue.erase (r_id);
-
-/*
-            if (_sendqueue_size.find (r_id) == _sendqueue_size.end ())
-                printf ("[%lu][net_emu_bl] try to remove empty sendqueue_size %lu.\n", _id, r_id);
-            else if (_sendqueue_size[r_id] != 0)
-                printf ("[%lu][net_emu_bl] try to remove non-zero sendqueue_size %lu.\n", _id, r_id);
-*/
-
             _sendqueue_size.erase (r_id);
         }
 		
-
-/*
-		if (this->_addr.host_id == 1)
-		{
-			printf("Host ID: [1] Flush Size: %ul \n", total_send_size);
-		}
-*/
-
         return total_send_size;
     }
 
@@ -329,8 +310,7 @@ namespace Vast
     void 
     net_emu_bl::
     remoteDisconnect (id_t remote_id)
-    {
-		
+    {		
         net_emu::remoteDisconnect (remote_id);
 
         // clear up sendqueue

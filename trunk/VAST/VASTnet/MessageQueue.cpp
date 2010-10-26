@@ -140,6 +140,9 @@ namespace Vast
     void
     MessageQueue::tick ()
     {
+        // convert incoming messages to VAST or socket messages first
+        _net->process ();
+
         // process incoming (external) messages first and flushing out the messages
         processMessages ();
 
@@ -152,7 +155,7 @@ namespace Vast
 
         // process once more for internal messages (targeted at self)
         // (e.g., to reflect proper neighbor list for Clients)
-        processMessages ();        
+        processMessages ();
     }
 
     // store default route for unaddressable targets
@@ -177,6 +180,7 @@ namespace Vast
 
         // go through each of the message received at the network layer, 
         // invoke the respective handlers 
+        // NOTE: if it's a UDP message, fromhost may be NET_ID_UNASSIGNED
         while ((recvmsg = _net->receiveMessage (fromhost)) != NULL)
         {       
             // check for DISCONNECT message 

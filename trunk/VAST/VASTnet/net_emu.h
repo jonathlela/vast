@@ -38,93 +38,72 @@
 
 namespace Vast {
 
-    class net_emu : public Vast::VASTnet
+    class net_emu : public Vast::net_manager
     {
     public:
-        net_emu (net_emubridge &b);
+        net_emu (timestamp_t sec2timestamp);
 
-        ~net_emu ()
-        {
-            // remove from bridge so that others can't find me
-            _bridge.releaseHostID (_id);
-        }
-
+        ~net_emu ();
+        
+        /*
         // assignment to shut VC compiler warning
         net_emu &operator=(const net_emu& c)
         {  
-            _msgqueue = c._msgqueue;
-            _bridge   = c._bridge;
+            //_msgqueue = c._msgqueue;
+            //_bridge   = c._bridge;
 
             return *this;
         }
-
+        */
+        
         //
-        // inherent methods from class 'VASTnet'
+        // inherent methods from class 'net_manager'
         //
        
         virtual void start ();
-
         virtual void stop ();
 
-        //void registerHostID (id_t my_id);
-
         // get current physical timestamp
-        timestamp_t getTimestamp ()
-        {
-            return _bridge.getTimestamp ();
-        }
+        timestamp_t getTimestamp ();
 
         // get IP address from host name
-        const char *getIPFromHost (const char *hostname)
-        {
-            return "127.0.0.1";
-        }
+        const char *getIPFromHost (const char *hostname);
 
-        // check the validity of an IP address, modify it if necessary
-        // (for example, translate "127.0.0.1" to actual IP)
-        bool validateIPAddress (IPaddr &addr)
-        {
-            return true;
-        }
+        // obtain the IP / port of a remotely connected host
+        bool getRemoteAddress (id_t host_id, IPaddr &addr);
+
+        // connect or disconnect a remote node (should check for redundency)       
+        virtual bool connect (id_t target, unsigned int host, unsigned short port);
+        virtual bool disconnect (id_t target);
+
+        // send an outgoing message to a remote host
+        // return the number of bytes sent
+        virtual size_t send (id_t target, char const *msg, size_t size, const Addr *addr = NULL);
+        
+        // receive an incoming message
+        // return pointer to valid NetSocketMsg structure or NULL for no messages
+        virtual NetSocketMsg *receive ();
+
+        // change the ID for a remote host
+        bool switchID (id_t prevID, id_t newID);
+
+        // store a message into priority queue
+        // returns success or not
+        bool msg_received (id_t fromhost, const char *message, size_t size, timestamp_t recvtime = 0, bool in_front = false);
+
+        bool socket_connected (id_t id, void *stream);
+        bool socket_disconnected (id_t id);
 
         //
         // emulator-specific methods
         //               
-        virtual bool remoteConnect (Vast::id_t remote_id, Addr const &addr);
-        virtual void remoteDisconnect (Vast::id_t remote_id);
-
+        virtual bool remoteConnect (id_t remote_id, Addr const &addr);
+        virtual void remoteDisconnect (id_t remote_id);
 
     protected:
 
-        // connect or disconnect a remote node (should check for redundency)
-        // returns (-1) for error, (0) for success        
-        virtual int connect (id_t target);
-        virtual int disconnect (id_t target);
-
-        // send an outgoing message to a remote host
-        // return the number of bytes sent
-        virtual size_t send (id_t target, char const*msg, size_t size, bool reliable = true);
-        
-        // receive an incoming message
-        // return pointer to next QMSG structure or NULL for no more message
-        virtual QMSG *receive ();
-
-        // store a message into priority queue
-        // returns success or not
-        virtual bool store (QMSG *qmsg);
-
-        // methods to keep track of active connections (associate ID with connection stream)
-        // returns NET_ID_UNASSIGNED if failed
-        virtual id_t register_conn (id_t id, void *stream);
-        virtual id_t unregister_conn (id_t id);
-
         // a shared object among net_emu to discover other end-points
-        net_emubridge &                         _bridge;
-
-		// added by yuli ====================================================
-        // Csc 20080225: change to 'static'
-        //   it's just a namespace 'Compressor', so declare as static maybe wastes less memory?
-        static Compressor                       _compressor;
+        //net_emubridge &                         _bridge;
 
     };
 

@@ -177,15 +177,11 @@
 				>
 			</File>
 			<File
-				RelativePath=".\net_emu_bl.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\net_emubridge.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\net_emubridge_bl.cpp"
+				RelativePath=".\net_manager.cpp"
 				>
 			</File>
 			<File
@@ -223,15 +219,11 @@
 				>
 			</File>
 			<File
-				RelativePath=".\net_emu_bl.h"
-				>
-			</File>
-			<File
 				RelativePath=".\net_emubridge.h"
 				>
 			</File>
 			<File
-				RelativePath=".\net_emubridge_bl.h"
+				RelativePath="..\common\net_manager.h"
 				>
 			</File>
 			<File

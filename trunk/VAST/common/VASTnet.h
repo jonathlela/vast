@@ -32,16 +32,11 @@
 //#define ACE_DISABLED    
 
 #include "VASTTypes.h"
-#include "VASTBuffer.h"
+#include "net_manager.h"     // for keeping sockets
 #include <map>
 #include <vector>
 
 #define GATEWAY_DEFAULT_PORT    (1037)          // default port for gateway
-
-#define NET_ID_UNASSIGNED       (0)             // default ID for yet assigned ID
-#define NET_ID_RELAY            (1)             // default ID for gateway node
-
-#define NET_ID_NEWASSIGNED      ((id_t)(-1))    // ID to signify new ID assignment
 
 // grouping for locally-generated ID
 #define ID_GROUP_VON_VAST       1
@@ -58,28 +53,85 @@
 
 namespace Vast {
 
+    // currently supported VASTnet implementions 
+    typedef enum 
+    {
+        VAST_NET_EMULATED = 1,      // simulaion layer
+        //VAST_NET_EMULATED_BL,     // simulaton layer with bandwidth limitation
+        VAST_NET_ACE                // real network layer using ACE
+    } VAST_NetModel;
+
     // common message types
     typedef enum
     {
         DISCONNECT = 0,         // disconnection without action: leaving overlay or no longer overlapped
-        //IPMAPPING,              // mapping between msggroup and IP addresses (stored at MessageQueue layer)
-        //ID_REQUEST              // check validity of self-determined ID or assignment of ID
     } VASTnetMessage;
-
-    // simple structure for a queued message
-    typedef struct 
-    {
-        id_t        fromhost;
-        timestamp_t recvtime;
-        Message    *msg;
-    } QMSG;
-
+         
     // header used by all VAST messages
     typedef struct 
     {
+        uint32_t start    : 6;     // start marker (should be number 42: indicates 101010)
         uint32_t type     : 2;     // type of message (0: ID request; 1: ID assignment; 3: handshake; 4: regular) 
-        uint32_t msg_size : 30;    // size of message
+        uint32_t msg_size : 24;    // size of message (max: 16,777,216 bytes)
+        uint32_t end      : 8;     // end marker, linefeed (LF) '\n'
     } VASTHeader;
+
+    // simple structure for a partially received VAST message
+    class HALF_VMSG
+    {
+    public:
+
+        // we store both header & message in the buffer
+        HALF_VMSG (VASTHeader &h) 
+        {
+            header = h;
+            this->buf = new VASTBuffer (sizeof (VASTHeader) + header.msg_size);
+            received = 0;
+        }
+
+        ~HALF_VMSG ()
+        {
+            if (buf)
+                delete buf;
+        }
+
+        VASTHeader  header;         // VAST header
+        size_t      received;       // bytes already received
+        VASTBuffer  *buf;           // content of the message (including VASTHeader)
+    };
+
+    // simple structure for a queued message
+    class FULL_VMSG
+    {
+    public:
+
+        FULL_VMSG (id_t from, Message *msg, timestamp_t time) 
+        {
+            fromhost = from;
+            recvtime = time;
+            this->_msg = msg;
+        }
+
+        ~FULL_VMSG ()
+        {
+            if (_msg)
+                delete _msg;
+        }
+
+        // return what's pointed by msg
+        Message *getMessage ()
+        {
+            Message *temp = this->_msg;
+            this->_msg = NULL;
+            return temp;
+        }
+
+        id_t        fromhost;
+        timestamp_t recvtime;
+
+    private:
+        Message     *_msg;
+    };
 
     // common message types
     typedef enum
@@ -91,41 +143,26 @@ namespace Vast {
 
     } VASTHeaderType;
 
+    // definition of main VAST network functions
     class EXPORT VASTnet
     {
     public:
 
-        // initialize the network layer with a number of network entry points
-        // if no entries are given then this host is assumed to be a well-known entry
-        VASTnet ();
+        VASTnet (VAST_NetModel model, unsigned short port, int steps_persec);
+        ~VASTnet ();
 
-        virtual ~VASTnet ();
+        // 
+        // init & close functions
+        //
+        void start ();
+        void stop ();
 
-        // starting and stopping the network service
-        virtual void start ();
-        virtual void stop ();
-       
-        // get current physical timestamp
-        virtual timestamp_t getTimestamp () = 0;
+        //
+        // message transmission methods
+        //
 
-        // get IP address from host name
-        virtual const char *getIPFromHost (const char *hostname) = 0;
-
-        // check the validity of an IP address, modify it if necessary
-        // (for example, translate "127.0.0.1" to actual IP)
-        virtual bool validateIPAddress (IPaddr &addr) = 0;
-
-        // set bandwidth limitation to this network interface (limit is in Kilo bytes / second)
-        virtual void setBandwidthLimit (bandwidth_t type, size_t limit) {}
-
-        // record the HostID obtained from a remote Relay
-        void registerHostID (id_t my_id, bool is_public);
-
-        // whether we have joined the overlay successfully and obtained a network ID
-        bool isJoined ();
-
-        // get the IP address of current host machine
-        Addr &getHostAddress ();
+        // store hostID -> Address mapping        
+        void storeMapping (const Addr &address);
 
         // send messages to some nodes, note that everything in msg will be preserved (from, data, targets)
         // returns number of bytes sent
@@ -135,38 +172,80 @@ namespace Vast {
         // return pointer to Message, or NULL for no more message
         Message* receiveMessage (id_t &fromhost);
 
-        // process an incoming raw message (decode its header)
-        // returns the remote host's ID, or NET_ID_UNASSIGNED for failures
-        id_t processRawMessage (VASTHeader &header, const char *msg, id_t remote_id, IPaddr *actual_IP = NULL, void *handler = NULL);
-
-        // store an incoming message for processing by message handlers
-        // return the number of bytes stored
-        size_t storeRawMessage (id_t fromhost, Message *msg); 
-
         // send out all pending messages to each host
-        // return number of bytes sent
-        virtual size_t flush (bool compress = false);
+        // returns number of bytes sent
+        size_t flush (bool compress = false);
 
-        // store hostID -> Address mapping        
-        void storeMapping (const Addr &address);
+        // process all incoming messages (convert to VASTMessage or raw format)
+        // return the # of messages processed
+        int process ();
 
-        // check if connected with the node
-        bool isConnected (id_t id);
+        //
+        //  socket communication methods
+        //
+
+        // open a new TCP socket
+        id_t openSocket (IPaddr &ip_port);
+
+        // close a TCP socket
+        bool closeSocket (id_t socket);
+
+        // send a message to a socket
+        bool sendSocket (id_t socket, const char *msg, size_t size);
+
+        // receive a message from socket, if any
+        // returns the message in byte array, and the socket_id, message size, NULL for no messages
+        char *receiveSocket (id_t &socket, size_t &size);
+
+        //
+        // info query methods (may require platform-dependent calls)
+        //
+
+        // get current physical timestamp (in millisecond since program starts)
+        // NOTE: using uint32_t as timestamp means valid timestamp last until 54 days
+        //       it also means that timestamps on different hosts are not comparable (for ordering purpose)
+        timestamp_t getTimestamp ();
+
+        // get IP address from host name
+        const char *getIPFromHost (const char *hostname);
+
+        // 
+        // state query methods
+        //
+
+        // whether we have joined the overlay successfully and obtained a hostID
+        bool isJoined ();
        
         // return whether this host has public IP or not
         bool isPublic ();
 
-        // get how many ticks exist in a second (for stat reporting)
-        //int getTickPerSecond ();
+        // if I'm an entry point on the overlay
+        bool isEntryPoint (id_t id);
 
-        // set how many ticks exist in a second (for stat reporting)
-        void setTimestampPerSecond (int ticks);
+        // check if a certain node is connected
+        inline bool isConnected (id_t id);
+
+        //
+        // tools 
+        //
+
+        // check the validity of an IP address, modify it if necessary
+        // (for example, translate "127.0.0.1" to actual IP)
+        bool validateIPAddress (IPaddr &addr);
+
+        // check if a target is connected as a VAST message channel, 
+        // and attempt to connect if not (send handshake afterwards)
+        bool validateConnection (id_t id);
+
+        //
+        // getters & setters
+        //
+
+        // set bandwidth limitation to this network interface (limit is in Kilo bytes / second)
+        void setBandwidthLimit (bandwidth_t type, size_t limit);
 
         // get how many timestamps (as returned by getTimestamp) is in a second 
         timestamp_t getTimestampPerSecond ();
-
-        // check if a target is connected, and attempt to connect if not
-        bool validateConnection (id_t id);
 
         // get a list of currently active connections' remote id and IP addresses
         std::map<id_t, Addr> &getConnections ();
@@ -180,44 +259,15 @@ namespace Vast {
         // get a specific address by id
         Addr &getAddress (id_t id);
 
-        // obtain a HostID based on public IP + port for entry point hosts
-        //                    or on public IP + port + number for non-entry hosts;
-        static id_t resolveHostID (const IPaddr *addr);
-
-        // obtain the assigned number from a HostID;
-        static id_t resolveAssignedID (id_t host_id);
-
-        // obtain the port portion of the ID
-        static id_t resolvePort (id_t host_id);
+        // get the IP address of current host machine
+        // TODO: combine with with getAddress ()?
+        Addr &getHostAddress ();
 
         // obtain a unique NodeID, given one of the ID groups
         id_t getUniqueID (int id_group = 0);
 
         // get hostID for myself
         id_t getHostID ();
-
-        // if I'm an entry point on the overlay
-        bool isEntryPoint (id_t id);
-
-        // extract the ID group from an ID
-        static int extractIDGroup (id_t);
-
-        // extract the host IP from an ID
-        static int extractHost (id_t);
-
-        // accept or assign ID for newly joined remote host (depend on whether public IP exists or not)
-        // also send back the remote host's ID if it's newly assigned
-        id_t processIDRequest (Message &msg, IPaddr *actualIP);
-
-        // store an incoming assignment of my ID
-        // returns the newly assigned ID
-        id_t processIDAssignment (Message &msg);
-
-        // send a handshake message to a newly established connection
-        void sendHandshake (id_t target);
-
-        // decode the remote host's ID or assign one if not available
-        id_t processHandshake (Message &msg);
 
         //
         // stat collection functions
@@ -228,7 +278,7 @@ namespace Vast {
         size_t getReceiveSize (msgtype_t msgtype = 0);
         
         // zero out send / recv size records
-        void   resetTransmissionSize ();
+        void resetTransmissionSize ();
 
         // record which other IDs belong to the same host
         // TODO: added due to the two networks / host design in VASTATE
@@ -237,51 +287,61 @@ namespace Vast {
 
     protected:
 
-        // connect or disconnect a remote node (should check for redundency)
-        // returns (-1) for error, (0) for success
-        virtual int     connect (id_t target) = 0;
-        virtual int     disconnect (id_t target) = 0;
+        //
+        //  message processing methods
+        //
 
-        // send an outgoing message to a remote host
-        // return the number of bytes sent
-        virtual size_t send (id_t target, char const *msg, size_t size, bool reliable = true) = 0;
+        // process an incoming raw message (decode its header)        
+        bool processVASTMessage (VASTHeader &header, const char *msg, id_t remote_id);
 
-        // receive an incoming message
-        // return pointer to next QMSG structure or NULL for no more message
-        virtual QMSG *receive () = 0;
+        // accept or assign ID for newly joined remote host (depend on whether public IP exists or not)
+        // also send back the remote host's ID if it's newly assigned
+        id_t processIDRequest (Message &msg, IPaddr &actualIP);
 
-        // store a message into priority queue
-        // returns success or not
-        virtual bool store (QMSG *qmsg) = 0;
+        // store an incoming assignment of my ID
+        // returns the newly assigned ID
+        bool processIDAssignment (Message &msg);
 
-        // methods to keep track of active connections (associate ID with connection stream)
-        // returns NET_ID_UNASSIGNED if failed
-        virtual id_t register_conn (id_t id, void *stream) = 0;
-        virtual id_t unregister_conn (id_t id) = 0;
-                
-        // clear up send queue's content
-        virtual size_t clearQueue () {return 0;}
+        // send a handshake message to a newly established connection
+        void sendHandshake (id_t target);
 
-        // periodic cleanup of inactive connections
-        void cleanConnections ();
+        // decode the remote host's ID or assign one if not available
+        id_t processHandshake (Message &msg);
+
+        // store an incoming VAST message, 'msg' is assumed will not be de-allocated after the call
+        bool storeVASTMessage (id_t fromhost, Message *msg);
+
+        // store unprocessed message to buffer for later processing
+        bool storeSocketMessage (const NetSocketMsg *msg);
+
+        // record my HostID
+        void registerHostID (id_t my_id, bool is_public);
+
+
+        // 
+        // maintaineance functions
+        //
 
         // remove a single connection cleanly
         bool removeConnection (id_t target);
+
+        // periodic cleanup of inactive connections
+        void cleanConnections ();
 
         // update send/recv size statistics
         // type: 1 = send, type: 2 = receive
         void updateTransmissionStat (id_t target, msgtype_t msgtype, size_t total_size, int type);
 
-        // unique id for the VAST node using this network interface
-        id_t                            _id;
-        Addr                            _addr;
 
-        // whether the current interface is working
-        bool                            _active;
+        // 
+        // member variables
+        //
 
-        // whether network is properly binded to listen for incoming messages
-        // TODO: replaced by _active alone?
-        bool                            _binded;
+        // network model we use
+        VAST_NetModel                   _model;
+
+        // the actual socket manager we use
+        net_manager                    *_manager;
 
         // whether this host has public IP or not
         bool                            _is_public;             
@@ -289,37 +349,28 @@ namespace Vast {
         // entry points for joining the overlay network
         std::vector<IPaddr>             _entries;
 
-        // map of active connections
-        std::map<id_t, void *>          _id2conn;
-
-        // map from nodeIDs to IP addresses
+        // map from hostIDs to IP addresses
         std::map<id_t, Addr>            _id2addr;
-
-        // map from nodeIDs to last time the connection was accessed
-        // used to determine connection cleanup / removals
-        // TODO: combine the connection/address/time mapping?
-        std::map<id_t, timestamp_t>     _id2time;
-        
+   
         // timeouts
-        timestamp_t                     _timeout_IDrequest;     // timeout for sending ID request
+        timestamp_t                     _timeout_IDrequest; // timeout for sending ID request
         timestamp_t                     _timeout_cleanup;   // # of ticks before cleanupConnections is called
-
-        // buffer for incoming/outgoing messages
-        // TODO: combine the TCP & UDP buffers?
-        std::map<id_t, VASTBuffer *>    _sendbuf_TCP;
-        std::map<id_t, VASTBuffer *>    _sendbuf_UDP;        
-        std::multimap<byte_t, QMSG *>   _msgqueue;          // priority queue for incoming messages
-        Message                        *_recvmsg;           // next available message for processing
         
         // counter for assigning unique ID
-        std::map<int, id_t>             _IDcounter;         // counter for assigning IDs by this host
+        std::map<int, id_t>             _IDcounter;         // counter for assigning IDs by this host   
 
-    
-        //
-        // logical / physical time management
-        //
-        //int                             _tick_persec;       // how many ticks per second
-        timestamp_t                       _sec2timestamp;     // ratio converting seconds to timestamp as returned by getTimestamp () 
+        // buffer for incoming/outgoing messages
+        // incoming queues
+        VASTBuffer                          _buf;               // generic buffer for receiving messages
+        std::map<id_t, HALF_VMSG *>         _half_queue;        // queue for storing partial incoming messages
+        std::multimap<byte_t, FULL_VMSG *>  _full_queue;        // priority queue for (complete) incoming VAST messages
+        std::vector<NetSocketMsg *>         _socket_queue;      // queue for incoming socket messages
+        Message *                           _recvmsg;           // received VAST message
+
+        // TODO: combine the TCP & UDP buffers?
+        // outgoing queues
+        std::map<id_t, VASTBuffer *>        _sendbuf_TCP;
+        std::map<id_t, VASTBuffer *>        _sendbuf_UDP;
 
 
         // 

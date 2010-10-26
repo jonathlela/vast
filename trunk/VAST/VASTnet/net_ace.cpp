@@ -31,7 +31,7 @@ namespace Vast {
          _down_cond (NULL), 
          _acceptor (NULL)
     {
-        // necessary to avoid crash when using ACE with WinMain
+        // necessary when using ACE within WinMain to avoid crash 
         ACE::init ();
 
         // get hostname
@@ -47,16 +47,29 @@ namespace Vast {
 
         ACE_INET_Addr addr (_port_self, getIPFromHost ());
 
+        
         // TODO: necessary here? actual port might be different and correct one
         //       is set in svc ()
         //       reason is that when VASTVerse is created, it needs to find out / resolve
         //       actual address for gateway whose IP is "127.0.0.1"
-        _addr.setPublic ((uint32_t)addr.get_ip_address (), 
-                         (uint16_t)addr.get_port_number ());
+        _self_addr.setPublic ((uint32_t)addr.get_ip_address (), (uint16_t)addr.get_port_number ());
+
+        //_self_addr.setPublic ((uint32_t)addr.get_ip_address (), 0);
+
+        /*
+        // self-determine preliminary hostID first
+        _self_addr.host_id = this->resolveHostID (&_self_addr.publicIP);
+        */
 
         // set the conversion rate between seconds and timestamp unit
-        // for net_ace it's 1000 timestamp units = 1 second
+        // for net_ace it's 1000 timestamp units = 1 second (each step is 1 ms)
         _sec2timestamp = 1000;
+    }
+
+    // destructor
+    net_ace::~net_ace ()
+    {          
+        ACE::fini ();
     }
 
     //
@@ -79,14 +92,19 @@ namespace Vast {
         // activate the ACE network layer as a thread
         // NOTE: _active should be set true by now, so that the loop in svc () may proceed correctly
         _active = true;
-        this->activate (); 
-            
+        this->activate ();        
+
         // wait until server is up and running (e.g. svc() is executing)
+        // NOTE: this works because we expect svc () will first take sometime to execute,
+        //       during which the _up_cond->wait () is first called.
+        //       if wait () is called *after* svc () has called _up_cond->signal ();
+        //       we will face long, infinite waiting.
         mutex.acquire ();
         _up_cond->wait ();
         mutex.release ();
         
         delete _up_cond;
+        _up_cond = NULL;
         
         printf ("ace_net::open (), after activate thread count: %lu\n", this->thr_count ()); 
 
@@ -115,6 +133,7 @@ namespace Vast {
             mutex.release ();
             
             delete _down_cond;
+            _down_cond = NULL;
 
             printf ("ace_net::close (), thread count: %lu (after closing reactor)\n", this->thr_count ()); 
         }
@@ -148,28 +167,25 @@ namespace Vast {
             addr.set_port_number (_port_self);
         }        
                 
-        ACE_DEBUG ((LM_DEBUG, "net_ace::svc() called. actual port binded: %d\n", _port_self));
-        
-        //addr.set (addr.get_port_number (), getIP ());
-
-        //ACE_DEBUG ((LM_DEBUG, "(%5t) server at %s:%d\n", addr.get_host_addr (), addr.get_port_number ()));
-        
+        ACE_DEBUG ((LM_DEBUG, "net_ace::svc () called. actual port binded: %d\n", _port_self));
+                
         // create new handler for listening to UDP packets        
         // NEW_THREAD will be created (new handler that will listen to port?)
         ACE_NEW_RETURN (_udphandler, net_ace_handler, -1);
         _udp = _udphandler->openUDP (addr);
         _udphandler->open (_reactor, this);
 
-        // TODO: this should really be the private IP, public should be obtained from a server
+        // NOTE: this is a private IP, publicIP is obtained from server
         // register my own address        
-        _addr.setPublic ((uint32_t)addr.get_ip_address (), 
-                          (uint16_t)addr.get_port_number ());
+        _self_addr.setPublic ((uint32_t)addr.get_ip_address (), 
+                              (uint16_t)addr.get_port_number ());
+
+        // self-determine preliminary hostID first
+        _self_addr.host_id = this->resolveHostID (&_self_addr.publicIP);
          
         // wait a bit to avoid signalling before the main thread tries to wait
-        ACE_Time_Value tv (0, 200000);
-        ACE_OS::sleep (tv);        
-
-        _binded = true;
+        ACE_Time_Value sleep_interval (0, 200000);
+        ACE_OS::sleep (sleep_interval);        
 
         // continue execution of original thread in open()
         _up_cond->signal ();
@@ -183,7 +199,6 @@ namespace Vast {
         ACE_DEBUG ((LM_DEBUG, "(%5t) net_ace::svc () leaving event handling loop\n"));
         
         _reactor->remove_handler (_acceptor, ACE_Event_Handler::DONT_CALL);
-        _binded = false;
 
         // NOTE: _acceptor will be deleted when reactor is deleted as one of its
         //       event handlers
@@ -198,6 +213,9 @@ namespace Vast {
             _acceptor = NULL;
         }
 
+        // wait a bit to avoid signalling before the main thread tries to wait
+        ACE_OS::sleep (sleep_interval);
+
         // continue execution of original thread in close()
         // to ensure that svc () will exit
         if (_down_cond != NULL)
@@ -208,19 +226,36 @@ namespace Vast {
 
 
     //
-    // inherent methods from class 'VASTnet'
+    // inherent methods from 'net_manager'
     //
 
+    void 
+    net_ace::start ()
+    {               
+        net_manager::start ();
 
-    // get current physical timestamp, unit is milliseconds
+        // open the listening thread, _active will be true after calling
+        this->open (0);
+    }
+
+    void 
+    net_ace::stop ()
+    {                
+        net_manager::stop ();
+
+        // close the listening thread, _active will set to false after calling
+        this->close (0);
+    }
+
+
+    // get current physical timestamp, unit is milliseconds since 1970 (system clock)
     timestamp_t
     net_ace::
     getTimestamp ()
     {
         ACE_Time_Value time = ACE_OS::gettimeofday();
 
-        timestamp_t now = (timestamp_t)((time.sec ()  - _start_time.sec ()) * 1000 + 
-                                        (time.usec () - _start_time.usec ()) / 1000);        
+        timestamp_t now = (timestamp_t)(time.sec () * 1000 + time.usec () / 1000);        
         return now;
     }
 
@@ -237,18 +272,12 @@ namespace Vast {
             if (_IPaddr[0] != 0)
                 return _IPaddr;
 
-            //ACE_OS::hostname (hostname, 255);
             strcpy (hostname, _hostname);
         }
         else
             strcpy (hostname, host);
  
-        //printf ("hostname=%s, calling gethostbyname ()\n", hostname);
         hostent *remoteHost = ACE_OS::gethostbyname (hostname);
-
-        //printf ("net_ace::getIPFromHost (): gethostbyname () success!\n");
-
-        //printf("\tOfficial name: %s\n", remoteHost->h_name);
 
         if (remoteHost == NULL)
             return NULL;
@@ -277,172 +306,260 @@ namespace Vast {
             return NULL;
     }
 
-    // check the validity of an IP address, modify it if necessary
-    // (for example, translate "127.0.0.1" to actual IP)
+    // obtain the IP / port of a remotely connected host
+    // returns NULL if not available
     bool 
-    net_ace::validateIPAddress (IPaddr &addr)
+    net_ace::getRemoteAddress (id_t host_id, IPaddr &addr)
     {
-        // if address is localhost (127.0.0.1), replace with my detected IP 
-        if (addr.host == 0 || addr.host == 2130706433)
-            addr.host = getHostAddress ().publicIP.host;
+        std::map<id_t, ConnectInfo>::iterator it;
+        bool result = false;
 
-        // TODO: perform other actual checks
+        _conn_mutex.acquire ();
+        it = _id2conn.find (host_id);
+        if (it != _id2conn.end ())
+        {
+            result = true;
+            addr = ((net_ace_handler *)(it->second.stream))->getRemoteAddress ();
+        }
+        _conn_mutex.release ();             
 
-        return true;
+        return result;
     }
 
-    int 
+    bool
     net_ace::
-    connect (id_t target)
+    connect (id_t target, unsigned int host, unsigned short port)
     {
         if (_active == false)
-            return (-1);
+            return false;
 
-        // avoid self-connection
-        if (target == _id)
-            return 0;
-
-        // lookup address
-        if (_id2addr.find (target) == _id2addr.end ())
+        // we're always connected to self
+        if (target == _id || isConnected (target))
         {
-            printf ("net_ace::connect (): cannot find address for target: %llu\n", target);
-            return (-1);           
+            printf ("net_ace::connect () connection for [%llu] already exists\n", target);
+            return true;
         }
-        Addr &addr = _id2addr[target];
 
         // convert target address to ACE format
-        ACE_INET_Addr target_addr ((u_short)addr.publicIP.port, (ACE_UINT32)addr.publicIP.host);
-        
-        if (isConnected (target) == true)
-        {
-#ifdef DEBUG_DETAIL
-            //ACE_SOCK_Stream &stream = *((net_ace_handler *)_id2conn[target]);
-            //ACE_DEBUG ((LM_DEBUG, "existing connection to (%s:%d)\n", ));
-#endif            
-            ACE_ERROR_RETURN ((LM_ERROR, "(%5t) connect(): connection already exists for [%d] (%s:%d)\n", target, target_addr.get_host_addr (), target_addr.get_port_number ()), 0);
-        }
-        
+        ACE_INET_Addr target_addr (port, (ACE_UINT32)host);
+                
         // create new handler
         net_ace_handler *handler;
-        ACE_NEW_RETURN (handler, net_ace_handler, (-1));    
+        ACE_NEW_RETURN (handler, net_ace_handler, false);    
 
-        // initialize a connection, note that the handler object
-        // is treated as a SOCK_Stream
-        // NOTE 2nd parameter is in microsecond (not milli)        
-        int attempt_count = 3;
-        ACE_Time_Value tv (0, 100000);
-        ACE_DEBUG ((LM_DEBUG, "connecting to %s:%d\n", target_addr.get_host_addr (), target_addr.get_port_number ()));
-        ACE_Time_Value timeout (2, 0);
+        // initialize a connection, note that handler is treated as a SOCK_Stream object
+        // NOTE 2nd parameter in ACE_Time_Value is in microsecond (not milli)        
+        int attempt_count = 0;
+        ACE_Time_Value sleeptime (0, 100000);
+        ACE_DEBUG ((LM_DEBUG, "connecting to %s:%u\n", target_addr.get_host_addr (), port));
+        
+        // three-second TCP connection timeout
+        ACE_Time_Value timeout (3, 0);
 
-        while (_connector.connect (*handler, target_addr, &timeout) == -1)         
+        while (_connector.connect (*handler, target_addr, &timeout) == -1)
         {  
+            attempt_count++;
             if (attempt_count >= RECONNECT_ATTEMPT)
             {
-                _id2addr.erase (target);
-                ACE_ERROR_RETURN ((LM_ERROR, "connect to %s:%d failed after %d re-attempts\n", target_addr.get_host_addr (), target_addr.get_port_number (), attempt_count), (-1));
+                ACE_ERROR_RETURN ((LM_ERROR, "connect to %s:%u failed after %d re-attempts\n", target_addr.get_host_addr (), target_addr.get_port_number (), attempt_count), false);
             }
-            
-            attempt_count++;
-            
+                        
             ACE_DEBUG ((LM_DEBUG, "connect %s:%d failed (try %d):\n", target_addr.get_host_addr (), target_addr.get_port_number (), attempt_count));
-            ACE_OS::sleep (tv);
+            ACE_OS::sleep (sleeptime);
         }
         
-        // open the handler object
-        if (handler->open (_reactor, this, target) == -1) 
+        // open the handler object, this will 
+        // 1) register handler with reactor 2) cause socket_connected () be called
+        if (handler->open (_reactor, this, target) == -1)
         {
             handler->close();
-            return (-1);
+            return false;
         }
         
         ACE_DEBUG ((LM_DEBUG, "(%5t) connect(): connected to (%s:%d)\n", target_addr.get_host_addr (), target_addr.get_port_number ()));
 
-        return 0;
+        return true;
     }
 
-    int 
+    bool
     net_ace::
     disconnect (id_t target)
     {
-        if (isConnected (target) == false)
+        // we need to use mutex to access the handler object, because it's
+        // possible that remote disconnection occurs at the same time when disconnect () 
+        // is called. Then, it'll be possible the id2conn object is already gone,
+        // when the following line is still called (will cause crash)
+        
+        net_ace_handler *handler = NULL;
+        std::map<id_t, ConnectInfo>::iterator it;
+        
+        _conn_mutex.acquire ();
+        if ((it = _id2conn.find (target)) != _id2conn.end ())
+            handler = (net_ace_handler *)(it->second.stream);
+        _conn_mutex.release ();
+
+        // check if connection is already close (possibly due to remote disconnect)
+        if (handler == NULL)
             return false;
+
+        // NOTE: socket_disconnected () will be called when handler->close () is called
+        //       mutex will be used again to protect access to _id2conn
+        handler->close ();
         
-        // BUG: if mutex is used here the program will stale under Linux (reason unknown)
-        //_conn_mutex.acquire ();
-        net_ace_handler *handler = (net_ace_handler *)_id2conn[target];       
-        handler->close();
-        //_conn_mutex.release ();
+        ACE_DEBUG ((LM_DEBUG, "(%5t) net_ace::disconnect(): [%llu] disconnected\n", target));
         
-        ACE_DEBUG ((LM_DEBUG, "(%5t) disconnect(): [%d] disconnected\n", (int)target));
-        
-        return 0;
+        return true;
     }
 
-    // send an outgoing message to a remote host
+    // send an outgoing message to a remote host, if addr is given, then message is sent via UDP
     // return the number of bytes sent
     size_t
     net_ace::
-    send (id_t target, char const *msg, size_t size, bool reliable)
-    {
-        // TODO: too much checking? earlier / collective checking?
-        if (_active == false || isConnected (target) == false)
+    send (id_t target, char const *msg, size_t size, const Addr *addr)
+    {        
+        if (_active == false)
             return 0;
 
+        // NOTE: it's possible that connection is already broken, yet still try to access connection
+        //       (remote disconnect + local send), may crash. So mutex has to be used
+
         // a TCP message
-        if (reliable)
+        if (addr == NULL)
         {
+            std::map<id_t, ConnectInfo>::iterator it;
+            timestamp_t now = this->getTimestamp ();
+
             _conn_mutex.acquire ();
-            ACE_SOCK_Stream &stream = *((net_ace_handler *)_id2conn[target]);
-            size = stream.send_n (msg, size);
+
+            // need to check if stream object still exists, otherwise may crash
+            // (remote disconnection could already remove the connection)
+            if ((it = _id2conn.find (target)) != _id2conn.end ())
+            {
+                // TODO: perhaps actual send can be done outside of mutex (avoid locking too long?)
+                ACE_SOCK_Stream &stream = *((net_ace_handler *)(it->second.stream));
+                size = stream.send_n (msg, size);
+
+                // update the last accessed time for this connection
+                it->second.lasttime = now;
+            }
+            else
+                size = 0;
+
             _conn_mutex.release ();
         }
         // a UDP message
         else
         {
-            Addr addr = _id2addr[target];
-            ACE_INET_Addr target_addr ((u_short)addr.publicIP.port, (ACE_UINT32)addr.publicIP.host);
+            // TODO: check if two threads accessing same data structure can occur
+            ACE_INET_Addr target_addr ((u_short)addr->publicIP.port, (ACE_UINT32)addr->publicIP.host);
             size = _udp->send (msg, size, target_addr);
+
+            // NOTE: there's no time update for UDP connection, as there's no need for connection timeout
         }
 
         return size;
     }
 
     // receive an incoming message
-    // return pointer to next QMSG structure or NULL for no more message
-    QMSG *
-    net_ace::receive ()
+    // return pointer to next NetSocketMsg structure or NULL for no more message
+    NetSocketMsg *
+    net_ace::
+    receive ()
     {
-        // if no time is left in current timeslot, then return immediately        
-        if (TimeMonitor::instance ()->available () == 0)
-        {
-            //printf ("no time available\n");
-            return NULL;
+        // clear last received message
+        if (_recvmsg != NULL)
+        {            
+            delete _recvmsg;
+            _recvmsg = NULL;
         }
 
-        // we simply return the next message in queue, sorted by priority
-        if (_msgqueue.size () == 0)
+        // we simply return the next message in queue
+        if (_recv_queue.size () == 0)
             return NULL;
-
-        QMSG *qmsg;
-
+        
+        // FIFO, return first message extracted
         _msg_mutex.acquire ();
-        qmsg = _msgqueue.begin ()->second;
-        _msgqueue.erase (_msgqueue.begin ());
+        _recvmsg = _recv_queue[0];
+        _recv_queue.erase (_recv_queue.begin ());
         _msg_mutex.release ();
 
-        return qmsg;
+        return _recvmsg;
     }
     
+    // change the ID for a remote host
+    bool 
+    net_ace::switchID (id_t prevID, id_t newID)
+    {
+        bool result = false;
+
+        _conn_mutex.acquire ();
+
+        // new ID already in use
+        if (_id2conn.find (newID) != _id2conn.end () || _id2conn.find (prevID) == _id2conn.end ())
+        {
+            printf ("[%llu] net_ace::switchID () old ID not found or new ID already exists\n");
+        }
+        else
+        {
+            printf ("[%llu] net_ace::switchID () replace [%llu] with [%llu]\n", prevID, newID);
+
+            // copy to new ID
+            _id2conn[newID] = _id2conn[prevID];
+
+            // erase old ID mapping
+            _id2conn.erase (prevID);
+
+            // change remote ID knowledge at stream
+            result = ((net_ace_handler *)(_id2conn[newID].stream))->switchRemoteID (prevID, newID);
+        }
+
+        _conn_mutex.release ();
+
+        return result;
+    }
+
     // store a message into priority queue
     // returns success or not
     bool 
     net_ace::
-    store (QMSG *qmsg)
+    msg_received (id_t fromhost, const char *message, size_t size, timestamp_t recvtime, bool in_front)
     {
+        // TODO: more space-efficient method?
+        // make a copy and store internally
+        NetSocketMsg *newmsg = new NetSocketMsg ();
+
+        newmsg->fromhost = fromhost;
+        newmsg->recvtime = recvtime;
+        newmsg->size     = size;
+
+        if (size > 0)
+        {
+            newmsg->msg      = new char[size];
+            memcpy (newmsg->msg, message, size);
+        }
+
+        // assign a timestamp if necessary
+        if (newmsg->recvtime == 0)
+            newmsg->recvtime = this->getTimestamp ();
+
         // we store message according to message priority
         _msg_mutex.acquire ();
-        _msgqueue.insert (std::multimap<byte_t, QMSG *>::value_type (qmsg->msg->priority, qmsg));        
+        //_msgqueue.insert (std::multimap<byte_t, NetSocketMsg *>::value_type (qmsg-> qmsg->msg->priority, qmsg));
+        if (in_front)
+            _recv_queue.insert (_recv_queue.begin (), newmsg);
+        else
+            _recv_queue.push_back (newmsg);
         _msg_mutex.release ();
+
+        // update last accessed time of the connection
+        _conn_mutex.acquire ();
+        std::map<id_t, ConnectInfo>::iterator it = _id2conn.find (fromhost);
+        if (it != _id2conn.end ())
+        {
+            if (newmsg->recvtime > it->second.lasttime)
+                it->second.lasttime = newmsg->recvtime; 
+        }
+        _conn_mutex.release ();
 
         return true;
     }
@@ -453,27 +570,37 @@ namespace Vast {
 
     // methods to keep track of active connections
     // returns the id being assigned 
-    id_t
+    bool
     net_ace::
-    register_conn (id_t id, void *stream)
+    socket_connected (id_t id, void *stream)
     {
-        // if remote connection is without HostID, assign a new one
+        // if remote connection is without HostID, cannot record
         if (id == NET_ID_UNASSIGNED)
         {
-            printf ("net_ace::register_conn () empty id given\n");
-            return NET_ID_UNASSIGNED;
-        }
-        else if (isConnected (id) == true)
-        {
-            printf ("net_ace::register_conn () TCP stream already registered\n");
-            return NET_ID_UNASSIGNED;
+            printf ("net_ace::socket_connected () empty id given\n");
+            return false;
         }
 
-        // store the connection stream
+        // store the connection info
+        ConnectInfo conn (stream, this->getTimestamp ());        
+        bool stored = false;
+
         _conn_mutex.acquire ();
-        _id2conn[id] = stream;
-        _id2time[id] = this->getTimestamp ();
+        if (_id2conn.find (id) == _id2conn.end ())
+        {
+            _id2conn.insert (std::map<id_t, ConnectInfo>::value_type (id, conn));
+            stored = true;
+        }
         _conn_mutex.release ();
+
+        // if connection wasn't stored successfully (possibly connection already established)
+        if (stored == false)
+        {
+            printf ("net_ace::socket_connected () stream already registered\n");            
+        }
+
+        /* TO-DO: check why is storing mapping necessary. it's probably not
+        //        or, possible that when we try to reply to sender, the mapping is needed?
 
         // store address mapping for remote node (but only if it's a new node)
         ACE_SOCK_Stream &s = *((net_ace_handler *)stream);
@@ -487,41 +614,52 @@ namespace Vast {
         Addr addr (id, &ip);
 
         storeMapping (addr);
-
-#ifdef DEBUG_DETAIL        
-        printf ("register_conn [%d]\n", (int)id);
-#endif
+        */
         
-        return id;
+        return stored;
     }
 
-    id_t 
+    bool
     net_ace::
-    unregister_conn (id_t id)
+    socket_disconnected (id_t id)
     {
         if (_active == false)
-            return NET_ID_UNASSIGNED;
+            return false;
 
-        if (isConnected (id) == false)
-            return NET_ID_UNASSIGNED;
+        bool success = false;
 
-#ifdef DEBUG_DETAIL
-        printf ("unregister_conn [%d]\n", (int)id);
-#endif
         _conn_mutex.acquire ();
-        _id2conn.erase (id);
-        //_id2addr.erase (id);
-        _id2time.erase (id);
+        if (_id2conn.find (id) != _id2conn.end ())
+        {
+            _id2conn.erase (id);
+            success = true;
+        }
         _conn_mutex.release ();
-                        
+                    
+        // TODO: store mesasge 
         // send a DISCONNECT notification
-        // NOTE that storing 0 msg and 0 size won't conflict with normal messages with no parameters sent
-        //      as those messages will at least have some content sent to storeMessage
-        //timestamp_t t = getTimestamp ();
-        Message *msg = new Message (DISCONNECT);
-        storeRawMessage (id, msg);
+        // NOTE that storing a message with size 0 won't conflict with normal messages 
+        //      with no parameters sent, as those messages will 
+        //      at least have some content sent to storeMessage
         
-        return id;
+        if (success)
+        {
+            /*
+            // store a NULL message to indicate disconnection to message queue
+            NetSocketMsg *msg = new NetSocketMsg;
+
+            msg->fromhost = id;
+            msg->recvtime = this->getTimestamp ();
+            msg->msg = NULL;
+            msg->size = 0;
+            */
+
+            this->msg_received (id, NULL, 0, this->getTimestamp ());
+            //Message *msg = new Message (DISCONNECT);
+            //storeRawMessage (id, msg);
+        }
+        
+        return success;
     }
 
 } // end namespace Vast

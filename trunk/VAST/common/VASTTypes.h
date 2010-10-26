@@ -70,8 +70,8 @@ namespace Vast
 #define VAST_EXTRACT_ASSIGNED_ID(host_id) (host_id & (0xFFFF >> 2))
 
 typedef uint64_t    id_t;           // hostID (globally unique) or nodeID (unique within each world)
-typedef uint32_t    timestamp_t;    // timestamp type, stores the timestamp obtained from system
-                                    // NOTE: that current net_ace time is millisecond accuracy since program start (so up to 50 days since execution)
+typedef uint64_t    timestamp_t;    // timestamp type, stores the timestamp obtained from system
+                                    // NOTE: that current net_ace time is millisecond accuracy since 1970
 typedef uint8_t     byte_t;
 typedef uint16_t    word_t;
 typedef uint32_t    vsize_t;        // size_t used in VAST
@@ -1317,9 +1317,9 @@ public:
         return store ((char *)&item, sizeof (id_t));
     }
 
-    bool store (timestamp_t item)
+    bool store (uint32_t item)
     {
-        return store ((char *)&item, sizeof (timestamp_t));
+        return store ((char *)&item, sizeof (uint32_t));
     }
 
     bool store (listsize_t item)
@@ -1417,10 +1417,10 @@ public:
         return sizeof (id_t);
     }
 
-    size_t extract (timestamp_t &item, bool from_end = false)
+    size_t extract (uint32_t &item, bool from_end = false)
     {
-        extract ((char *)&item, sizeof (timestamp_t), from_end);
-        return sizeof (timestamp_t);
+        extract ((char *)&item, sizeof (uint32_t), from_end);
+        return sizeof (uint32_t);
     }
 
     size_t extract (layer_t &item, bool from_end = false)

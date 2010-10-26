@@ -8,6 +8,10 @@
  *              2010/08/04  print joining and joined time in position.log
  */
 
+//#include <vld.h>            // visual leak detector (NOTE: must download & install from
+                            // http://www.codeproject.com/KB/applications/visualleakdetector.aspx
+
+
 #ifdef WIN32
 // disable warning about "unsafe functions"
 #pragma warning(disable: 4996)
@@ -202,13 +206,13 @@ void checkJoin ()
        
         if (g_position_log)
         {
-	    // simulating which node
-	    fprintf (g_position_log, "# node path number simulated (-1 indicates manual control)\n");
-	    fprintf (g_position_log, "%d\n", g_node_no);
+            // simulating which node
+            fprintf (g_position_log, "# node path number simulated (-1 indicates manual control)\n");
+            fprintf (g_position_log, "%d\n", g_node_no);
         
             // format
-	    fprintf (g_position_log, "\n");
-	    fprintf (g_position_log, "# millisec,\"posX,posY\",elapsed (per step)\n\n");
+            fprintf (g_position_log, "\n");
+            fprintf (g_position_log, "# millisec,\"posX,posY\",elapsed (per step)\n\n");
 
             // joinining & joined time
             fprintf (g_position_log, "%llu,\"%llu,joining\",%d\n",joining_msec,nodeID,g_node_no);
@@ -220,7 +224,7 @@ void checkJoin ()
         if (g_neighbor_log)
         {
             // format
-	    fprintf (g_neighbor_log, "\n");
+            fprintf (g_neighbor_log, "\n");
             fprintf (g_neighbor_log, "# millisec,\"nodeID,posX,posY\", ... (per step)\n\n");		
 
             // join & joining time
@@ -308,7 +312,7 @@ int main (int argc, char *argv[])
     // Initialization
     //
 
-    ACE::init ();
+    //ACE::init ();
 
     // initialize random seed
 
@@ -699,13 +703,13 @@ int main (int argc, char *argv[])
 
     if (g_position_log) 
     {
-	LogManager::close (g_position_log);
+        LogManager::close (g_position_log);
         g_position_log = NULL;
     }
 
     if (g_neighbor_log)
     {
-	LogManager::close (g_neighbor_log);
+        LogManager::close (g_neighbor_log);
         g_neighbor_log = NULL;
     }
 
@@ -715,6 +719,10 @@ int main (int argc, char *argv[])
 		LogManager::close (g_message_log);
         g_message_log = NULL;
     }
+
+    LogManager::terminateInstance ();
+
+    //ACE::fini ();
 
     return 0;
 }

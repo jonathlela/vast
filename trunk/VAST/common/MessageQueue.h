@@ -78,12 +78,6 @@ namespace Vast
         // return the # of targets with valid connections (so message can probably be delivered)
         int sendMessage (Message &msg, vector<id_t> *failed_targets = NULL);
 
-        // replace current host_id with new one
-        //void registerHostID (id_t my_id, id_t default_host = 0);
-
-        // obtain a unique ID generated on this host, based on an optional user-specified group ID
-        //id_t getUniqueID (int group_id = 0, bool is_gateway = false);
-
         // get a specific address by nodeID
         Addr &getAddress (id_t id);
 

@@ -40,33 +40,6 @@ namespace Vast
         return new_id;
     }
 
-    /*
-    // replace the temp id with a new id
-    void 
-    net_emubridge_bl::
-    registerHostID (id_t temp_id, id_t id)
-    {
-        net_emubridge::registerHostID (temp_id, id);
-
-        _upload_quota [id] = _upload_quota [temp_id];
-        _download_quota[id] = _download_quota [temp_id];
-        _upload_quota.erase (temp_id);
-        _download_quota.erase (temp_id);
-
-        if (node_upcap.find (temp_id) != node_upcap.end ())
-        {
-            node_upcap[id] = node_upcap[temp_id];
-            node_upcap.erase (temp_id);
-        }
-
-        if (node_downcap.find (temp_id) != node_downcap.end ())
-        {
-            node_downcap[id] = node_downcap[temp_id];
-            node_downcap.erase (temp_id);
-        }
-    }
-    */
-
     void 
     net_emubridge_bl::
     releaseHostID (id_t id)

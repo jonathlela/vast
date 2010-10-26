@@ -44,6 +44,13 @@ namespace Vast
             data = new char[VAST_BUFSIZ];
         }
 
+        // specify a given size for the buffer
+        VASTBuffer (size_t size)
+            :size (0), _bufsize (size)
+        {
+            data = new char[_bufsize];
+        }
+
         ~VASTBuffer ()
         {
             delete[] data;
@@ -123,6 +130,12 @@ namespace Vast
             
             size += len;
             return true;
+        }
+
+        // get current size of buffer
+        size_t getSize ()
+        {
+            return _bufsize;
         }
 
         size_t size;

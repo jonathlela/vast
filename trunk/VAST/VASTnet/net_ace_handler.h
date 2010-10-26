@@ -38,8 +38,8 @@
 #include "ace/Reactor.h"
 
 #include "VASTTypes.h"
-#include "VASTnet.h"
 #include "VASTBuffer.h"
+#include "net_manager.h"
 
 namespace Vast {
 
@@ -47,12 +47,9 @@ class net_ace_handler : public ACE_Event_Handler
 {
 
 public:
-    net_ace_handler () 
-    {
-        _udp = NULL;
-    }
+    net_ace_handler (); 
     
-    int open (ACE_Reactor *reactor, void *msghandler, id_t remote_id = NET_ID_UNASSIGNED);
+    int open (ACE_Reactor *reactor, void *msghandler, id_t remote_id = 0);
 
     // close connection & unregister from reactor
     int close (void);
@@ -63,8 +60,14 @@ public:
         return this->_stream;
     }
     
+    // open a UDP sender / receiver at a given port
     ACE_SOCK_Dgram *openUDP (ACE_INET_Addr addr);
 
+    // obtain address of remote host
+    IPaddr &getRemoteAddress ();
+
+    // swtich remote ID to a new one
+    bool switchRemoteID (id_t oldID, id_t newID);
         
 protected:
 
@@ -83,36 +86,31 @@ protected:
     // if handle_input() returns -1, reactor would call handle_close()
     int handle_close (ACE_HANDLE, ACE_Reactor_Mask mask);
 
-
-
 private:
 
     // this will force the class to be allocated dynamically (p.71 in ACE Tutorial)
     ~net_ace_handler () 
     {
+        // remove UDP listener
         if (_udp != NULL)
             delete _udp;
     }
 
-    // message processing method
-    //int processmsg (VASTHeader &header, const char *msg);
-
-    // unique id for the remote connection node
+    // info the remote node
     id_t            _remote_id;
-    IPaddr          _remote_IP;
+    IPaddr          _remote_addr;
 
+    // objects for send/recv TCP/UDP streams
     ACE_SOCK_Stream _stream;
     ACE_SOCK_Dgram  *_udp;
     ACE_INET_Addr   _local_addr;
 
     // the same reactor as the acceptor's
     ACE_Reactor     *_reactor;
-    
-    //MessageHandler  *_msghandler;
     void            *_msghandler;
-    
 
-    VASTBuffer          _buf;
+    // generic buffer
+    VASTBuffer       _buf;
 };
 
 } // end namespace Vast

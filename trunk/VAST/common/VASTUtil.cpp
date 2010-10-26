@@ -43,6 +43,14 @@ LogManager* LogManager::instance()
  
    return _instance;
 }
+
+void 
+LogManager::terminateInstance ()
+{
+    if (_instance)
+        delete _instance;
+    _instance = NULL;
+}
  
 bool LogManager::setLogFile(FILE *fp)
 {
@@ -182,6 +190,16 @@ TimeMonitor::instance ()
       _instance = new TimeMonitor;
  
    return _instance;
+}
+
+// end the TimeMonitor and release memory
+void 
+TimeMonitor::terminateInstance ()
+{
+    if (_instance)
+        delete _instance;
+
+    _instance = NULL;
 }
 
 

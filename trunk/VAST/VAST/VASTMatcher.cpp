@@ -1776,7 +1776,7 @@ namespace Vast
             return false;
       
         // record gateway first
-        _gateway = Addr (VASTnet::resolveHostID (&gateway), &gateway);
+        _gateway = Addr (net_manager::resolveHostID (&gateway), &gateway);
 
         return true;
     }

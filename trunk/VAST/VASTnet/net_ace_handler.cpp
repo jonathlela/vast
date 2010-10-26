@@ -24,30 +24,64 @@
 
 namespace Vast {
 
+    // default constructor
+    net_ace_handler::
+    net_ace_handler () 
+    {
+        _udp = NULL;
+        _remote_id = NET_ID_UNASSIGNED;
+        _reactor = NULL;
+        _msghandler = NULL;
+    }
+
     int 
     net_ace_handler::
     open (ACE_Reactor *reactor, void *msghandler, id_t remote_id) 
-    {
-        _remote_id = NET_ID_UNASSIGNED;
-        _reactor = reactor;
-        _msghandler = msghandler;
+    {        
+        // if this handler is used to init a new connection out
+        // remote_id should be given, otherwise, this is an incoming connection
+        // and we can determine remote host's IP & port as the remote_id
 
-        if (_reactor->register_handler (this, ACE_Event_Handler::READ_MASK) == -1)
-            ACE_ERROR_RETURN ((LM_ERROR,
-                               "(%5t) [%d] cannot register with reactor\n", 0), 
-                               -1 );
-
-        // by default remote id is unknown, but should be known
-        // if this handler is used to initiate a new connection out
-        if (remote_id != NET_ID_UNASSIGNED)
-            _remote_id = ((net_ace *)_msghandler)->register_conn (remote_id, this);
-        
-        // obtain remote host's detected IP for public IP check                                            
+        // obtain remote host's detected IP for public IP check
+        // TODO: should move this function elsewhere?
         ACE_INET_Addr remote_addr;
         this->_stream.get_remote_addr (remote_addr);
-        _remote_IP.host = remote_addr.get_ip_address ();
-        _remote_IP.port = remote_addr.get_port_number ();
+        _remote_addr.host = remote_addr.get_ip_address ();
+        _remote_addr.port = remote_addr.get_port_number ();
 
+        // if socket connection indeed exists, try to determine remote ID & register socket
+        // otherwise (a UDP handler) simply skip this part
+        if (_remote_addr.host != 0 && _remote_addr.port != 0)
+        {
+            // determine remoteID based on detected IP & port
+            if (remote_id == NET_ID_UNASSIGNED)
+            {
+                remote_id = ((net_manager *)msghandler)->resolveHostID (&_remote_addr);
+                //ACE_DEBUG ((LM_DEBUG, "\nnet_ace_handler::open () detecting remote_id as: [%llu]\n", remote_id));
+                printf ("\nnet_ace_handler::open () detecting remote_id as: [%llu]\n", remote_id);
+            }
+        
+            if (((net_ace *)msghandler)->socket_connected (remote_id, this) == false)
+            {
+                // possible a remote connection is already established (remote connect)
+                ACE_ERROR_RETURN ((LM_ERROR,
+                               "(%5t) [%llu] socket registeration failed, maybe connection already exists\n", remote_id), 
+                               -1);            
+            }
+        }
+        else
+            ACE_DEBUG ((LM_DEBUG, "net_ace_handler::open () creating UDP listener, remote_id [%d]\n", remote_id));
+
+        // hook this handler to reactors to listen for events
+        if (reactor->register_handler (this, ACE_Event_Handler::READ_MASK) == -1)
+            ACE_ERROR_RETURN ((LM_ERROR,
+                               "(%5t) [%llu] cannot register with reactor\n", remote_id), 
+                               -1 );
+
+        _reactor    = reactor;
+        _msghandler = msghandler;
+        _remote_id  = remote_id;            
+        
         return 0;
     }
 
@@ -59,19 +93,53 @@ namespace Vast {
         return this->handle_close (ACE_INVALID_HANDLE, ACE_Event_Handler::RWE_MASK);
     }
 
+    // open UDP listen port
     ACE_SOCK_Dgram *
     net_ace_handler::openUDP (ACE_INET_Addr addr)
     {
         // initialize UDP socket
         _udp = new ACE_SOCK_Dgram;
-        _udp->open (addr);        
+        _udp->open (addr);
         _local_addr = addr;
 
         return _udp;
     }
 
+    // obtain address of remote host
+    IPaddr &
+    net_ace_handler::getRemoteAddress ()
+    {
+        return _remote_addr;
+    }
+
+    // swtich remote ID to a new one
+    bool 
+    net_ace_handler::switchRemoteID (id_t oldID, id_t newID)
+    {
+        if (oldID != _remote_id)
+            return false;
+
+        _remote_id = newID;
+        return true;
+    }
+
+    //
     // handling incoming message
-    // here we just extract the bytestring, and let process_msg () handles the rest
+    // here we just extract the bytestring, and store to msghandler for later processing
+    //
+    // the general rule is we'll read until linefeed (LF) '\n' is met
+    // there are two cases: 
+    //
+    //      1) VAST messages
+    //              there's a 4-byte VAST message header right before the LF
+    //              in such case, the header is read, and "message size" extracted
+    //              the handler will keep reading "message size". 
+    //              The "VASTHeader + message content" is considered a single message & stored
+    //
+    //      2) Socket message
+    //              if whatever before the LF cannot be identified as a VASTHeader
+    //              then everything before the LF is considered a single message & stored
+    //
     int 
     net_ace_handler::
     handle_input (ACE_HANDLE fd) 
@@ -82,14 +150,26 @@ namespace Vast {
         //  -1: error
         //   0: connection closed
         //  >0: bytes read
-        size_t n;
-        VASTHeader header;      // message header
+        size_t n = 0;
+        //VASTHeader header;      // message header for VAST messages
         
-        // for TCP connection
+        // for TCP connection        
         if (_udp == NULL) 
-        {
-            // get size of message            
+        {                        
+            // get message body 
+            // TODO: make buffer to vary in size?
+            switch (n = this->_stream.recv (_buf.data, VAST_BUFSIZ))
+            {
+            case -1:
+                ACE_ERROR_RETURN ((LM_ERROR, "(%5t) [tcp-body] bad read due to (%p) \n", "net_ace_handler"), -1);
+            case 0:            
+                ACE_ERROR_RETURN ((LM_DEBUG, "(%5t) [tcp-body] remote close (fd = %d)\n", fd), -1);
+            }
+
+            /*
+
             size_t bytes_transferred = 0;
+
             switch (n = this->_stream.recv_n (&header, sizeof (VASTHeader), 0, &bytes_transferred))
             {
             case -1:
@@ -98,45 +178,46 @@ namespace Vast {
                 ACE_ERROR_RETURN ((LM_DEBUG, "(%5t) [tcp-size] remote close (fd = %d)\n", this->get_handle() ), -1);
             }
             
+            
             //ACE_DEBUG( (LM_DEBUG, "(%5t) handle_input: header.msgsize: %d, bytes_transferred: %u\n", header.msg_size, bytes_transferred) );
             
-            // check buffer size
-            _buf.reserve (header.msg_size);
-
-            // get message body
-            switch (n = this->_stream.recv_n (_buf.data, header.msg_size, 0, &bytes_transferred)) 
+            // check if it's a VASTHeader
+            if (n == sizeof (VASTHeader) && header.start == 42 && header.end == '\n')
             {
-            case -1:
-                //ACE_ERROR_RETURN ((LM_ERROR, "(%5t) [tcp-body] bad read due to (%p) \n", "net_ace_handler"), -1);
-                ACE_ERROR_RETURN ((LM_ERROR, "(%5t) [tcp-body] bad read due to (%p) received_bytes: %d\n", "net_ace_handler", bytes_transferred), -1);
-            case 0:            
-                ACE_ERROR_RETURN ((LM_DEBUG, "(%5t) [tcp-body] remote close (fd = %d)\n", fd), -1);
-            default:
-                if (n != header.msg_size)
-                    ACE_ERROR_RETURN ((LM_ERROR, "(%5t) [tcp-body] size mismatch (expected:%u actual:%u)\n", header.msg_size, n), -1);
-            }
-           
-            //printf ("msgsize: %lu bytes_transferred: %lu\n", n, bytes_transferred);        
-            
-            // handle raw message
-            id_t id = ((VASTnet *)_msghandler)->processRawMessage (header, _buf.data, _remote_id, &_remote_IP, this);
+                // make sure buffer is enough to receive content
+                _buf.reserve (header.msg_size);
 
-            if (id == NET_ID_UNASSIGNED)
-                return (-1);
-            else
-                _remote_id = id;                            
+                // get message body
+                switch (n = this->_stream.recv_n (_buf.data, header.msg_size, 0, &bytes_transferred)) 
+                {
+                case -1:
+                    //ACE_ERROR_RETURN ((LM_ERROR, "(%5t) [tcp-body] bad read due to (%p) \n", "net_ace_handler"), -1);
+                    ACE_ERROR_RETURN ((LM_ERROR, "(%5t) [tcp-body] bad read due to (%p) received_bytes: %d\n", "net_ace_handler", bytes_transferred), -1);
+                case 0:            
+                    ACE_ERROR_RETURN ((LM_DEBUG, "(%5t) [tcp-body] remote close (fd = %d)\n", fd), -1);
+                default:
+                    if (n != header.msg_size)
+                        ACE_ERROR_RETURN ((LM_ERROR, "(%5t) [tcp-body] size mismatch (expected:%u actual:%u)\n", header.msg_size, n), -1);
+                }
+               
+                //printf ("msgsize: %lu bytes_transferred: %lu\n", n, bytes_transferred);        
+                
+                // handle raw message
+                id_t id = ((net_ace *)_msghandler)->processVASTMessage (header, _buf.data, _remote_id, &_remote_addr, this);
+            
+                if (id == NET_ID_UNASSIGNED)
+                    return (-1);
+                else
+                    _remote_id = id;
+            }
+            */
+
         }
         // for UDP packets
         else 
         {
-            // TODO: check if this will occur
-            if (_remote_id == NET_ID_UNASSIGNED)
-            {
-                printf ("net_ace_handler (): UDP message received, but handler's remote_id not yet known\n");
-                // terminate this acceptor
-                return -1;
-            }
-
+            // NOTE: As a packet may contain more than one message
+            //       VASTHeader extraction is performed later
             switch (n = _udp->recv (_buf.data, VAST_BUFSIZ, _local_addr)) 
             {
             case -1:
@@ -149,6 +230,9 @@ namespace Vast {
                 break;
             }
 
+            // store UDP messages
+
+            /*
             char *p = _buf.data;
 
             // NOTE that there may be several valid UDP messages received at once            
@@ -167,15 +251,23 @@ namespace Vast {
                     return 0;
                 }
             
+                // BUG: processVASTMessage may make mistake as _remote_id is empty
                 // NOTE: no error checking is performed
-                //processmsg (header, p);
-                ((VASTnet *)_msghandler)->processRawMessage (header, p, _remote_id);
-
+                id_t id = ((net_ace *)_msghandler)->processVASTMessage (header, p, _remote_id);
+                
+                // NOTE: _remote_id is not set because this handler may receive / process
+                //       messages from multiple senders 
+                   
                 // next message
                 p += header.msg_size;
                 n -= header.msg_size;
             }
+            */
+
         }
+
+        // store message
+        ((net_ace *)_msghandler)->msg_received (_remote_id, _buf.data, n);
         
         return 0;
     }
@@ -185,18 +277,24 @@ namespace Vast {
     net_ace_handler::
     handle_close (ACE_HANDLE, ACE_Reactor_Mask mask)
     {
-        // NOTE: it's possible reactor may already be deleted if handle_close is caused by
-        //       net_ace object deletion
-        if (_reactor != NULL)
-            _reactor->remove_handler (this, mask | ACE_Event_Handler::DONT_CALL);
-     
+        bool disconnect_success = true;
+
         // unregister from message handler, do this first to avoid message sending attempt
         // to the stream object
         if (_remote_id != NET_ID_UNASSIGNED)
-            ((net_ace *)_msghandler)->unregister_conn (_remote_id);
+        {
+            if (((net_ace *)_msghandler)->socket_disconnected (_remote_id) == false)
+                disconnect_success = false;
+        }
 
+        // NOTE: if reactor is already invalid (if handle_close () is caused by
+        //       net_ace object deletion, may crash, but here we cannot know for sure
+        //       so success after calling socket_disconnected () is a better indicator
+        if (disconnect_success && _reactor != NULL)
+            _reactor->remove_handler (this, mask | ACE_Event_Handler::DONT_CALL);
+     
         // IMPORTANT: close the socket so port can be released for re-use
-        _stream.close();
+        _stream.close ();
      
         ACE_DEBUG ((LM_DEBUG, "(%5t) handle_close (): [%d]\n", _remote_id));
         delete this;

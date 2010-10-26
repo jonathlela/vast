@@ -85,7 +85,7 @@ protected:
                                -1);
         //ACE_DEBUG ((LM_DEBUG, "handler created for %d\n", handle));
  
-        // open the handler object, default id is (-1), ID_UNASSIGNED
+        // open the handler object, default id is NET_ID_UNASSIGNED
         if (handler->open (_reactor, _msghandler) == -1)
         {
             ACE_ERROR ((LM_ERROR, "net_ace_acceptor: cannot open handler for fd: %d\n", handle));
@@ -94,6 +94,7 @@ protected:
 
         ACE_SOCK_Stream &stream = *handler;
 
+        // display message
         ACE_INET_Addr remote_addr;
         stream.get_remote_addr (remote_addr);
 

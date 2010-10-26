@@ -64,7 +64,7 @@ namespace Vast
         _net->validateIPAddress (gateway);
 
         // record gateway (for later re-joining in case of matcher fail)
-        _gateway = Addr (VASTnet::resolveHostID (&gateway), &gateway);
+        _gateway = Addr (net_manager::resolveHostID (&gateway), &gateway);
      
         char GW_str[80];
         gateway.getString (GW_str);
@@ -997,12 +997,12 @@ namespace Vast
 
         // record min / max / average
         if (duration < stat.minimum)
-            stat.minimum = duration;
+            stat.minimum = (size_t)duration;
 
         if (duration > stat.maximum)
-            stat.maximum = duration;
+            stat.maximum = (size_t)duration;
 
-        stat.total += duration;
+        stat.total += (size_t)duration;
         stat.num_records++;
     }
                                     

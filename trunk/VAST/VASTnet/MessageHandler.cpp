@@ -51,15 +51,6 @@ namespace Vast
         return ((MessageQueue *)_msgqueue)->getAddress (id);
     }
 
-    /*
-    // obtain a unique ID generated on this host, based on an optional user-specified group ID
-    id_t 
-    MessageHandler::getUniqueID (int group_id, bool is_gateway)
-    {
-        return ((MessageQueue *)_msgqueue)->getUniqueID (group_id, is_gateway);
-    }
-    */
-
     // store network layer so that the logic in processmsg may send message to network    
     id_t
     MessageHandler::setQueue (void *msgqueue, Vast::VASTnet *net)

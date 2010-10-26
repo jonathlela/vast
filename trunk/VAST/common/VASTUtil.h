@@ -152,7 +152,9 @@ class EXPORT LogManager
 
 public:
 
+    // get & end global instance of LogManager
 	static LogManager* instance ();
+    static void terminateInstance ();
 
 	bool setLogFile (FILE *fp);
 	//bool writeLogFile (const char *str);
@@ -244,6 +246,9 @@ public:
 
     // return a global instance of TimeMonitor
     static TimeMonitor *instance ();
+
+    // end the global TimeMonitor instance and release memory
+    static void terminateInstance ();
 
 private:
 
