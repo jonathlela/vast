@@ -223,7 +223,7 @@ namespace Vast {
         bool isEntryPoint (id_t id);
 
         // check if a certain node is connected
-        inline bool isConnected (id_t id);
+        bool isConnected (id_t id);
 
         //
         // tools 
