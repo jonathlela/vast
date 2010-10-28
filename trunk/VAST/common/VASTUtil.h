@@ -177,7 +177,7 @@ public:
         do 
         {
             // generate filename
-            sprintf (filename, "%s-%03d.%s", prefix, count, (extension == NULL ? "log" : extension));
+            sprintf (filename, "%03d_%s-001.%s", count,prefix, (extension == NULL ? "log" : extension));
 
             if ((fp = fopen (filename, "rt")) == NULL)
             {
