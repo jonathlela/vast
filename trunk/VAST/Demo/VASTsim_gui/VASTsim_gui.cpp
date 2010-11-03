@@ -331,7 +331,7 @@ VOID Render (HWND hWnd)
     else
         sprintf (str2, "[END]");
 
-    sprintf (str, "step: %d (%d, %d) node: %d/%d [%d, %d] aoi: %d AN: %d %s %s %s missing: %d", g_steps, g_cursor.x-g_origin.x, g_cursor.y-g_origin.y, (int)VASTnet::resolvePort (g_id)-GATEWAY_DEFAULT_PORT+1, g_nodes_active, selected_x, selected_y, g_aoi, size_AN, str2, (follow_mode ? "[follow]" : ""), (step_mode ? "[stepped]" : ""), missing_count);
+    sprintf (str, "step: %d (%d, %d) node: %d/%d [%d, %d] aoi: %d AN: %d %s %s %s missing: %d", g_steps, g_cursor.x-g_origin.x, g_cursor.y-g_origin.y, (int)net_manager::resolvePort (g_id)-GATEWAY_DEFAULT_PORT+1, g_nodes_active, selected_x, selected_y, g_aoi, size_AN, str2, (follow_mode ? "[follow]" : ""), (step_mode ? "[stepped]" : ""), missing_count);
     TextOut (hdc, 10-g_origin.x, 10-g_origin.y, str, strlen(str) );    
     
     // EndPaint balances off the BeginPaint call.
@@ -585,7 +585,7 @@ LRESULT WINAPI MsgProc (HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 //-----------------------------------------------------------------------------
 INT WINAPI WinMain( HINSTANCE hInst, HINSTANCE, LPSTR, INT )
 {
-    VASTPara_Net netpara;
+    VASTPara_Net netpara (VAST_NET_EMULATED);
 
     // read parameters and initialize simulations
     InitPara (VAST_NET_EMULATED, netpara, g_para);

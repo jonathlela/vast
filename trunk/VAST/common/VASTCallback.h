@@ -47,6 +47,10 @@ namespace Vast
         // returns whether we can process more
         virtual bool processMessage (Message &msg) = 0;
 
+        // process a plain socket message from the network by current node, 
+        // returns whether we can process more
+        virtual bool processSocketMessage (id_t socket, const char *msg, size_t size) = 0;
+
         // perform some per-second tasks
         virtual void performPerSecondTasks (timestamp_t now) = 0;
 

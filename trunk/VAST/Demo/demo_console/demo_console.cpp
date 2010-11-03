@@ -58,6 +58,9 @@ VASTVerse *     g_world = NULL;     // factory for creating a VAST node
 VAST *          g_self  = NULL;     // pointer to VAST
 Vast::id_t      g_sub_id = 0;       // subscription # for my client (peer)  
 
+// socket-specific variables
+Vast::id_t      g_socket_id = NET_ID_UNASSIGNED;    // socket ID
+
 // obtain keyboard input, currently only available under Win32
 void getInput ()
 {
@@ -85,6 +88,26 @@ void getInput ()
         case 'l':
             // ESSENTIAL: before we leave must clean up resources
             g_world->destroyVASTNode (g_self);
+            break;
+
+        // send a socket message
+        case 's':
+            {
+                if (g_socket_id == NET_ID_UNASSIGNED)
+                {
+                    // store gateway's IP & port for later use (make socket connection)
+                    IPaddr gateway = g_world->getGateway ();
+
+                    g_socket_id = g_world->openSocket (gateway);
+                    printf ("obtain socket_id: [%llu]\n", g_socket_id);
+                }
+
+                if (g_socket_id != NET_ID_UNASSIGNED)
+                {
+                    char teststr[] = "hello world!\0";
+                    g_world->sendSocket (g_socket_id, teststr, strlen (teststr)+1);
+                }
+            }
             break;
 
         // movements
@@ -188,6 +211,22 @@ public:
         return true;
     }
 
+    // process a plain socket message from the network by current node, 
+    // returns whether we can process more
+    bool processSocketMessage (id_t socket, const char *msg, size_t size)
+    {
+        printf ("from [%llu] size: %d msg: %s\n", socket, size, msg);
+
+        // send back acknowledgment if not the same message
+        char teststr[] = "hello world back!\0";
+        if (strlen (teststr) + 1 != size)
+        {
+            g_world->sendSocket (socket, teststr, strlen (teststr)+1);
+        }
+
+        return true;
+    }
+
     // perform some per-second tasks
     void performPerSecondTasks (timestamp_t now)
     {
@@ -267,7 +306,7 @@ public:
             }
     
             g_lastcommand = 0;
-        }
+        }    
     }
 
     // notify of successful connection with gateway

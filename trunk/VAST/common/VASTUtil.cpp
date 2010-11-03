@@ -52,9 +52,9 @@ LogManager::terminateInstance ()
     _instance = NULL;
 }
  
-bool LogManager::setLogFile(FILE *fp)
+bool LogManager::setLogFile (FILE *fp)
 {
-    if (_logfile)
+    if (_logfile || fp == NULL)
         return false;
 
     _logfile = fp;

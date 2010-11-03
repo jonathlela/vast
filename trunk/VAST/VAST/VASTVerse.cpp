@@ -112,7 +112,7 @@ namespace Vast
             addr = VASTVerse::translateAddress (string ("127.0.0.1:1037"));
 
         _gateway = addr->publicIP;
-
+       
         if (is_gateway == false)
             _entries.push_back (_gateway);
 
@@ -302,6 +302,10 @@ namespace Vast
         // after we get unique ID, obtain physical coordinate
         else if (handlers->relay == NULL)
         {
+            // convert possible "127.0.0.1" gateway address to actual IP address
+            if (handlers->net->validateIPAddress (_gateway) == false)
+                return false;
+
             // create the Relay node and store potential overlay entries 
             printf ("VASTVerse::isInitialized () creating VASTRelay...\n");
 
@@ -615,17 +619,39 @@ namespace Vast
                 }
             }
 
+            //
             // process incoming messages by calling app-specific message handlers, if any
+            //
+            
+            // process incoming socket messages 
+            // NOTE: the we don't have to join in order to process
+            if (handlers->callback)
+            {
+                char *socket_msg = NULL;
+                id_t socket_id;
+                size_t size;
+                
+                while ((socket_msg = handlers->net->receiveSocket (socket_id, size)) != NULL)
+                {
+                    // if the callback cannot handle or does not wish to process more, stop
+                    if (handlers->callback->processSocketMessage (socket_id, socket_msg, size) == false)
+                        break;
+                }
+            }
+
+            // process incoming VAST messages, only after JOINED 
             if (_state == JOINED && handlers->client && handlers->callback)
             {
-                // process input messages, if any
+                // process input VAST messages, if any
                 Message *msg;
             
                 while ((msg = handlers->client->receive ()) != NULL)
                 {
-                    handlers->callback->processMessage (*msg);
+                    // if the callback cannot handle or does not wish to process more, stop
+                    if (handlers->callback->processMessage (*msg) == false)
+                        break;
                 }
-            }            
+            }
         }
 
         // return whether per_second tasks were performed
@@ -668,12 +694,57 @@ namespace Vast
     // resume operations on this node
     void     
     VASTVerse::resumeNetwork ()
-    {
-        
+    {        
         // TODO:
         VASTPointer *handlers = (VASTPointer *)_pointers;
         if (handlers->net != NULL)
             handlers->net->start ();        
+    }
+
+    // open a new TCP socket
+    id_t 
+    VASTVerse::openSocket (IPaddr &ip_port)
+    {
+        VASTPointer *handlers = (VASTPointer *)_pointers;
+        if (handlers->net == NULL)
+            return NET_ID_UNASSIGNED;
+
+        return handlers->net->openSocket (ip_port);            
+    }
+
+    // close a TCP socket
+    bool 
+    VASTVerse::closeSocket (id_t socket)
+    {
+        VASTPointer *handlers = (VASTPointer *)_pointers;
+        if (handlers->net == NULL)
+            return false;
+
+        return handlers->net->closeSocket (socket);
+    }
+
+    // send a message to a socket
+    bool 
+    VASTVerse::sendSocket (id_t socket, const char *msg, size_t size)
+    {
+        VASTPointer *handlers = (VASTPointer *)_pointers;
+        if (handlers->net == NULL)
+            return false;
+
+        return handlers->net->sendSocket (socket, msg, size);                    
+    }
+
+    // receive a message from socket, if any
+    // returns the message in byte array, and the socket_id, message size, NULL for no messages
+    // NOTE: the returned data is valid until the next call to receiveSocket
+    char *
+    VASTVerse::receiveSocket (id_t &socket, size_t &size)
+    {
+        VASTPointer *handlers = (VASTPointer *)_pointers;
+        if (handlers->net == NULL)
+            return NULL;
+
+        return handlers->net->receiveSocket (socket, size);
     }
 
     // obtain access to Voronoi class (usually for drawing purpose)
@@ -779,6 +850,13 @@ namespace Vast
         VASTPointer *handlers = (VASTPointer *)_pointers;
         if (handlers->net != NULL)
             return handlers->net->recordLocalTarget (target);
+    }
+
+    // obtain gateway's IP & port
+    IPaddr &
+    VASTVerse::getGateway ()
+    {
+        return _gateway;
     }
 
     // translate a string-based address into Addr object

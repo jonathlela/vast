@@ -161,6 +161,24 @@ namespace Vast
 
 
         //
+        // socket messaging
+        //
+
+        // open a new TCP socket
+        id_t openSocket (IPaddr &ip_port);
+
+        // close a TCP socket
+        bool closeSocket (id_t socket);
+
+        // send a message to a socket
+        bool sendSocket (id_t socket, const char *msg, size_t size);
+
+        // receive a message from socket, if any
+        // returns the message in byte array, and the socket_id, message size, NULL for no messages
+        // NOTE: the returned data is valid until the next call to receiveSocket
+        char *receiveSocket (id_t &socket, size_t &size);
+
+        //
         //  accessors & state check
         //
 
@@ -197,6 +215,9 @@ namespace Vast
         //
         // misc tools
         //
+
+        // obtain gateway's IP & port
+        IPaddr &getGateway ();
 
         // translate a string-based address into Addr object
         static Addr *translateAddress (const string &addr);

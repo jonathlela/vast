@@ -8,7 +8,7 @@
  *              2010/08/04  print joining and joined time in position.log
  */
 
-//#include <vld.h>            // visual leak detector (NOTE: must download & install from
+#include <vld.h>            // visual leak detector (NOTE: must download & install from
                             // http://www.codeproject.com/KB/applications/visualleakdetector.aspx
 
 
@@ -311,6 +311,8 @@ int main (int argc, char *argv[])
     // 
     // Initialization
     //
+
+    //printSizes ();
 
     //ACE::init ();
 

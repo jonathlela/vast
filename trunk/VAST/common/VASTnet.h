@@ -67,6 +67,7 @@ namespace Vast {
         DISCONNECT = 0,         // disconnection without action: leaving overlay or no longer overlapped
     } VASTnetMessage;
          
+    /*
     // header used by all VAST messages
     typedef struct 
     {
@@ -74,6 +75,16 @@ namespace Vast {
         uint32_t type     : 2;     // type of message (0: ID request; 1: ID assignment; 3: handshake; 4: regular) 
         uint32_t msg_size : 24;    // size of message (max: 16,777,216 bytes)
         uint32_t end      : 8;     // end marker, linefeed (LF) '\n'
+    } VASTHeader;
+    */
+
+    // header used by all VAST messages
+    typedef struct 
+    {
+        uint32_t start    : 4;     // start marker (number 10: indicates 1010)
+        uint32_t type     : 2;     // type of message (0: ID request; 1: ID assignment; 3: handshake; 4: regular) 
+        uint32_t msg_size : 22;    // size of message (max: 4,194,304 bytes)
+        uint32_t end      : 4;     // end marker (number 5: 0101)
     } VASTHeader;
 
     // simple structure for a partially received VAST message
@@ -195,6 +206,7 @@ namespace Vast {
 
         // receive a message from socket, if any
         // returns the message in byte array, and the socket_id, message size, NULL for no messages
+        // NOTE: the returned data is valid until the next call to receiveSocket
         char *receiveSocket (id_t &socket, size_t &size);
 
         //
@@ -366,6 +378,7 @@ namespace Vast {
         std::multimap<byte_t, FULL_VMSG *>  _full_queue;        // priority queue for (complete) incoming VAST messages
         std::vector<NetSocketMsg *>         _socket_queue;      // queue for incoming socket messages
         Message *                           _recvmsg;           // received VAST message
+        NetSocketMsg *                      _recvmsg_socket;    // received socket message
 
         // TODO: combine the TCP & UDP buffers?
         // outgoing queues

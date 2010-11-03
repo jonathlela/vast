@@ -45,6 +45,7 @@ namespace Vast
             _manager = new net_ace (port);
 
         _recvmsg = NULL;
+        _recvmsg_socket = NULL;
 
         resetTransmissionSize ();
     }
@@ -188,8 +189,10 @@ namespace Vast
 
         // NOTE: 'header' is used by the receiving host to read message from network stream
         VASTHeader header;
-        header.start = 42;
-        header.end = '\n';
+        //header.start = 42;
+        //header.end = '\n';
+        header.start = 10;
+        header.end = 5;
         header.type = type;
         header.msg_size = msg.serialize (NULL);
         
@@ -380,7 +383,10 @@ namespace Vast
                 memcpy (&header, curr_msg->msg, sizeof (VASTHeader));
 
                 // check for VAST Header, 010101 in front, and '\n' at end
-                if (header.start == 42 && header.end == '\n')
+                //if (header.start == 42 && header.end == '\n')
+
+                // check for VAST Header, 1010 in front (10) 0101 in back (5)
+                if (header.start == 10 && header.end == 5)
                 {
                     hq = new HALF_VMSG (header);
                     _half_queue[curr_msg->fromhost] = hq;
@@ -447,9 +453,9 @@ namespace Vast
 
         this->storeMapping (addr);
 
-        // TODO: need to register this handler somewhat differently (it knows it's a direct)
         // NOTE: we don't need to worry about cleanConnections () disconnect this connection, 
         //       as this socket will not have any time record
+        // TODO: perhaps release socket_id if connection fails?
         if (_manager->connect (socket_id, addr.publicIP.host, addr.publicIP.port) == false)
             return NET_ID_UNASSIGNED;
                
@@ -464,6 +470,7 @@ namespace Vast
     }
 
     // send a message to a socket
+    // NOTE: we send directly without queueing
     bool 
     VASTnet::sendSocket (id_t socket, const char *msg, size_t size)
     {        
@@ -474,8 +481,26 @@ namespace Vast
     char *
     VASTnet::receiveSocket (id_t &socket, size_t &size)
     {
+        // remove previous message, if any
+        if (_recvmsg_socket)
+        {
+            delete _recvmsg_socket;
+            _recvmsg_socket = NULL;
+        }
+
+        // no more messages
+        if (_socket_queue.size () == 0)
+            return NULL;
+
+        // get first available message
+        _recvmsg_socket = _socket_queue[0];
+        _socket_queue.erase (_socket_queue.begin ());
+
+        socket = _recvmsg_socket->fromhost;
+        size = _recvmsg_socket->size;
+
         // should go through each socket, or make this into a complete callback
-        return NULL;
+        return _recvmsg_socket->msg;
     }
 
     //
@@ -1079,6 +1104,7 @@ namespace Vast
         {
             timestamp_t lasttime = _manager->getLastTime (it->first);
 
+            // NOTE: for connections that do not record time (such as socket-only), no timeout will occur
             if (lasttime == 0 || (now - lasttime) < timeout)
                 continue;
 

@@ -116,7 +116,7 @@ namespace Vast
             if (per_sec)
             {
                 ACE_Time_Value curr_time = ACE_OS::gettimeofday ();
-                printf ("%ld s, tick %lu, tick_persec %lu, sleep: %lu us, time_left: %d budget: %u\n", (long)curr_time.sec (), tick_count, tick_per_sec, sleep_time, time_left, time_budget);
+                printf ("%ld s, tick %lu, tick_persec %lu, sleep: %lu us, time_left: %d\n", (long)curr_time.sec (), tick_count, tick_per_sec, sleep_time, time_left);
                 tick_per_sec = 0;
             }
 

@@ -2,6 +2,8 @@
 
 VAST C++ 0.4.6
 --------------
+2010/10/26      refactor VASTnet to allow both socket-only & VAST-specific messaging
+                change timestamp_t type from uint32_t to uint64_t (and records millisecond since 1970)
 2010/09/02      add VASTCallback interface to handle app-specific messages & per-second tasks
 2010/07/12      added report () to VAST interface, to send arbitrary message to gateway server
 2010/06/22      C# sample program added (calling C wrapper class VASTWrapperC)
