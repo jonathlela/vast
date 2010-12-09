@@ -40,6 +40,9 @@
 
 using namespace std;
 
+//const long MICROSECOND_PERSEC = 1000000;
+#define MICROSECOND_PERSEC (1000000)
+
 // forward declaration
 
 //class EXPORT errout;

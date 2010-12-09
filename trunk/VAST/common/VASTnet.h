@@ -253,6 +253,9 @@ namespace Vast {
         // getters & setters
         //
 
+        // set how many timestamps should local value be adjusted to be consistent with a master clock
+        void setTimestampAdjustment (int adjustment);
+
         // set bandwidth limitation to this network interface (limit is in Kilo bytes / second)
         void setBandwidthLimit (bandwidth_t type, size_t limit);
 
@@ -363,6 +366,9 @@ namespace Vast {
 
         // map from hostIDs to IP addresses
         std::map<id_t, Addr>            _id2addr;
+
+        // time adjustment
+        int                             _time_adjust;
    
         // timeouts
         timestamp_t                     _timeout_IDrequest; // timeout for sending ID request

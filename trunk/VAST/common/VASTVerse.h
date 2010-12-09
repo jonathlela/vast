@@ -182,6 +182,9 @@ namespace Vast
         //  accessors & state check
         //
 
+        // get current timestamp from host machine (millisecond since 1970)
+        timestamp_t getTimestamp ();
+
         // obtain access to Voronoi class of the matcher (usually for drawing purpose)
         // returns NULL if matcher does not exist on this node
         Voronoi *getMatcherVoronoi ();

@@ -47,6 +47,8 @@ namespace Vast
         _recvmsg = NULL;
         _recvmsg_socket = NULL;
 
+        _time_adjust = 0;
+
         resetTransmissionSize ();
     }
 
@@ -510,7 +512,7 @@ namespace Vast
     timestamp_t 
     VASTnet::getTimestamp ()
     {
-        return _manager->getTimestamp ();
+        return (_manager->getTimestamp () + _time_adjust);
     }
 
     // get IP address from host name
@@ -650,6 +652,17 @@ namespace Vast
     //
     // getters & setters
     //
+
+    // set how many timestamps should local value be adjusted to be consistent with a master clock
+    void 
+    VASTnet::setTimestampAdjustment (int adjustment)
+    {
+        // NOTE: the adjustment is always incrementally applied, as new adjustment
+        //       is applied 
+        _time_adjust += adjustment;
+
+        printf ("\nVASTnet::setTimestampAdjustment () adjusts %d milliseconds (after adjusting %d)\n\n", _time_adjust, adjustment);
+    }
 
     // set bandwidth limitation to this network interface (limit is in Kilo bytes / second)
     void 

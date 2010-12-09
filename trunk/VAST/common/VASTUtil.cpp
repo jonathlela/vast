@@ -128,22 +128,23 @@ TimeMonitor::TimeMonitor ()
     _budget = 0;
 
     ACE_Time_Value time = ACE_OS::gettimeofday ();
-    _start = (unsigned long long)time.sec () * 1000000 + time.usec ();
+    _start = (unsigned long long)time.sec () * MICROSECOND_PERSEC + time.usec ();
 }
 
 
-// set how much time is left (in millisecond)
+// set how much time is left (in microsecond)
 void 
 TimeMonitor::setBudget (int time_budget)
 {
-    if (time_budget > 1000000)
+    if (time_budget > MICROSECOND_PERSEC)
     {
         printf ("TimeMonitor::setBudget () budget exceeds 1000 ms, may want to check if this is correct\n");
     }
 
     _budget = time_budget;
-    ACE_Time_Value time = ACE_OS::gettimeofday();
-    _start = (unsigned long long)time.sec () * 1000000 + time.usec ();
+
+    ACE_Time_Value time = ACE_OS::gettimeofday ();
+    _start = (unsigned long long)time.sec () * MICROSECOND_PERSEC + time.usec ();
     _first = true;
 }
 
@@ -160,7 +161,9 @@ TimeMonitor::available ()
 
     // check how much time has elapsed since setBudget was called
     ACE_Time_Value time = ACE_OS::gettimeofday();
-    long long elapsed = (long long)(((unsigned long long)time.sec () * 1000000 + time.usec ()) - _start);
+
+    unsigned long long current = (unsigned long long)time.sec () * MICROSECOND_PERSEC + time.usec ();
+    long long elapsed = (long long)(current - _start);
 
     //if (elapsed > 0)
     //    printf ("available (): elapsed %ld budget: %ld\n", (long)elapsed, (long)_budget);
@@ -168,13 +171,16 @@ TimeMonitor::available ()
     int time_left = (int)(_budget - elapsed);
 
     if (time_left < 0)
+    {
+        printf ("available (): time_left: %d elapsed %ld budget: %ld\n", time_left, (long)elapsed, (long)_budget);
         time_left = 0;
+    }
 
     // we make sure that a positive response is returned at least once per cycle
     if (_first == true)
     {
         _first = false;
-      
+     
         if (time_left == 0)
             time_left = 1;
     }

@@ -180,10 +180,12 @@ void checkJoin ()
         {   
             g_sub_no = g_self->getSubscriptionID (); 
             g_state = JOINED;
-            //record the time joined   by lee
+            // record the time joined   by lee
             // current time in milliseconds
-            ACE_Time_Value joined_time = ACE_OS::gettimeofday ();
-            joined_msec = (unsigned long long) (joined_time.sec () * 1000 + joined_time.usec () / 1000);              
+            
+            //ACE_Time_Value joined_time = ACE_OS::gettimeofday ();
+            //joined_msec = (unsigned long long) (joined_time.sec () * 1000 + joined_time.usec () / 1000);              
+            joined_msec = g_world->getTimestamp ();
         }
         break;
 
@@ -312,6 +314,7 @@ int main (int argc, char *argv[])
     // Initialization
     //
 
+    // print out size of different data types, useful for debug transmit sizes
     //printSizes ();
 
     //ACE::init ();
@@ -321,10 +324,7 @@ int main (int argc, char *argv[])
     // NOTE: do not use time () as nodes at different sites may have very close time () values
     ACE_Time_Value now = ACE_OS::gettimeofday ();
     printf ("Setting random seed as: %d\n", (int)now.usec ());
-    srand (now.usec ());
- 
-    // print out size of different data types, useful for debug transmit sizes
-    //printSizes ();
+    srand (now.usec ());    
  
     // initialize parameters
     char cmd[255];
@@ -384,8 +384,12 @@ int main (int argc, char *argv[])
 
     // record "begin to join" in position.log  by lee
     // current time in milliseconds
+    
     ACE_Time_Value joining_time = ACE_OS::gettimeofday ();
     joining_msec = (unsigned long long) (joining_time.sec () * 1000 + joining_time.usec () / 1000);
+    
+    // NOTE: g_world likely is not initialized yet (to provide time)
+    //joining_msec = g_world->getTimestamp ();
         
     //
     // open logs

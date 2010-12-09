@@ -1004,6 +1004,30 @@ namespace Vast
             }
             break;
 
+        case SYNC_CLOCK:
+            {
+                if (isGateway () == false)
+                {
+                    LogManager::instance ()->writeLogFile ("VASTMatcher::handleMessage () SYNC_CLOCK can only be handled by gateway\n");
+                    break;
+                }
+
+                // send back the sender and gateway's current timestamp
+                timestamp_t sender_time;                
+                in_msg.extract (sender_time);
+                timestamp_t gateway_time = _net->getTimestamp ();
+                
+                Message msg (SYNC_CLOCK);
+                msg.store (sender_time);
+                msg.store (gateway_time);
+                msg.msggroup = MSG_GROUP_VAST_CLIENT;
+
+                msg.addTarget (in_msg.from);
+        
+                sendMessage (msg);            
+            }
+            break;
+
         // process universal VASTnet message, msgtype = 0
         case DISCONNECT:
             {   

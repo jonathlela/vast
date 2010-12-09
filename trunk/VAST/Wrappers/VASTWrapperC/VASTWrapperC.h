@@ -29,8 +29,8 @@
 #ifndef VAST_WRAPPER_C_H
 #define VAST_WRAPPER_C_H
 
-// NOTE: extern "C" is to make sure the exported function symbols are "C-style" without attachments
-//       so it could be recognized
+// NOTE: extern "C" is to make sure the exported function symbols are "C-style" 
+//       without attachments so it could be recognized
 #ifdef WIN32
 #define EXPORT extern "C" __declspec (dllexport)
 #define VAST_CALL __stdcall
@@ -69,8 +69,6 @@ EXPORT bool     VAST_CALL    VASTLeave ();                                   // 
 EXPORT bool     VAST_CALL    VASTMove (float x, float y);                    // move to a new position
 EXPORT size_t   VAST_CALL    VASTTick (size_t time_budget = 0);              // do routine processsing, each  in millisecond)
 EXPORT bool     VAST_CALL    VASTPublish (const char *msg, size_t size, uint16_t radius = 0);     // publish a message to current layer at current location, with optional radius
-//EXPORT VAST_C_Msg * VAST_CALL VASTReceive ();                                 // receive any message received
-//EXPORT bool     VAST_CALL    VASTReceive (char **msg, size_t *size, uint64_t *from);                                 // receive any message received
 EXPORT const char* VAST_CALL VASTReceive (size_t *size, uint64_t *from);                                 // receive any message received
 
 // helpers

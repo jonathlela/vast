@@ -166,7 +166,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="copy &quot;$(SolutionDir)\lib\*.dll&quot; &quot;$(SolutionDir)\bin&quot;&#x0D;&#x0A;copy &quot;$(SolutionDir)\Dependencies\lib\$(ConfigurationName)\*.dll&quot; &quot;$(SolutionDir)\bin&quot;"
+				CommandLine="copy &quot;$(SolutionDir)\lib\*.dll&quot; &quot;$(SolutionDir)\bin&quot;&#x0D;&#x0A;copy &quot;$(SolutionDir)\Dependencies\lib\$(ConfigurationName)\*.dll&quot; &quot;$(SolutionDir)\bin&quot;&#x0D;&#x0A;"
 			/>
 		</Configuration>
 	</Configurations>

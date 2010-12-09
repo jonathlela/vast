@@ -28,6 +28,8 @@ namespace Vast
         // NOTE: _active should be set true by now, so that the loop in svc () may proceed correctly
         _active = true;
         this->activate (); 
+
+        printf ("after calling activate ()\n");
             
         // wait until server is up and running (e.g. svc() is executing)
         mutex.acquire ();
@@ -81,47 +83,56 @@ namespace Vast
     VASTThread::svc (void)
     {
         // NEW_THREAD
+        printf ("VASTThread::svc () called\n");
+
+        // wait a bit (doesn't seem necessary)
+        // NOTE the 2nd parameter is specified in microseconds (us) not milliseconds
+        //ACE_Time_Value duration (0, 500000);
+        //ACE_OS::sleep (duration); 
 
         // continue execution of original thread in open ()
         _up_cond->signal ();
 
         // how much time in microseconds for each frame
-        size_t  time_budget = 1000000/_ticks_persec;
+        size_t  time_budget = MICROSECOND_PERSEC/_ticks_persec;
         size_t  sleep_time = 0;         // time to sleep (in microseconds)
-        int     time_left = 0;          // how much time left for ticking VAST, in microseconds
+        //int     time_left = 0;          // how much time left for ticking VAST, in microseconds
     
         size_t  tick_per_sec = 0;       // tick count per second
         size_t  tick_count = 0;         // # of ticks so far (# of times the main loop has run)
  
-        printf ("\nVASTThread svc (): time_budget: %lu ticks_persec: %d\n\n", time_budget, _ticks_persec);
+        printf ("\nVASTThread svc (): time_budget: %lu us ticks_persec: %d\n\n", time_budget, _ticks_persec);
 
         // entering main loop
         while (_active)
         {   
+            // make sure this cycle doesn't exceed the time budget
+            //TimeMonitor::instance ()->setBudget (time_budget);
+
             tick_count++;
             tick_per_sec++;
-    
-            // make sure this cycle doesn't exceed the time budget
-            TimeMonitor::instance ()->setBudget (time_budget);
-        
+            
             // whether per-sec tasks were performed
             bool per_sec = false;
                
             // execute tick while obtaining time left, sleep out the remaining time
-            time_left = TimeMonitor::instance ()->available ();
+            //time_left = TimeMonitor::instance ()->available ();
     
             // ESSENTIAL: execute tick () per cycle, the parameters are all optional
-            sleep_time = ((VASTVerse *)_world)->tick (time_left, &per_sec);
-            
+            //sleep_time = ((VASTVerse *)_world)->tick (time_left, &per_sec);
+            sleep_time = ((VASTVerse *)_world)->tick (time_budget, &per_sec);
+                        
             if (per_sec)
             {
-                ACE_Time_Value curr_time = ACE_OS::gettimeofday ();
-                printf ("%ld s, tick %lu, tick_persec %lu, sleep: %lu us, time_left: %d\n", (long)curr_time.sec (), tick_count, tick_per_sec, sleep_time, time_left);
+                // print something to show liveness
+                //ACE_Time_Value curr_time = ACE_OS::gettimeofday ();
+                //printf ("%ld s, tick %lu, tick_persec %lu, sleep: %lu us\n", (long)curr_time.sec (), tick_count, tick_per_sec, sleep_time);
                 tick_per_sec = 0;
             }
 
             if (sleep_time > 0)
             {
+                //printf ("sleep %d\n", sleep_time);
                 // NOTE the 2nd parameter is specified in microseconds (us) not milliseconds
                 ACE_Time_Value duration (0, sleep_time);            
                 ACE_OS::sleep (duration); 

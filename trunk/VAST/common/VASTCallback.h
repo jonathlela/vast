@@ -37,7 +37,7 @@ using namespace std;
 
 namespace Vast
 {
-    class VASTCallback
+    class EXPORT VASTCallback
     {
 
     public:

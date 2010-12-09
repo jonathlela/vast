@@ -132,13 +132,15 @@ namespace Vast
         // store callback, if any
         VASTPointer *handlers   = (VASTPointer *)_pointers;
         handlers->callback      = callback;
-
+        
         // start thread if both callback & tick_persec is specified
         if (callback && tick_persec > 0)
         {
+            printf ("starting thread..\n");
             handlers->thread = new VASTThread (tick_persec);
             handlers->thread->open (this);
-        }
+            printf ("thread started...\n");
+        }        
     }
 
     VASTVerse::~VASTVerse ()
@@ -444,6 +446,13 @@ namespace Vast
 	int
     VASTVerse::tick (int time_budget, bool *per_sec)
     {        
+        // if no time is available, at least give a little time to run at least once
+        if (time_budget < 0)
+            time_budget = 1;
+
+        // set budget (in microseconds)
+        TimeMonitor::instance ()->setBudget (time_budget);
+
         VASTPointer *handlers = (VASTPointer *)_pointers;
 
         // # of ticks a joining stage is considered timeout
@@ -560,15 +569,8 @@ namespace Vast
         }                       
 
         //
-        // perform ticking (process incoming messages)
+        // perform message queue ticking (process incoming messages)
         //
-
-        // if no time is available, at least give a little time to run at least once
-        if (time_budget < 0)
-            time_budget = 1;
-
-        // set budget
-        TimeMonitor::instance ()->setBudget (time_budget);
 
         // perform routine procedures for each logical time-step
         if (handlers->msgqueue != NULL)
@@ -745,6 +747,17 @@ namespace Vast
             return NULL;
 
         return handlers->net->receiveSocket (socket, size);
+    }
+
+    // get current timestamp from host machine
+    timestamp_t 
+    VASTVerse::getTimestamp ()
+    {
+        VASTPointer *handlers = (VASTPointer *)_pointers;
+        if (handlers->net == NULL)
+            return 0;
+            
+        return handlers->net->getTimestamp ();
     }
 
     // obtain access to Voronoi class (usually for drawing purpose)

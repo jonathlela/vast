@@ -66,6 +66,7 @@ namespace Vast
         MESSAGE,                        // deliver a message to a node
         SUBSCRIBE_NOTIFY,               // client notifying a relay of its subscription
         STAT,                           // sending statistics for gateway to record
+        SYNC_CLOCK,                     // synchronize logical clock with gateway
 
         // Relay-specific messages
         REQUEST,                // request for relays

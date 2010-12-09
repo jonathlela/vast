@@ -406,7 +406,7 @@ namespace Vast {
         //       mutex will be used again to protect access to _id2conn
         handler->close ();
         
-        ACE_DEBUG ((LM_DEBUG, "(%5t) net_ace::disconnect(): [%llu] disconnected\n", target));
+        ACE_DEBUG ((LM_DEBUG, "(%5t) net_ace::disconnect(): [%lu] disconnected\n", target));
         
         return true;
     }

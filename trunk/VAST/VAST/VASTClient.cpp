@@ -578,6 +578,11 @@ namespace Vast
                 layer_t type = 1;   // type 1 = JOIN
                 msg.store (type);
                 sendGatewayMessage (msg, MSG_GROUP_VAST_MATCHER);
+
+                // sync local clock with gateway
+                msg.clear (SYNC_CLOCK);
+                msg.store (_net->getTimestamp ());
+                sendGatewayMessage (msg, MSG_GROUP_VAST_MATCHER);
             }
             break;
 
@@ -714,6 +719,31 @@ namespace Vast
 #endif
                 in_msg.reset ();
                 storeMessage (in_msg);
+            }
+            break;
+
+        // process time synchronization message from gateway
+        case SYNC_CLOCK:
+            {
+                timestamp_t sent_time;
+                timestamp_t gateway_time;
+                timestamp_t now = _net->getTimestamp ();
+
+                in_msg.extract (sent_time);
+                in_msg.extract (gateway_time);
+
+                // calculate single-trip latency first
+                timestamp_t latency = (now - sent_time) / 2;
+
+                // find different between our time and gateway's time
+                int adjust;
+                
+                if ((gateway_time + latency) >= now)
+                    adjust = (int)((gateway_time + latency) - now);
+                else
+                    adjust = -(int)((now - (gateway_time + latency)));
+
+                _net->setTimestampAdjustment (adjust);
             }
             break;
 
