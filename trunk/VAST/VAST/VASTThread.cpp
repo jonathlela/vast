@@ -106,9 +106,6 @@ namespace Vast
         // entering main loop
         while (_active)
         {   
-            // make sure this cycle doesn't exceed the time budget
-            //TimeMonitor::instance ()->setBudget (time_budget);
-
             tick_count++;
             tick_per_sec++;
             
@@ -116,10 +113,7 @@ namespace Vast
             bool per_sec = false;
                
             // execute tick while obtaining time left, sleep out the remaining time
-            //time_left = TimeMonitor::instance ()->available ();
-    
             // ESSENTIAL: execute tick () per cycle, the parameters are all optional
-            //sleep_time = ((VASTVerse *)_world)->tick (time_left, &per_sec);
             sleep_time = ((VASTVerse *)_world)->tick (time_budget, &per_sec);
                         
             if (per_sec)

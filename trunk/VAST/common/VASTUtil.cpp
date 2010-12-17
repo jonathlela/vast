@@ -27,6 +27,7 @@
 
 #include "ace/ACE.h"        // ACE_OS::gettimeofday () for TimeMonitor
 #include "ace/OS.h"
+#include "ace/Task.h"               // for ACE_Thread_Mutex
 
 #include "stdarg.h"         // taking variable arguments in writeLogFile
 
@@ -35,6 +36,9 @@ namespace Vast
 
 // Global static pointer used to ensure a single instance of the class.
 LogManager* LogManager::_instance = NULL; 
+
+// mutex for log file (to avoid contention)
+ACE_Thread_Mutex g_log_mutex;
 
 LogManager* LogManager::instance()
 {
@@ -67,10 +71,7 @@ bool LogManager::setLogFile (FILE *fp)
 // http://www.ozzu.com/cpp-tutorials/tutorial-writing-custom-printf-wrapper-function-t89166.html
 bool LogManager::writeLogFile (const char *format, ...)
 {
-    /*
-    if (_logfile == NULL)
-        return false;
-    */
+    g_log_mutex.acquire ();
 
     // print time
 	time_t rawtime;
@@ -105,6 +106,8 @@ bool LogManager::writeLogFile (const char *format, ...)
         fflush (_logfile);
     }
     fprintf (stdout, "\n");
+
+    g_log_mutex.release ();
 
     return true;
 }

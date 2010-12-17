@@ -32,7 +32,7 @@
 // NOTE: extern "C" is to make sure the exported function symbols are "C-style" 
 //       without attachments so it could be recognized
 #ifdef WIN32
-#define EXPORT extern "C" __declspec (dllexport)
+#define VASTC_EXPORT extern "C" __declspec (dllexport)
 #define VAST_CALL __stdcall
 #else
 #define EXPORT      /* nothing */
@@ -55,26 +55,32 @@ typedef struct
 } VAST_C_Msg;
 
 // basic init of VAST
-EXPORT int      VAST_CALL    InitVAST (bool is_gateway, const char *gateway);  // initialize the VAST library
-EXPORT int      VAST_CALL    ShutVAST ();                                // close down the VAST library
+VASTC_EXPORT bool     VAST_CALL    InitVAST (bool is_gateway, const char *gateway);  // initialize the VAST library
+VASTC_EXPORT bool     VAST_CALL    ShutVAST ();                                // close down the VAST library
 
 // unique layer
-EXPORT void     VAST_CALL    VASTReserveLayer (uint32_t layer = 0);          // obtain a unique & unused layer (preferred layer # as input)
-EXPORT uint32_t VAST_CALL    VASTGetLayer ();                                // get the currently reserved layer, 0 for not yet reserved
-EXPORT bool     VAST_CALL    VASTReleaseLayer ();                            // release back the layer
+VASTC_EXPORT void     VAST_CALL    VASTReserveLayer (uint32_t layer = 0);          // obtain a unique & unused layer (preferred layer # as input)
+VASTC_EXPORT uint32_t VAST_CALL    VASTGetLayer ();                                // get the currently reserved layer, 0 for not yet reserved
+VASTC_EXPORT bool     VAST_CALL    VASTReleaseLayer ();                            // release back the layer
 
 // main join / move / publish functions
-EXPORT bool     VAST_CALL    VASTJoin (float x, float y, uint16_t radius);   // join at location on a partcular layer
-EXPORT bool     VAST_CALL    VASTLeave ();                                   // leave the overlay
-EXPORT bool     VAST_CALL    VASTMove (float x, float y);                    // move to a new position
-EXPORT size_t   VAST_CALL    VASTTick (size_t time_budget = 0);              // do routine processsing, each  in millisecond)
-EXPORT bool     VAST_CALL    VASTPublish (const char *msg, size_t size, uint16_t radius = 0);     // publish a message to current layer at current location, with optional radius
-EXPORT const char* VAST_CALL VASTReceive (size_t *size, uint64_t *from);                                 // receive any message received
+VASTC_EXPORT bool     VAST_CALL     VASTJoin (uint16_t world_id, float x, float y, uint16_t radius);   // join at location on a partcular layer
+VASTC_EXPORT bool     VAST_CALL     VASTLeave ();                                   // leave the overlay
+VASTC_EXPORT bool     VAST_CALL     VASTMove (float x, float y);                    // move to a new position
+VASTC_EXPORT int      VAST_CALL     VASTTick (int time_budget = 0);              // do routine processsing, each  in millisecond)
+VASTC_EXPORT bool     VAST_CALL     VASTPublish (const char *msg, size_t size, uint16_t radius = 0);     // publish a message to current layer at current location, with optional radius
+VASTC_EXPORT const char* VAST_CALL  VASTReceive (uint64_t *from, size_t *size);                                 // receive any message received
+
+// socket messaging
+VASTC_EXPORT uint64_t VAST_CALL     VASTOpenSocket (const char *ip_port);                           // open a new TCP socket
+VASTC_EXPORT bool     VAST_CALL     VASTCloseSocket (uint64_t socket);                              // close a TCP socket
+VASTC_EXPORT bool     VAST_CALL     VASTSendSocket (uint64_t socket, const char *msg, size_t size); // send a message to a socket
+VASTC_EXPORT const char * VAST_CALL VASTReceiveSocket (uint64_t *from, size_t *size);               // receive a message from socket, if any
 
 // helpers
-EXPORT bool     VAST_CALL    isVASTInit ();                                  // is initialized done (ready to join)
-EXPORT bool     VAST_CALL    isVASTJoined ();                                // whether the join is successful
-EXPORT uint64_t VAST_CALL    VASTGetSelfID ();                               // obtain an ID of self
+VASTC_EXPORT bool     VAST_CALL    isVASTInit ();                                  // is initialized done (ready to join)
+VASTC_EXPORT bool     VAST_CALL    isVASTJoined ();                                // whether the join is successful
+VASTC_EXPORT uint64_t VAST_CALL    VASTGetSelfID ();                               // obtain an ID of self
 
 
 #endif // VAST_WRAPPER_C_H

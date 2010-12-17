@@ -15,37 +15,49 @@ namespace ConsoleApplication1
         static extern IntPtr LoadLibrary(string lpFileName);
 
         // load functions exported by VASTwrapperC.dll
-        [DllImport("VASTwrapperC")]
+        [DllImport("VASTwrapperCd")]
         public static extern int InitVAST(bool is_gateway, String str);
 
-        [DllImport("VASTwrapperC")]
+        [DllImport("VASTwrapperCd")]
         public static extern int ShutVAST();
 
-        [DllImport("VASTwrapperC")]
-        public static extern bool VASTJoin(float x, float y, ushort radius);
+        [DllImport("VASTwrapperCd")]
+        public static extern bool VASTJoin(ushort world_id, float x, float y, ushort radius);
 
-        [DllImport("VASTwrapperC")]
+        [DllImport("VASTwrapperCd")]
         public static extern bool VASTLeave ();
 
-        [DllImport("VASTwrapperC")]
+        [DllImport("VASTwrapperCd")]
         public static extern bool VASTMove(float x, float y);
 
-        [DllImport("VASTwrapperC")]
+        [DllImport("VASTwrapperCd")]
         public static extern uint VASTTick (uint time_budget);
 
-        [DllImport("VASTwrapperC")]
+        [DllImport("VASTwrapperCd")]
         public static extern bool VASTPublish (String msg, uint size, ushort radius);
 
-        [DllImport("VASTwrapperC")]
-        public static extern IntPtr VASTReceive(ref uint size, ref UInt64 from);
+        [DllImport("VASTwrapperCd")]
+        public static extern IntPtr VASTReceive(ref UInt64 from, ref uint size);
 
-        [DllImport("VASTwrapperC")]
+        [DllImport("VASTwrapperCd")]
+        public static extern ulong VASTOpenSocket (String ip_port);
+
+        [DllImport("VASTwrapperCd")]
+        public static extern bool VASTCloseSocket (ulong socket);
+
+        [DllImport("VASTwrapperCd")]
+        public static extern bool VASTSendSocket(ulong socket, String msg, uint size);
+
+        [DllImport("VASTwrapperCd")]
+        public static extern IntPtr VASTReceiveSocket(ref UInt64 from, ref uint size);
+
+        [DllImport("VASTwrapperCd")]
         public static extern bool isVASTInit ();
 
-        [DllImport("VASTwrapperC")]
+        [DllImport("VASTwrapperCd")]
         public static extern bool isVASTJoined();
 
-        [DllImport("VASTwrapperC")]
+        [DllImport("VASTwrapperCd")]
         public static extern ulong VASTGetSelfID();
 
 
@@ -60,15 +72,15 @@ namespace ConsoleApplication1
             // Ensure current directory is exe directory
             //Environment.CurrentDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
 
-            //string dllPath = Path.GetFullPath(@".\VASTwrapperC.dll");
-            //LoadLibrary(dllPath);
+            string dllPath = Path.GetFullPath(@".\VASTwrapperCd.dll");
+            LoadLibrary(dllPath);
 
             g_x = g_y = 100;
 
             try
             {
                 InitVAST(g_is_gateway, g_gateway);
-                VASTJoin(g_x, g_y, 200);
+                VASTJoin(1, g_x, g_y, 200);
             }
             catch (DllNotFoundException e)
             {
@@ -102,7 +114,7 @@ namespace ConsoleApplication1
 
                 while (true)
                 {
-                    IntPtr ptr = VASTReceive(ref size, ref from);
+                    IntPtr ptr = VASTReceive(ref from, ref size);
 
                     if (size == 0 && from == 0)
                         break;
