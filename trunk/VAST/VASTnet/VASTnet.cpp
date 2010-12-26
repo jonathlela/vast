@@ -582,6 +582,7 @@ namespace Vast
             }
         }
 
+        // TODO: also should check if network is still connected (plugged)
         return (_manager->getID () != NET_ID_UNASSIGNED);
     }
 

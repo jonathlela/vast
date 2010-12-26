@@ -133,8 +133,6 @@ VASTC_EXPORT bool VAST_CALL InitVAST (bool is_gateway, const char *gateway)
     // create VAST node factory    
     g_world = new VASTVerse (is_gateway, GWstr, &g_netpara, NULL);
 
-    g_init = true;    
-
     return true;
 }
 
@@ -252,6 +250,10 @@ VASTC_EXPORT int VAST_CALL VASTTick (int time_budget)
     // tick can only happen if VAST factory exists
     if (g_world == NULL)
         return 0;
+
+    // check if VAST is ready to create VASTNodes (gateway connected)
+    if (g_world->isInitialized ())
+        g_init = true;
 
     // record last time performing per-second task
     static size_t tick_count = 0;
