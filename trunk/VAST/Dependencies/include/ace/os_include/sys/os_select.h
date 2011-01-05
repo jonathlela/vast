@@ -6,7 +6,7 @@
  *
  *  select types
  *
- *  $Id: os_select.h 82723 2008-09-16 09:35:44Z johnnyw $
+ *  $Id: os_select.h 85015 2009-04-03 12:27:59Z johnnyw $
  *
  *  @author Don Hinton <dhinton@dresystems.com>
  *  @author This code was originally in various places including ace/OS.h.
@@ -32,9 +32,9 @@
 #  include /**/ <sys/select.h>
 #endif /* !ACE_LACKS_SYS_SELECT_H */
 
-#if defined (ACE_VXWORKS) && defined (ACE_LACKS_SYS_SELECT_H)
+#if defined (ACE_USES_SELECTLIB_H) && defined (ACE_LACKS_SYS_SELECT_H)
 #  include /**/ <selectLib.h>
-#endif /* ACE_VXWORKS */
+#endif /* ACE_USES_SELECTLIB_H && ACE_LACKS_SYS_SELECT_H */
 
 // Place all additions (especially function declarations) within extern "C" {}
 #ifdef __cplusplus

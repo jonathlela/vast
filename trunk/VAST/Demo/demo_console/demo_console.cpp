@@ -13,7 +13,9 @@
 #endif
 
 #include "ace/ACE.h"    // for sleep functions
-#include "ace/OS.h"
+//#include "ace/OS.h"
+#include "ace/OS_NS_unistd.h"       // ACE_OS::sleeps
+#include "ace/OS_NS_sys_time.h"     // gettimeofday
 
 #include <stdio.h>
 

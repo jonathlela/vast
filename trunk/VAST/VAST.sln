@@ -1,63 +1,27 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 10.00
-# Visual C++ Express 2008
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "VAST", "VAST\VAST_vc9.vcproj", "{3AD53CEC-054A-41D6-9CBE-45FCD6831292}"
-	ProjectSection(ProjectDependencies) = postProject
-		{DE53719F-220A-41FA-8D10-FDC348C085BE} = {DE53719F-220A-41FA-8D10-FDC348C085BE}
-	EndProjectSection
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual C++ Express 2010
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "VAST", "VAST\VAST_vc9.vcxproj", "{3AD53CEC-054A-41D6-9CBE-45FCD6831292}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "VASTsim", "VASTsim\VASTsim.vcproj", "{AD82A8FD-855A-4E58-978F-3A15F8AF9919}"
-	ProjectSection(ProjectDependencies) = postProject
-		{3AD53CEC-054A-41D6-9CBE-45FCD6831292} = {3AD53CEC-054A-41D6-9CBE-45FCD6831292}
-	EndProjectSection
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "VASTsim", "VASTsim\VASTsim.vcxproj", "{AD82A8FD-855A-4E58-978F-3A15F8AF9919}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "VASTsim_gui", "Demo\VASTsim_gui\VASTsim_gui-vc9.vcproj", "{478AC2D9-9141-4D6E-8266-D70656F6B6A4}"
-	ProjectSection(ProjectDependencies) = postProject
-		{DE53719F-220A-41FA-8D10-FDC348C085BE} = {DE53719F-220A-41FA-8D10-FDC348C085BE}
-		{AD82A8FD-855A-4E58-978F-3A15F8AF9919} = {AD82A8FD-855A-4E58-978F-3A15F8AF9919}
-	EndProjectSection
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "VASTsim_gui", "Demo\VASTsim_gui\VASTsim_gui-vc9.vcxproj", "{478AC2D9-9141-4D6E-8266-D70656F6B6A4}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "demo_chatva", "Demo\demo_chatva\demo_chatva-vc9.vcproj", "{B3E80648-DCB5-47D8-BF1F-8DE6DA64D797}"
-	ProjectSection(ProjectDependencies) = postProject
-		{3AD53CEC-054A-41D6-9CBE-45FCD6831292} = {3AD53CEC-054A-41D6-9CBE-45FCD6831292}
-		{AD82A8FD-855A-4E58-978F-3A15F8AF9919} = {AD82A8FD-855A-4E58-978F-3A15F8AF9919}
-	EndProjectSection
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "demo_chatva", "Demo\demo_chatva\demo_chatva-vc9.vcxproj", "{B3E80648-DCB5-47D8-BF1F-8DE6DA64D797}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "VASTsim_console", "Demo\VASTsim_console\VASTsim_console-vc9.vcproj", "{4EE45583-E87C-4DEC-9B95-908B8392BC8D}"
-	ProjectSection(ProjectDependencies) = postProject
-		{AD82A8FD-855A-4E58-978F-3A15F8AF9919} = {AD82A8FD-855A-4E58-978F-3A15F8AF9919}
-	EndProjectSection
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "VASTsim_console", "Demo\VASTsim_console\VASTsim_console-vc9.vcxproj", "{4EE45583-E87C-4DEC-9B95-908B8392BC8D}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "VASTnet", "VASTnet\VASTnet.vcproj", "{DE53719F-220A-41FA-8D10-FDC348C085BE}"
-	ProjectSection(ProjectDependencies) = postProject
-		{9259AB2F-86EB-46B6-9550-9105901C9698} = {9259AB2F-86EB-46B6-9550-9105901C9698}
-	EndProjectSection
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "VASTnet", "VASTnet\VASTnet.vcxproj", "{DE53719F-220A-41FA-8D10-FDC348C085BE}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "common", "common\common.vcproj", "{9259AB2F-86EB-46B6-9550-9105901C9698}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "common", "common\common.vcxproj", "{9259AB2F-86EB-46B6-9550-9105901C9698}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "demo_console", "Demo\demo_console\demo_console.vcproj", "{366EDE29-E9AF-4ED5-AFB8-C7EB756E923A}"
-	ProjectSection(ProjectDependencies) = postProject
-		{9259AB2F-86EB-46B6-9550-9105901C9698} = {9259AB2F-86EB-46B6-9550-9105901C9698}
-		{3AD53CEC-054A-41D6-9CBE-45FCD6831292} = {3AD53CEC-054A-41D6-9CBE-45FCD6831292}
-		{AD82A8FD-855A-4E58-978F-3A15F8AF9919} = {AD82A8FD-855A-4E58-978F-3A15F8AF9919}
-	EndProjectSection
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "demo_console", "Demo\demo_console\demo_console.vcxproj", "{366EDE29-E9AF-4ED5-AFB8-C7EB756E923A}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "test_console", "Demo\test_console\test_console.vcproj", "{4F2CD026-3368-4487-A513-79CCB0750726}"
-	ProjectSection(ProjectDependencies) = postProject
-		{9259AB2F-86EB-46B6-9550-9105901C9698} = {9259AB2F-86EB-46B6-9550-9105901C9698}
-		{3AD53CEC-054A-41D6-9CBE-45FCD6831292} = {3AD53CEC-054A-41D6-9CBE-45FCD6831292}
-		{AD82A8FD-855A-4E58-978F-3A15F8AF9919} = {AD82A8FD-855A-4E58-978F-3A15F8AF9919}
-	EndProjectSection
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "test_console", "Demo\test_console\test_console.vcxproj", "{4F2CD026-3368-4487-A513-79CCB0750726}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "VASTwrapperC", "Wrappers\VASTWrapperC\VASTWrapperC.vcproj", "{EBAEAEB0-11A4-44EA-BA0C-F50B454E9566}"
-	ProjectSection(ProjectDependencies) = postProject
-		{3AD53CEC-054A-41D6-9CBE-45FCD6831292} = {3AD53CEC-054A-41D6-9CBE-45FCD6831292}
-	EndProjectSection
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "VASTWrapperC", "Wrappers\VASTWrapperC\VASTWrapperC.vcxproj", "{EBAEAEB0-11A4-44EA-BA0C-F50B454E9566}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "demo_console_C", "Demo\demo_console_C\demo_console_C.vcproj", "{94FD1191-DDF1-46F8-AC08-FEA54569A4D2}"
-	ProjectSection(ProjectDependencies) = postProject
-		{EBAEAEB0-11A4-44EA-BA0C-F50B454E9566} = {EBAEAEB0-11A4-44EA-BA0C-F50B454E9566}
-	EndProjectSection
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "demo_console_C", "Demo\demo_console_C\demo_console_C.vcxproj", "{94FD1191-DDF1-46F8-AC08-FEA54569A4D2}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

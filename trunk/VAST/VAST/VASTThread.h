@@ -1,6 +1,6 @@
 /*
  * VAST, a scalable peer-to-peer network for virtual environments
- * Copyright (C) 2005-2010 Shun-Yun Hu (syhu@ieee.org)
+ * Copyright (C) 2005-2011 Shun-Yun Hu (syhu@ieee.org)
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -29,7 +29,8 @@
 
 // for starting separate thread
 #include "ace/ACE.h"
-#include "ace/OS.h"
+//#include "ace/OS.h"
+#include "ace/OS_NS_unistd.h"       // ACE_OS::sleep
 #include "ace/Task.h"
 #include "ace/Reactor.h"
 #include "ace/Condition_T.h"        // ACE_Condition

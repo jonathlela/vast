@@ -26,7 +26,7 @@
 #include "VASTUtil.h"
 
 #include "ace/ACE.h"        // ACE_OS::gettimeofday () for TimeMonitor
-#include "ace/OS.h"
+//#include "ace/OS.h"
 #include "ace/Task.h"               // for ACE_Thread_Mutex
 
 #include "stdarg.h"         // taking variable arguments in writeLogFile

@@ -4,7 +4,7 @@
 /**
  *  @file    Select_Reactor_Base.h
  *
- *  $Id: Select_Reactor_Base.h 84316 2009-02-03 19:46:05Z johnnyw $
+ *  $Id: Select_Reactor_Base.h 87252 2009-10-28 20:03:48Z cleeland $
  *
  *  @author Douglas C. Schmidt <schmidt@cs.wustl.edu>
  */
@@ -180,6 +180,11 @@ public:
   /// Read one of the notify call on the @a handle into the
   /// @a buffer. This could be because of a thread trying to unblock
   /// the Reactor_Impl
+  ///
+  /// Return value semantics for this are:
+  /// -1: nothing read, fatal, unrecoverable error
+  ///  0: nothing read at all
+  ///  1: complete buffer read
   virtual int read_notify_pipe (ACE_HANDLE handle,
                                 ACE_Notification_Buffer &buffer);
 
@@ -502,7 +507,7 @@ protected:
   /// appropriate point specified by <requeue_position_>.
   virtual void renew (void) = 0;
 
-  /// Check to see if the <Event_Handler> associated with @a handle is
+  /// Check to see if the Event_Handler associated with @a handle is
   /// suspended. Returns 0 if not, 1 if so.
   virtual int is_suspended_i (ACE_HANDLE handle) = 0;
 

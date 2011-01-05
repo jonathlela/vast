@@ -1,5 +1,5 @@
 // -*- C++ -*-
-// $Id: config-qnx-rtp-pre62x.h 84036 2008-12-16 15:41:12Z johnnyw $
+// $Id: config-qnx-rtp-pre62x.h 87167 2009-10-19 19:33:53Z olli $
 // The following configuration file is designed to work for QNX RTP
 // GNU C++ and the POSIX (pthread) threads package. You can get QNX
 // RTP at http://get.qnx.com
@@ -48,12 +48,10 @@
 #define ACE_HAS_SIGISMEMBER_BUG
 #define ACE_HAS_SIGWAIT
 #define ACE_HAS_SIG_ATOMIC_T
-#define ACE_HAS_SIG_MACROS
 #define ACE_HAS_SOCKADDR_IN_SIN_LEN
 // #define ACE_HAS_SIZET_SOCKET_LEN
 #define ACE_HAS_SOCKLEN_T
 #define ACE_HAS_SSIZE_T
-#define ACE_HAS_STRERROR
 #define ACE_HAS_STRINGS
 #define ACE_HAS_SVR4_GETTIMEOFDAY
 #define ACE_HAS_TERMIOS

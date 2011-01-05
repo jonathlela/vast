@@ -4,7 +4,7 @@
 /**
  *  @file    MEM_Acceptor.h
  *
- *  $Id: MEM_Acceptor.h 82723 2008-09-16 09:35:44Z johnnyw $
+ *  $Id: MEM_Acceptor.h 91688 2010-09-09 11:21:50Z johnnyw $
  *
  *  @author Nanbor Wang <nanbor@cs.wustl.edu>
  */
@@ -58,7 +58,7 @@ public:
   /// Default constructor.
   ACE_MEM_Acceptor (void);
 
-  /// destructor.
+  /// Destructor.
   ~ACE_MEM_Acceptor (void);
 
   /// Initiate a passive mode socket.
@@ -119,10 +119,6 @@ public:
   /// Return the local endpoint address in the referenced <ACE_Addr>.
   /// Returns 0 if successful, else -1.
   int get_local_addr (ACE_MEM_Addr &) const;
-
-  /// Accessor to the mmap options.
-  /// @deprecated This method has been deprecated.
-  ACE_MEM_SAP::MALLOC_OPTIONS& malloc_options (void);
 
   // = Meta-type info
   typedef ACE_MEM_Addr PEER_ADDR;

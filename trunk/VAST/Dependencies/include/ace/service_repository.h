@@ -4,7 +4,7 @@
 /**
  *  @file    Service_Repository.h
  *
- *  $Id: Service_Repository.h 84170 2009-01-15 13:31:50Z johnnyw $
+ *  $Id: Service_Repository.h 91016 2010-07-06 11:29:50Z johnnyw $
  *
  *  @author Douglas C. Schmidt <schmidt@cs.wustl.edu>
  */
@@ -41,7 +41,7 @@ class ACE_DLL;
  * allows an administrative entity to centrally manage and
  * control the behavior of application services.  Note that if
  * services are removed from the middle of the repository the
- * order won't necessarily be maintained since the @a remove?
+ * order won't necessarily be maintained since the @a remove
  * method performs compaction.  However, the common case is not
  * to remove services, so typically they are deleted in the
  * reverse order that they were added originally.
@@ -96,11 +96,11 @@ public:
    * Locate a named entry in the service table, optionally ignoring
    * suspended entries.
    *
-   * @param service_name The name of the service to search for.
-   * @param srp          Optional; if not 0, it is a pointer to a location
-   *                     to receive the ACE_Service_Type pointer for the
-   *                     located service. Meaningless if this method
-   *                     returns -1.
+   * @param name The name of the service to search for.
+   * @param srp  Optional; if not 0, it is a pointer to a location
+   *             to receive the ACE_Service_Type pointer for the
+   *             located service. Meaningless if this method
+   *             returns -1.
    * @param ignore_suspended If true, the search ignores suspended services.
    *
    * @retval  0 Named service was located.

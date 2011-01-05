@@ -1,6 +1,6 @@
 /*
  * VAST, a scalable peer-to-peer network for virtual environments
- * Copyright (C) 2005-2010 Shun-Yun Hu (syhu@ieee.org)
+ * Copyright (C) 2005-2011 Shun-Yun Hu (syhu@ieee.org)
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -185,7 +185,7 @@ namespace Vast {
          
         // wait a bit to avoid signalling before the main thread tries to wait
         ACE_Time_Value sleep_interval (0, 200000);
-        ACE_OS::sleep (sleep_interval);        
+        ACE_OS::sleep (sleep_interval); 
 
         // continue execution of original thread in open()
         _up_cond->signal ();

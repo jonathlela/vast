@@ -1,6 +1,6 @@
 // -*- C++ -*-
 //
-// $Id: OS_NS_time.inl 84056 2008-12-22 16:04:46Z johnnyw $
+// $Id: OS_NS_time.inl 91683 2010-09-09 09:07:49Z johnnyw $
 
 #include "ace/OS_NS_string.h"
 #include "ace/OS_NS_errno.h"
@@ -28,12 +28,8 @@ ACE_OS::asctime_r (const struct tm *t, char *buf, int buflen)
   ACE_OS_TRACE ("ACE_OS::asctime_r");
 #if defined (ACE_HAS_REENTRANT_FUNCTIONS)
 # if defined (ACE_HAS_2_PARAM_ASCTIME_R_AND_CTIME_R)
-  char *result;
-#   if defined (DIGITAL_UNIX)
-  ACE_OSCALL (::_Pasctime_r (t, buf), char *, 0, result);
-#   else
+  char *result = 0;
   ACE_OSCALL (::asctime_r (t, buf), char *, 0, result);
-#   endif /* DIGITAL_UNIX */
   ACE_OS::strsncpy (buf, result, buflen);
   return buf;
 # else
@@ -97,9 +93,7 @@ ACE_INLINE ACE_TCHAR *
 ACE_OS::ctime (const time_t *t)
 {
   ACE_OS_TRACE ("ACE_OS::ctime");
-#if defined (ACE_HAS_BROKEN_CTIME)
-  ACE_OSCALL_RETURN (::asctime (::localtime (t)), char *, 0);
-#elif defined (ACE_HAS_WINCE)
+#if defined (ACE_HAS_WINCE)
   static ACE_TCHAR buf [ctime_buf_size];
   return ACE_OS::ctime_r (t,
                           buf,
@@ -124,7 +118,7 @@ ACE_OS::ctime (const time_t *t)
 #  else
   ACE_OSCALL_RETURN (::ctime (t), char *, 0);
 #  endif /* ACE_USES_WCHAR */
-# endif /* ACE_HAS_BROKEN_CTIME */
+# endif /* ACE_HAS_WINCE */
 }
 
 #if !defined (ACE_HAS_WINCE)  /* CE version in OS.cpp */
@@ -149,11 +143,7 @@ ACE_OS::ctime_r (const time_t *t, ACE_TCHAR *buf, int buflen)
       return 0;
     }
 #   if defined (ACE_HAS_2_PARAM_ASCTIME_R_AND_CTIME_R)
-#      if defined (DIGITAL_UNIX)
-  ACE_OSCALL (::_Pctime_r (t, bufp), ACE_TCHAR *, 0, bufp);
-#      else /* DIGITAL_UNIX */
   ACE_OSCALL (::ctime_r (t, bufp), char *, 0, bufp);
-#      endif /* DIGITAL_UNIX */
 #   else /* ACE_HAS_2_PARAM_ASCTIME_R_AND_CTIME_R */
 
 #      if defined (ACE_HAS_SIZET_PTR_ASCTIME_R_AND_CTIME_R)
@@ -371,11 +361,7 @@ ACE_OS::gmtime_r (const time_t *t, struct tm *res)
 {
   ACE_OS_TRACE ("ACE_OS::gmtime_r");
 #if defined (ACE_HAS_REENTRANT_FUNCTIONS)
-# if defined (DIGITAL_UNIX)
-  ACE_OSCALL_RETURN (::_Pgmtime_r (t, res), struct tm *, 0);
-# else
   ACE_OSCALL_RETURN (::gmtime_r (t, res), struct tm *, 0);
-# endif /* DIGITAL_UNIX */
 #elif defined (ACE_HAS_TR24731_2005_CRT)
   struct tm *tm_p = res;
   ACE_SECURECRTCALL (gmtime_s (res, t), struct tm *, 0, tm_p);

@@ -1,6 +1,6 @@
 // -*- C++ -*-
 //
-// $Id: OS_NS_sys_stat.inl 83313 2008-10-17 19:26:09Z johnnyw $
+// $Id: OS_NS_sys_stat.inl 84373 2009-02-10 18:21:50Z johnnyw $
 
 #include "ace/OS_NS_unistd.h"
 #include "ace/OS_NS_fcntl.h"
@@ -261,7 +261,7 @@ namespace ACE_OS
       }
     return 0;
 #elif defined (__BORLANDC__) \
-      || (defined (_MSC_VER) && _MSC_VER >= 1300) \
+      || defined (_MSC_VER) \
       || defined (__MINGW32__)
     ACE_OSCALL_RETURN (ACE_WSTAT_FUNC_NAME (file, stp), int, -1);
 #else /* ACE_HAS_WINCE */

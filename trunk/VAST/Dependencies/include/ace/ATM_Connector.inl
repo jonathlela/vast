@@ -1,6 +1,6 @@
 // -*- C++ -*-
 //
-// $Id: ATM_Connector.inl 82723 2008-09-16 09:35:44Z johnnyw $
+// $Id: ATM_Connector.inl 84565 2009-02-23 08:20:39Z johnnyw $
 
 // Open versioned namespace, if enabled by the user.
 ACE_BEGIN_VERSIONED_NAMESPACE_DECL
@@ -96,7 +96,7 @@ ACE_ATM_Connector::add_leaf (ACE_ATM_Stream &current_stream,
 
   return (result != ACE_INVALID_HANDLE);
 #elif defined (ACE_HAS_LINUX_ATM)
-  ACE_OS::printf("ATM_Connector(add_leaf): not yet implemented in Linux \n");
+  ACE_OS::printf("ATM_Connector(add_leaf): not yet implemented in Linux\n");
 
   ACE_UNUSED_ARG(current_stream);
   ACE_UNUSED_ARG(remote_sap);

@@ -1,5 +1,5 @@
 /* -*- C++ -*- */
-// $Id: config-win32-common.h 84268 2009-01-29 18:48:18Z johnnyw $
+// $Id: config-win32-common.h 92120 2010-10-01 12:00:01Z johnnyw $
 
 
 #ifndef ACE_CONFIG_WIN32_COMMON_H
@@ -92,6 +92,17 @@
 # define ACE_MT_SAFE 1
 #endif
 
+// On winCE these classes do not exist. If they are
+// introduced in the future, no changes need to be made
+#if defined (ABOVE_NORMAL_PRIORITY_CLASS) && \
+  defined (BELOW_NORMAL_PRIORITY_CLASS) && \
+  defined (HIGH_PRIORITY_CLASS) && \
+  defined (IDLE_PRIORITY_CLASS) && \
+  defined (NORMAL_PRIORITY_CLASS) && \
+  defined (REALTIME_PRIORITY_CLASS)
+#define ACE_HAS_WIN32_PRIORITY_CLASS
+#endif
+
 // Build ACE services as DLLs.  If you write a library and want it to
 // use ACE_Svc_Export, this will cause those macros to build dlls.  If
 // you want your ACE service to be a static library, comment out this
@@ -103,7 +114,10 @@
 //  #endif
 
 // Define the special export macros needed to export symbols outside a dll
-#if !defined(__BORLANDC__)
+#if !defined(__BORLANDC__) && (!defined (ACE_HAS_CUSTOM_EXPORT_MACROS) || (ACE_HAS_CUSTOM_EXPORT_MACROS == 0))
+#if defined (ACE_HAS_CUSTOM_EXPORT_MACROS)
+#undef ACE_HAS_CUSTOM_EXPORT_MACROS
+#endif
 #define ACE_HAS_CUSTOM_EXPORT_MACROS 1
 #define ACE_Proper_Export_Flag __declspec (dllexport)
 #define ACE_Proper_Import_Flag __declspec (dllimport)
@@ -148,16 +162,9 @@
 // using static object managers.
 #if !defined (ACE_HAS_NONSTATIC_OBJECT_MANAGER)
 # define ACE_HAS_NONSTATIC_OBJECT_MANAGER
-#elif (ACE_HAS_NONSTATIC_OBJECT_MANAGER == 0)
-# undef ACE_HAS_NONSTATIC_OBJECT_MANAGER
 #endif /* ACE_HAS_NONSTATIC_OBJECT_MANAGER */
 
 #define ACE_HAS_GPERF
-
-// By default, don't include RCS Id strings in object code.
-#if !defined (ACE_USE_RCSID)
-# define ACE_USE_RCSID 0
-#endif /* ! ACE_USE_RCSID */
 
 // ---------------- platform features or lack of them -------------
 
@@ -273,6 +280,17 @@
 #define ACE_LACKS_WAIT
 #define ACE_LACKS_IOVEC
 #define ACE_LACKS_LOG2
+#define ACE_LACKS_CADDR_T
+#if !defined(__MINGW32__) && !defined (__BORLANDC__)
+# define ACE_LACKS_MODE_T
+#endif
+#if !defined (__BORLANDC__)
+# define ACE_LACKS_NLINK_T
+# define ACE_LACKS_UID_T
+# define ACE_LACKS_GID_T
+#endif
+#define ACE_LACKS_SETENV
+#define ACE_LACKS_UNSETENV
 
 #define ACE_HAS_PDH_H
 #define ACE_HAS_PDHMSG_H
@@ -282,12 +300,11 @@
 #define ACE_MKDIR_LACKS_MODE
 
 #define ACE_SIZEOF_LONG_LONG 8
-// Green Hills Native x86 does not support __int64 keyword
-// Neither does mingw32.
+
 #if !defined (ACE_LACKS_LONGLONG_T) && !defined (__MINGW32__)
 #define ACE_INT64_TYPE  signed __int64
 #define ACE_UINT64_TYPE unsigned __int64
-#endif /* (ghs) */
+#endif
 
 #if defined (__MINGW32__)
 #define ACE_INT64_TYPE  signed long long
@@ -300,44 +317,15 @@
 // Win32 has wide-char support. Use of the compiler-defined wchar_t type
 // is controlled in compiler configs since it's a compiler switch.
 #define ACE_HAS_WCHAR
-
-// Compiler/platform correctly calls init()/fini() for shared
-// libraries. - applied for DLLs ?
-//define ACE_HAS_AUTOMATIC_INIT_FINI
-
-// Platform supports POSIX O_NONBLOCK semantics.
-//define ACE_HAS_POSIX_NONBLOCK
-
-// Platform contains <poll.h>.
-//define ACE_HAS_POLL
-
-// Platform supports the /proc file system.
-//define ACE_HAS_PROC_FS
+#define ACE_HAS_WTOI
+#define ACE_HAS_WTOL
 
 // Platform supports the rusage struct.
 #define ACE_HAS_GETRUSAGE
 
-// Compiler/platform supports SVR4 signal typedef.
-//define ACE_HAS_SVR4_SIGNAL_T
-
-// Platform provides <sys/filio.h> header.
-//define ACE_HAS_SYS_FILIO_H
-
-// Compiler/platform supports sys_siglist array.
-//define ACE_HAS_SYS_SIGLIST
-
-// Platform supports ACE_TLI timod STREAMS module.
-//define ACE_HAS_TIMOD_H
-
-// Platform supports ACE_TLI tiuser header.
-//define ACE_HAS_TIUSER_H
-
 // Platform provides ACE_TLI function prototypes.
 // For Win32, this is not really true, but saves a lot of hassle!
 #define ACE_HAS_TLI_PROTOTYPES
-
-// Platform supports ACE_TLI.
-//define ACE_HAS_TLI
 
 // I'm pretty sure NT lacks these
 #define ACE_LACKS_UNIX_DOMAIN_SOCKETS
@@ -346,7 +334,10 @@
 #define ACE_LACKS_WRITEV
 #define ACE_LACKS_READV
 
-#define ACE_LACKS_COND_T
+#if !defined (ACE_HAS_WTHREADS_CONDITION_VARIABLE)
+# define ACE_LACKS_COND_T
+#endif
+
 #define ACE_LACKS_RWLOCK_T
 
 #define ACE_LACKS_KEY_T
@@ -492,7 +483,7 @@
 #    define EDQUOT                  WSAEDQUOT
 #    define ESTALE                  WSAESTALE
 #    define EREMOTE                 WSAEREMOTE
-#  endif /* UNDER_CE */
+#  endif /* (_WIN32_WCE) && (_WIN32_WCE < 0x600) */
 # endif /* _WINSOCK2API */
 
 # if defined (ACE_HAS_FORE_ATM_WS2)
@@ -525,7 +516,7 @@
 
 // PharLap ETS has its own winsock lib, so don't grab the one
 // supplied with the OS.
-# if defined (_MSC_VER) && !defined (UNDER_CE) && !defined (ACE_HAS_PHARLAP)
+# if defined (_MSC_VER) && !defined (_WIN32_WCE) && !defined (ACE_HAS_PHARLAP)
 #  pragma comment(lib, "wsock32.lib")
 # endif /* _MSC_VER */
 

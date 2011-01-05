@@ -4,7 +4,7 @@
 /**
  *  @file   OS_NS_errno.h
  *
- *  $Id: OS_NS_errno.h 83968 2008-12-04 08:11:41Z johnnyw $
+ *  $Id: OS_NS_errno.h 85321 2009-05-12 08:31:31Z johnnyw $
  *
  *  @author Douglas C. Schmidt <schmidt@cs.wustl.edu>
  *  @author Jesper S. M|ller<stophph@diku.dk>
@@ -82,8 +82,10 @@ private:
 
 #if defined (ACE_HAS_WINCE_BROKEN_ERRNO)
 #  define ACE_ERRNO_TYPE ACE_CE_Errno
+#  define ACE_ERRNO_GET ACE_CE_Errno::instance ()->operator int()
 #else
 #  define ACE_ERRNO_TYPE int
+#  define ACE_ERRNO_GET errno
 #endif /* ACE_HAS_WINCE_BROKEN_ERRNO */
 
 ACE_END_VERSIONED_NAMESPACE_DECL

@@ -1,5 +1,5 @@
 /* -*- C++ -*- */
-// $Id: config-sunos5.10.h 83891 2008-11-28 11:01:50Z johnnyw $
+// $Id: config-sunos5.10.h 89905 2010-04-16 13:04:47Z johnnyw $
 
 // The following configuration file is designed to work for SunOS 5.10
 // (Solaris 10) platforms using the SunC++ 5.x (Sun Studio 8-10), or g++
@@ -60,5 +60,7 @@
 # define ACE_HAS_VOID_PTR_SCTP_GETLADDRS
 # define ACE_HAS_VOID_PTR_SCTP_GETPADDRS
 #endif
+
+#define ACE_HAS_SOLARIS_ATOMIC_LIB
 
 #endif /* ACE_CONFIG_H */

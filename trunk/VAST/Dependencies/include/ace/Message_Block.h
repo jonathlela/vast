@@ -4,7 +4,7 @@
 /**
  *  @file    Message_Block.h
  *
- *  $Id: Message_Block.h 84316 2009-02-03 19:46:05Z johnnyw $
+ *  $Id: Message_Block.h 91066 2010-07-12 11:05:04Z johnnyw $
  *
  *  @author Douglas C. Schmidt <schmidt@cs.wustl.edu>
  */
@@ -241,8 +241,8 @@ public:
   /**
    * Delete all the resources held in the message.
    *
-   * Note that <release()> is designed to release the continuation
-   * chain; the destructor is not. See <release()> for details.
+   * @note Note that release() is designed to release the continuation
+   * chain; the destructor is not. See release() for details.
    */
   virtual ~ACE_Message_Block (void);
 
@@ -505,8 +505,8 @@ public:
 
   /**
    * Set the number of bytes in the top-level Message_Block,
-   * reallocating space if necessary.  However, the <rd_ptr_> and
-   * <wr_ptr_> remain at the original offsets into the buffer, even if
+   * reallocating space if necessary.  However, the @c rd_ptr_ and
+   * @c wr_ptr_ remain at the original offsets into the buffer, even if
    * it is reallocated.  Returns 0 if successful, else -1.
    */
   int size (size_t length);
@@ -802,7 +802,7 @@ protected:
   /**
    * Decrease the reference count, but don't delete the object.
    * Returns 0 if the object should be removed.
-   * If <lock> is equal to the locking strategy then we assume that
+   * If @a lock is equal to the locking strategy then we assume that
    * the lock is beign held by the current thread; this is used to
    * release all the data blocks in a chain while holding a single
    * lock.

@@ -3,7 +3,7 @@
 /**
  *  @file   config-win32.h
  *
- *  $Id: config-win32.h 80826 2008-03-04 14:51:23Z wotte $
+ *  $Id: config-win32.h 92120 2010-10-01 12:00:01Z johnnyw $
  *
  *  @brief  Microsoft Windows configuration file.
  *
@@ -35,8 +35,8 @@
 #    include "ace/config-win32-borland.h"
 #elif defined (_MSC_VER)
 #    include "ace/config-win32-msvc.h"
-#elif defined (ghs)
-#    include "ace/config-win32-ghs.h"
+#elif defined (ACE_HAS_CEGCC) //need to be prior to MINGW32
+#    include "ace/config-win32-cegcc.h"
 #elif defined (__MINGW32__)
 #    include "ace/config-win32-mingw.h"
 #elif defined (__DMC__)

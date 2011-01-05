@@ -4,7 +4,7 @@
 /**
  *  @file    WFMO_Reactor.h
  *
- *  $Id: WFMO_Reactor.h 84316 2009-02-03 19:46:05Z johnnyw $
+ *  $Id: WFMO_Reactor.h 84727 2009-03-05 19:22:29Z johnnyw $
  *
  *  @author Irfan Pyarali <irfan@cs.wustl.edu>
  *  @author Tim Harrison <harrison@cs.wustl.edu>
@@ -893,7 +893,7 @@ public:
 
   /**
    * Remove the ACE_Event_Handler currently associated with @a signum.
-   * <sigkey> is ignored in this implementation since there is only
+   * @a sigkey is ignored in this implementation since there is only
    * one instance of a signal handler.  Install the new disposition
    * (if given) and return the previous disposition (if desired by the
    * caller).  Returns 0 on success and -1 if @a signum is invalid.

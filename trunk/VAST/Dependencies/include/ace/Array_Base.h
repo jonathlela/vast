@@ -4,7 +4,7 @@
 /**
  *  @file Array_Base.h
  *
- *  $Id: Array_Base.h 84136 2009-01-12 11:01:17Z johnnyw $
+ *  $Id: Array_Base.h 84477 2009-02-16 13:30:38Z johnnyw $
  *
  *  @author Douglas C. Schmidt <schmidt@cs.wustl.edu>
  */
@@ -212,7 +212,7 @@ public:
 
   // = Iteration methods.
 
-  /// Pass back the <next_item> that hasn't been seen in the Array.
+  /// Pass back the @a next_item that hasn't been seen in the Array.
   /// Returns 0 when all items have been seen, else 1.
   int next (T *&next_item);
 

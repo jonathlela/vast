@@ -1,7 +1,9 @@
 @echo off
 
+del VAST.sdf
 rd /S /Q .\build
 rd /S /Q .\obj
+rd /S /Q .\ipch
 del /Q .\lib\*.*
 del /S /Q .\Demo\obj\*.*
 del /S /Q .\Demo\VASTsim_consoleDev\*.pos

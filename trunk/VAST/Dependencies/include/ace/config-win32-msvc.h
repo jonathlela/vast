@@ -2,7 +2,7 @@
 /**
  *  @file   config-win32-msvc.h
  *
- *  $Id: config-win32-msvc.h 83891 2008-11-28 11:01:50Z johnnyw $
+ *  $Id: config-win32-msvc.h 92120 2010-10-01 12:00:01Z johnnyw $
  *
  *  @brief  Microsoft Visual C++ configuration file.
  *
@@ -22,10 +22,8 @@
 #endif /* ACE_CONFIG_WIN32_H */
 
 #define ACE_CC_NAME ACE_TEXT ("Visual C++")
-#ifndef ACE_USING_MCPP_PREPROCESSOR
-# define ACE_CC_PREPROCESSOR "CL.EXE"
-# define ACE_CC_PREPROCESSOR_ARGS "-nologo -E"
-#endif
+#define ACE_CC_PREPROCESSOR "CL.EXE"
+#define ACE_CC_PREPROCESSOR_ARGS "-nologo -E"
 
 #define ACE_CC_MAJOR_VERSION (_MSC_VER / 100 - 6)
 #define ACE_CC_MINOR_VERSION (_MSC_VER % 100)
@@ -42,6 +40,7 @@
 #  define ACE_ENDTHREADEX(STATUS) ::_endthreadex ((DWORD) STATUS)
 #endif /* _WIN32_WCE */
 
+//FUZZ: disable check_for_msc_ver
 #if (_MSC_VER >= 1600)
 # include "ace/config-win32-msvc-10.h"
 #elif (_MSC_VER >= 1500)
@@ -53,6 +52,7 @@
 #else
 # error This version of Microsoft Visual C++ is not supported.
 #endif
+//FUZZ: enable check_for_msc_ver
 
 // MFC changes the behavior of operator new at all MSVC versions from 6 up
 // by throwing a static CMemoryException* instead of std::bad_alloc
@@ -131,13 +131,14 @@
 
 #define ACE_LACKS_ISBLANK
 #define ACE_LACKS_ISWBLANK
+#define ACE_LACKS_CORRECT_ISWPRINT_TAB
 #define ACE_ISCTYPE_EQUIVALENT ::_isctype
 
 // Turn off warnings for /W4
 // To resume any of these warning: #pragma warning(default: 4xxx)
 // which should be placed after these defines
 
-#if !defined (ALL_WARNINGS) && defined(_MSC_VER) && !defined(ghs) && !defined(__MINGW32__)
+#if !defined (ALL_WARNINGS) && defined(_MSC_VER) && !defined(__MINGW32__)
 #     pragma warning(disable: 4127)  /* constant expression for TRACE/ASSERT */
 #     pragma warning(disable: 4134)  /* message map member fxn casts */
 #     pragma warning(disable: 4511)  /* private copy constructors are good to have */

@@ -1,5 +1,5 @@
 /* -*- C++ -*- */
-// $Id: config-linux-common.h 84213 2009-01-22 15:45:13Z johnnyw $
+// $Id: config-linux-common.h 92437 2010-11-01 07:21:38Z olli $
 
 // Do not use this configuration file directly since it's designed to
 // be included by another, specific configuration file, such as
@@ -73,6 +73,7 @@
 # if (__GLIBC__  < 2) || (__GLIBC__ == 2 && __GLIBC_MINOR__ < 3)
 #   define ACE_HAS_RUSAGE_WHO_ENUM enum __rusage_who
 #   define ACE_HAS_RLIMIT_RESOURCE_ENUM enum __rlimit_resource
+#   define ACE_LACKS_ISCTYPE
 # endif
 # define ACE_HAS_SOCKLEN_T
 # define ACE_HAS_4_4BSD_SENDMSG_RECVMSG
@@ -97,34 +98,11 @@
   // its timeout argument, use ::poll () instead.
 # define ACE_HAS_POLL
 
-// Don't define _XOPEN_SOURCE and _XOPEN_SOURCE_EXTENDED in ACE to make
-// getpgid() prototype visible.  ACE shouldn't depend on feature test
-// macros to make prototypes visible.
-# define ACE_LACKS_GETPGID_PROTOTYPE
+# define ACE_HAS_SIGINFO_T
+# define ACE_LACKS_SIGINFO_H
+# define ACE_HAS_UCONTEXT_T
+# define ACE_HAS_SIGTIMEDWAIT
 
-// @note  the following defines are necessary with glibc 2.0 (0.961212-5)
-//        on Alpha.  I assume that they're necessary on Intel as well,
-//        but that may depend on the version of glibc that is used.
-//# define ACE_HAS_DLFCN_H_BROKEN_EXTERN_C
-# define ACE_HAS_VOIDPTR_SOCKOPT
-
-// Don't define _POSIX_SOURCE in ACE to make strtok() prototype
-// visible.  ACE shouldn't depend on feature test macros to make
-// prototypes visible.
-# define ACE_LACKS_STRTOK_R_PROTOTYPE
-// @note  end of glibc 2.0 (0.961212-5)-specific configuration.
-
-# if __GLIBC__ > 1 && __GLIBC_MINOR__ >= 1
-    // These were suggested by Robert Hanzlik <robi@codalan.cz> to get
-    // ACE to compile on Linux using glibc 2.1 and libg++/gcc 2.8.
-#   undef ACE_HAS_BYTESEX_H
-#   define ACE_HAS_SIGINFO_T
-#   define ACE_LACKS_SIGINFO_H
-#   define ACE_HAS_UCONTEXT_T
-
-    // Pre-glibc (RedHat 5.2) doesn't have sigtimedwait.
-#   define ACE_HAS_SIGTIMEDWAIT
-# endif /* __GLIBC__ 2.1+ */
 #else  /* ! __GLIBC__ */
     // Fixes a problem with some non-glibc versions of Linux...
 #   define ACE_LACKS_MADVISE
@@ -144,13 +122,10 @@
 #  endif
 #endif /* __GLIBC__ > 1 */
 
-#if __GLIBC__ > 1 && __GLIBC_MINOR__ >= 1
-# define ACE_HAS_P_READ_WRITE
-# define ACE_LACKS_PREAD_PROTOTYPE
+#define ACE_HAS_P_READ_WRITE
 // Use ACE's alternate cuserid() implementation since the use of the
 // system cuserid() is discouraged.
-# define ACE_HAS_ALT_CUSERID
-#endif /* __GLIBC__ > 1 && __GLIBC_MINOR__ >= 0 */
+#define ACE_HAS_ALT_CUSERID
 
 #if (__GLIBC__  > 2)  || (__GLIBC__ == 2 && __GLIBC_MINOR__ >= 3)
 # define ACE_HAS_ISASTREAM_PROTOTYPE
@@ -167,20 +142,12 @@
   // this must appear before its #include.
 # define ACE_HAS_STRING_CLASS
 # include "ace/config-g++-common.h"
-#define ACE_CC_NAME ACE_TEXT ("g++")
-#define ACE_CC_MAJOR_VERSION __GNUC__
-#define ACE_CC_MINOR_VERSION __GNUC_MINOR__
-//#define ACE_CC_BETA_VERSION 0 /* ??? */
-#elif defined (__DECCXX)
-# define ACE_CONFIG_INCLUDE_CXX_COMMON
-# include "ace/config-cxx-common.h"
-#elif defined (__SUNCC_PRO)
+#elif defined (__SUNCC_PRO) || defined (__SUNPRO_CC)
 # include "ace/config-suncc-common.h"
 #elif defined (__PGI)
 // Portable group compiler
 # define ACE_HAS_CPLUSPLUS_HEADERS
 # define ACE_HAS_STDCPP_STL_INCLUDES
-# define ACE_HAS_TEMPLATE_TYPEDEFS
 # define ACE_HAS_STANDARD_CPP_LIBRARY 1
 # define ACE_USES_STD_NAMESPACE_FOR_STDCPP_LIB 1
 # define ACE_LACKS_SWAB
@@ -202,42 +169,31 @@
 // Completely common part :-)
 
 // Platform/compiler has the sigwait(2) prototype
-# define ACE_HAS_SIGWAIT
+#define ACE_HAS_SIGWAIT
 
-# define ACE_HAS_SIGSUSPEND
+#define ACE_HAS_SIGSUSPEND
 
-# define ACE_HAS_UALARM
+#define ACE_HAS_UALARM
 
-#if __GLIBC__ >= 2
+#define ACE_HAS_STRSIGNAL
+
 #ifndef ACE_HAS_POSIX_REALTIME_SIGNALS
-#define ACE_HAS_POSIX_REALTIME_SIGNALS
+# define ACE_HAS_POSIX_REALTIME_SIGNALS
 #endif /* ACE_HAS_POSIX_REALTIME_SIGNALS */
 
 #ifndef ACE_HAS_AIO_CALLS
-#define ACE_HAS_AIO_CALLS
+# define ACE_HAS_AIO_CALLS
 #endif /* ACE_HAS_AIO_CALLS */
-#endif
 
-#if __GLIBC__ >= 2
-// glibc 2 and higher has wchar support
-# define ACE_HAS_XPG4_MULTIBYTE_CHAR
-# define ACE_HAS_VFWPRINTF
-#endif
-
-#if __GLIBC__ < 2
-// These are present in glibc 2 and higher
-# define ACE_LACKS_WCSTOK
-# define ACE_LACKS_WCSDUP_PROTOTYPE
-#endif /* __GLIBC__ < 2 */
+#define ACE_HAS_XPG4_MULTIBYTE_CHAR
+#define ACE_HAS_VFWPRINTF
 
 #define ACE_LACKS_ITOW
 #define ACE_LACKS_WCSICMP
 #define ACE_LACKS_WCSNICMP
 #define ACE_LACKS_ISWASCII
 
-#if __GLIBC__ >= 2
-# define ACE_HAS_3_PARAM_WCSTOK
-#endif
+#define ACE_HAS_3_PARAM_WCSTOK
 
 #define ACE_HAS_3_PARAM_READDIR_R
 
@@ -300,26 +256,16 @@
 
 #define ACE_HAS_GETPAGESIZE 1
 
-#if (__GLIBC__  < 2)  ||  (__GLIBC__ == 2 && __GLIBC_MINOR__ < 2)
-// glibc supports wchar, but lacks fgetwc and ungetwc
-# define ACE_LACKS_FGETWC
-# define ACE_HAS_NONCONST_MSGSND
-# define ACE_LACKS_STRNLEN_PROTOTYPE
-#endif
-
-// glibc requires _XOPEN_SOURCE_EXTENDED to make this prototype
-// visible, so force ACE to declare one.  Yuk!
-#ifndef _XOPEN_SOURCE_EXTENDED
-# define ACE_LACKS_MKSTEMP_PROTOTYPE
-#endif  /* !_XOPEN_SOURCE_EXTENDED */
-
 // Platform defines struct timespec but not timespec_t
 #define ACE_LACKS_TIMESPEC_T
 
 // Platform supplies scandir()
 #define ACE_HAS_SCANDIR
+#if (__GLIBC__ < 2) || (__GLIBC__ == 2 && __GLIBC_MINOR__ < 10)
 // Although the scandir man page says otherwise, this setting is correct.
+// The setting was fixed in 2.10, so do not use the hack after that.
 #define ACE_SCANDIR_CMP_USES_CONST_VOIDPTR
+#endif
 
 // A conflict appears when including both <ucontext.h> and
 // <sys/procfs.h> with recent glibc headers.
@@ -335,14 +281,6 @@
 #define ACE_HAS_TIMEZONE
 
 #define ACE_HAS_TIMEZONE_GETTIMEOFDAY
-
-// Compiler/platform supports strerror ().
-#define ACE_HAS_STRERROR
-
-// Don't define _XOPEN_SOURCE in ACE to make strptime() prototype
-// visible.  ACE shouldn't depend on feature test macros to make
-// prototypes visible.
-#define ACE_LACKS_STRPTIME_PROTOTYPE
 
 // Compiler supports the ssize_t typedef.
 #define ACE_HAS_SSIZE_T
@@ -380,6 +318,11 @@
 
 #define ACE_SIZEOF_WCHAR 4
 
+#if defined (__powerpc__) && !defined (ACE_SIZEOF_LONG_DOUBLE)
+// 32bit PowerPC Linux uses 128bit long double
+# define ACE_SIZEOF_LONG_DOUBLE 16
+#endif
+
 #define ACE_LACKS_GETIPNODEBYADDR
 #define ACE_LACKS_GETIPNODEBYNAME
 
@@ -406,7 +349,9 @@
 # include "ace/config-posix-nonetworking.h"
 #else
 # define ACE_HAS_NETLINK
-# define ACE_HAS_GETIFADDRS
+# if (__GLIBC__  > 2) || (__GLIBC__ == 2 && __GLIBC_MINOR__ > 2)
+#   define ACE_HAS_GETIFADDRS
+# endif
 #endif
 
 #if !defined (ACE_GETNAME_RETURNS_RANDOM_SIN_ZERO)
@@ -422,23 +367,6 @@
 #    define ACE_GETNAME_RETURNS_RANDOM_SIN_ZERO 1
 #  endif  /* (LINUX_VERSION_CODE <= KERNEL_VERSION(2,5,47)) */
 #endif  /* ACE_GETNAME_RETURNS_RANDOM_SIN_ZERO */
-
-#if defined (ACE_HAS_EVENT_POLL)
-// The sys_epoll interface was introduced in Linux kernel 2.5.45.
-// Don't support backported versions since they appear to be buggy.
-// The obsolete ioctl()-based interface is no longer supported.
-#if 0
-// linux/version.h may not be accurate. It's not for Fedora Core 2...
-# if !defined (ACE_LACKS_LINUX_VERSION_H)
-#   include <linux/version.h>
-# endif /* !ACE_LACKS_LINUX_VERSION_H */
-# if (LINUX_VERSION_CODE < KERNEL_VERSION (2,5,45))
-#   undef ACE_HAS_EVENT_POLL
-#   error Disabling Linux epoll support.  Kernel used in C library is too old.
-#   error Linux kernel 2.5.45 or better is required.
-# endif  /* LINUX_VERSION_CODE < KERNEL_VERSION (2,5,45) */
-#endif  /* ACE_HAS_EVENT_POLL */
-#endif
 
 #if !defined (ACE_HAS_EVENT_POLL) && !defined (ACE_HAS_DEV_POLL)
 # if !defined (ACE_LACKS_LINUX_VERSION_H)

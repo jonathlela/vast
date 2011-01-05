@@ -104,9 +104,6 @@
    passed back from select(). */
 #undef ACE_HAS_BIG_FD_SET
 
-/* Compiler/platform uses macro for ctime (e.g., MVS) */
-#undef ACE_HAS_BROKEN_CTIME
-
 /* Platform sendv() does not work properly with datagrams, i.e. it fails when
    the iovec size is IOV_MAX. */
 #undef ACE_HAS_BROKEN_DGRAM_SENDV
@@ -126,9 +123,6 @@
 /* OS/compiler's header files are inconsistent with libC definition of
    rand_r(). */
 #undef ACE_HAS_BROKEN_RANDR
-
-/* Platform defines ctime_r, asctime_r, rand_r and getpwnam_r as macros */
-#undef ACE_HAS_BROKEN_R_ROUTINES
 
 /* Compiler/platform has the wrong prototype for t_error(), i.e., t_error(char
    *) rather than t_error(const char *). */
@@ -222,6 +216,12 @@
 /* Platform has Fast-Light (FL) toolkit installed. */
 #undef ACE_HAS_FL
 
+/* Define to 1 if compiler has builtin atomic support */
+#undef ACE_HAS_GCC_ATOMIC_BUILTINS
+
+/* Define to 1 if platform has gethostbyname2(). */
+#undef ACE_HAS_GETHOSTBYNAME2
+
 /* Define to 1 if platform has getifaddrs(). */
 #undef ACE_HAS_GETIFADDRS
 
@@ -237,9 +237,6 @@
 
 /* Define to 1 if platform has the declaration of getrusage(). */
 #undef ACE_HAS_GETRUSAGE_PROTOTYPE
-
-/* Denotes that GNU has cstring.h as standard which redefines memchr() */
-#undef ACE_HAS_GNU_CSTRING_H
 
 /* Enable use of GNU template repositories. GNU C++ w/repo patch and EGCS only
    */
@@ -325,7 +322,7 @@
 #undef ACE_HAS_LSEEK64
 
 /* */
-#undef ACE_HAS_LYNXOS_SIGNALS
+#undef ACE_HAS_LYNXOS4_SIGNALS
 
 /* Enabled malloc statistics collection. */
 #undef ACE_HAS_MALLOC_STATS
@@ -622,15 +619,8 @@
 /* Compiler requires extern "C" functions for signals. */
 #undef ACE_HAS_SIG_C_FUNC
 
-/* Platform/compiler has macros for sig{empty,fill,add,del}set (e.g., SCO and
-   FreeBSD) */
-#undef ACE_HAS_SIG_MACROS
-
 /* OS/compiler uses size_t * rather than int * for socket lengths */
 #undef ACE_HAS_SIZET_SOCKET_LEN
-
-/* Define to 1 if platform has snprintf(). */
-#undef ACE_HAS_SNPRINTF
 
 /* Define to 1 if `sin6_len' is a member of `sockaddr_in6'. */
 #undef ACE_HAS_SOCKADDR_IN6_SIN6_LEN
@@ -664,14 +654,6 @@
 /* Define to 1 if platform has UNIX International Threads */
 #undef ACE_HAS_STHREADS
 
-/* Used when users want to compile ACE with STL and STL map class conflicts
-   with <net/if.h> map struct. */
-#undef ACE_HAS_STL_MAP_CONFLICT
-
-/* Used when users want to compile ACE with STL and STL queue class conflicts
-   with <netinet/in.h> queue struct. */
-#undef ACE_HAS_STL_QUEUE_CONFLICT
-
 /* Define to 1 if the system has the type `struct strbuf'. */
 #undef ACE_HAS_STRBUF_T
 
@@ -684,9 +666,6 @@
 /* Platform supports STREAM pipes */
 #undef ACE_HAS_STREAM_PIPES
 
-/* Define to 1 if platform has strerror(). */
-#undef ACE_HAS_STRERROR
-
 /* Use the STRICT compilation mode on Win32. */
 #undef ACE_HAS_STRICT
 
@@ -698,6 +677,9 @@
 
 /* Define to 1 if platform has strnlen(). */
 #undef ACE_HAS_STRNLEN
+
+/* Define to 1 if platform has strsignal(). */
+#undef ACE_HAS_STRSIGNAL
 
 /* Compiler/platform has strange hostent API for socket *_r() calls */
 #undef ACE_HAS_STRUCT_NETDB_DATA
@@ -726,9 +708,6 @@
 
 /* Define to 1 if system has SysV version of sysinfo(). */
 #undef ACE_HAS_SYSV_SYSINFO
-
-/* Platform/compiler supports _sys_errlist symbol */
-#undef ACE_HAS_SYS_ERRLIST
 
 /* Define to 1 if platform has the <sys/filio.h> header file. */
 #undef ACE_HAS_SYS_FILIO_H
@@ -1266,9 +1245,6 @@
 /* Compiler complains about use of obsolete "pragma once" */
 #undef ACE_LACKS_PRAGMA_ONCE
 
-/* Platform/compiler lacks the pread() and pwrite() prototypes */
-#undef ACE_LACKS_PREAD_PROTOTYPE
-
 /* Define to 1 if the system lacks the type 'pri_t'. */
 #undef ACE_LACKS_PRI_T
 
@@ -1362,6 +1338,9 @@
 
 /* Define to 1 if platform lacks setegid(). */
 #undef ACE_LACKS_SETEGID
+
+/* Define to 1 if platform lacks setenv(). */
+#undef ACE_LACKS_SETENV
 
 /* Define to 1 if platform lacks seteuid(). */
 #undef ACE_LACKS_SETEUID
@@ -1510,6 +1489,10 @@
 /* Define to 1 if the system lacks the type `struct dirent'. */
 #undef ACE_LACKS_STRUCT_DIR
 
+/* Define to 1 if the system uses int instead of `struct lifnum' for
+   SIOCGIFNUM ioctl. */
+#undef ACE_LACKS_STRUCT_LIFNUM
+
 /* Define to 1 if the system lacks the type 'suseconds_t'. */
 #undef ACE_LACKS_SUSECONDS_T
 
@@ -1655,6 +1638,9 @@
 /* Define to 1 if platform lacks unlink(). */
 #undef ACE_LACKS_UNLINK
 
+/* Define to 1 if platform lacks unsetenv(). */
+#undef ACE_LACKS_UNSETENV
+
 /* Define to 1 if the system lacks the type 'useconds_t'. */
 #undef ACE_LACKS_USECONDS_T
 
@@ -1666,6 +1652,9 @@
 
 /* Define to 1 if the system lacks the type `u_long_long_t'. */
 #undef ACE_LACKS_U_LONGLONG_T
+
+/* Define to 1 if platform lacks vsnprintf(). */
+#undef ACE_LACKS_VSNPRINTF
 
 /* Define to 1 if platform lacks the <wchar.h> header file. */
 #undef ACE_LACKS_WCHAR_H
@@ -1956,6 +1945,9 @@
    1.1). */
 #undef ACE_WSOCK_VERSION
 
+/* Define if building universal (internal helper macro) */
+#undef AC_APPLE_UNIVERSAL_BUILD
+
 /* Configure for use on AIX */
 #undef AIX
 
@@ -2088,6 +2080,10 @@
 /* Configure for use on Irix 6 */
 #undef IRIX6
 
+/* Define to the sub-directory in which libtool stores uninstalled libraries.
+   */
+#undef LT_OBJDIR
+
 /* Define to the address where bug reports for this package should be sent. */
 #undef PACKAGE_BUGREPORT
 
@@ -2099,6 +2095,9 @@
 
 /* Define to the one symbol short name of this package. */
 #undef PACKAGE_TARNAME
+
+/* Define to the home page for this package. */
+#undef PACKAGE_URL
 
 /* Define to the version of this package. */
 #undef PACKAGE_VERSION
@@ -2115,39 +2114,39 @@
 /* */
 #undef SCO
 
-/* The size of a `double', as computed by sizeof. */
+/* The size of `double', as computed by sizeof. */
 #undef SIZEOF_DOUBLE
 
-/* The size of a `float', as computed by sizeof. */
+/* The size of `float', as computed by sizeof. */
 #undef SIZEOF_FLOAT
 
-/* The size of a `int', as computed by sizeof. */
+/* The size of `int', as computed by sizeof. */
 #undef SIZEOF_INT
 
-/* The size of a `long', as computed by sizeof. */
+/* The size of `long', as computed by sizeof. */
 #undef SIZEOF_LONG
 
-/* The size of a `long double', as computed by sizeof. */
+/* The size of `long double', as computed by sizeof. */
 #undef SIZEOF_LONG_DOUBLE
 
-/* The size of a `long long', as computed by sizeof. */
+/* The size of `long long', as computed by sizeof. */
 #undef SIZEOF_LONG_LONG
 
-/* The size of a `short', as computed by sizeof. */
+/* The size of `short', as computed by sizeof. */
 #undef SIZEOF_SHORT
 
-/* The size of a `signed char', as computed by sizeof. */
+/* The size of `signed char', as computed by sizeof. */
 #undef SIZEOF_SIGNED_CHAR
 
-/* The size of a `void *', as computed by sizeof. */
+/* The size of `void *', as computed by sizeof. */
 #undef SIZEOF_VOID_P
 
-/* The size of a `wchar_t', as computed by sizeof. */
+/* The size of `wchar_t', as computed by sizeof. */
 #undef SIZEOF_WCHAR_T
 
 /* If using the C implementation of alloca, define if you know the
    direction of stack growth for your system; otherwise it will be
-   automatically deduced at run-time.
+   automatically deduced at runtime.
 	STACK_DIRECTION > 0 => grows toward higher addresses
 	STACK_DIRECTION < 0 => grows toward lower addresses
 	STACK_DIRECTION = 0 => direction of growth unknown */
@@ -2171,9 +2170,17 @@
 /* Configure for use on VxWorks */
 #undef VXWORKS
 
-/* Define to 1 if your processor stores words with the most significant byte
-   first (like Motorola and SPARC, unlike Intel and VAX). */
-#undef WORDS_BIGENDIAN
+/* Define WORDS_BIGENDIAN to 1 if your processor stores words with the most
+   significant byte first (like Motorola and SPARC, unlike Intel). */
+#if defined AC_APPLE_UNIVERSAL_BUILD
+# if defined __BIG_ENDIAN__
+#  define WORDS_BIGENDIAN 1
+# endif
+#else
+# ifndef WORDS_BIGENDIAN
+#  undef WORDS_BIGENDIAN
+# endif
+#endif
 
 /* Define to 1 if the X Window System is missing or not being used. */
 #undef X_DISPLAY_MISSING

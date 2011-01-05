@@ -4,7 +4,7 @@
 /**
  *  @file   OS_NS_stropts.h
  *
- *  $Id: OS_NS_stropts.h 83891 2008-11-28 11:01:50Z johnnyw $
+ *  $Id: OS_NS_stropts.h 85110 2009-04-20 09:18:43Z msmit $
  *
  *  @author Douglas C. Schmidt <schmidt@cs.wustl.edu>
  *  @author Jesper S. M|ller<stophph@diku.dk>
@@ -126,7 +126,6 @@ namespace ACE_OS {
              ACE_OVERLAPPED *overlapped,
              ACE_OVERLAPPED_COMPLETION_FUNC func);
 
-#if !(defined (ACE_HAS_WINCE) && (UNDER_CE < 500))
   /// QoS-enabled @c ioctl when the I/O control code is either
   /// SIO_SET_QOS or SIO_GET_QOS.
   extern ACE_Export
@@ -138,7 +137,6 @@ namespace ACE_OS {
              unsigned long buffer = 0,
              ACE_OVERLAPPED *overlapped = 0,
              ACE_OVERLAPPED_COMPLETION_FUNC func = 0);
-#endif  /* !(defined (ACE_HAS_WINCE) && (UNDER_CE < 500)) */
 
   ACE_NAMESPACE_INLINE_FUNCTION
   int isastream (ACE_HANDLE handle);
