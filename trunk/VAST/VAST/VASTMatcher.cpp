@@ -1004,7 +1004,7 @@ namespace Vast
             }
             break;
 
-        case SYNC_CLOCK:
+        /*case SYNC_CLOCK:
             {
                 if (isGateway () == false)
                 {
@@ -1026,7 +1026,7 @@ namespace Vast
         
                 sendMessage (msg);            
             }
-            break;
+            break;*/
 
         // process universal VASTnet message, msgtype = 0
         case DISCONNECT:
@@ -1614,6 +1614,8 @@ namespace Vast
                 case UPDATED:
                     //msg.store (*node);
                     // TODO: store only center of AOI (instead of radius too?)
+                    //change to udp
+                    //msg.reliable=false; 
                     msg.store (node.aoi);
 #ifdef VAST_RECORD_LATENCY
                     msg.store (node.time);

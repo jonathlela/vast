@@ -8,7 +8,7 @@
  *              2010/08/04  print joining and joined time in position.log
  */
 
-#include <vld.h>            // visual leak detector (NOTE: must download & install from
+//#include <vld.h>            // visual leak detector (NOTE: must download & install from
                             // http://www.codeproject.com/KB/applications/visualleakdetector.aspx
 
 
@@ -18,7 +18,7 @@
 #endif
 
 #include "ace/ACE.h"    // for sleep functions
-#include "ace/OS.h"
+//#include "ace/OS.h"
 
 #include <stdio.h>
 
@@ -353,10 +353,10 @@ int main (int argc, char *argv[])
         exit (0);
 
     // randomize selected join path  by lee
-    if (g_node_no != 0 && !is_gateway)
+   /* if (g_node_no != 0 && !is_gateway)
     {
         g_node_no = rand() % (simpara.NODE_SIZE-1)+1;    
-    }
+    }*/
     
     // force all clients to default join at world 2, unless specified other than 2
     if (!is_gateway && g_world_id == 1)
@@ -373,8 +373,8 @@ int main (int argc, char *argv[])
     // process interval
     
     // sleep a little to let nodes move at different time  by lee
-    ACE_Time_Value tv (0, 1000000 * interval * (g_node_no / 5));
-    printf ("interval to pause is: %d seconds\n", interval * (g_node_no / 5)); 
+    ACE_Time_Value tv (0, 1000000 * interval * g_node_no);
+    printf ("interval to pause is: %d seconds\n", interval * g_node_no); 
     
     ACE_OS::sleep (tv);
     
@@ -432,10 +432,10 @@ int main (int argc, char *argv[])
     // open message log (both gateway & client)
     if (is_gateway)
         g_message_log = LogManager::open ("gateway", "stat");
-    else
-        g_message_log = LogManager::open ("client", "stat");
+    //else
+        //g_message_log = LogManager::open ("client", "stat");
 
-    LogManager::instance ()->setLogFile (g_message_log);
+    //LogManager::instance ()->setLogFile (g_message_log);
 
     //
     // main loop
@@ -559,7 +559,7 @@ int main (int argc, char *argv[])
                 }
 
                 //print neighbor by lee
-                if (self != NULL)                
+                if (g_neighbor_log != NULL)                
                     printNeighbors (curr_msec, g_sub_no);
 
                 // print out movement once per second
