@@ -6,24 +6,6 @@
 
 namespace Vast
 {   
-    /*
-    // TODO: change to reflect with current
-    char VAST_MESSAGE[][20] = 
-    {
-        "QUERY",
-        "QUERY_REPLY",
-        "JOIN",
-        "JOIN_REPLY",
-        "LEAVE",
-        "SUBSCRIBE",
-        "SUBSCRIBE_R",
-        "PUBLISH",        
-        "MOVE", 
-        "MOVE_F",
-        "NEIGHBOR",
-        "MESSAGE"
-    };
-    */
 
     VASTClient::VASTClient (VASTRelay *relay)
     {

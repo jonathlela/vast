@@ -130,7 +130,7 @@ namespace Vast
                 // NOTE the 2nd parameter is specified in microseconds (us) not milliseconds
                 ACE_Time_Value duration (0, sleep_time);            
                 ACE_OS::sleep (duration); 
-            }
+            }            
         }
 
         printf ("VASTThread::svc () leave ticking loop\n");

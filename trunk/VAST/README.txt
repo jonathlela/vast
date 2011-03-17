@@ -28,8 +28,8 @@ implementation of SPS using VON.
 VON: http://vast.sourceforge.net/docs/pub/2006-hu-VON.pdf
 SPS: http://vast.sourceforge.net/docs/pub/2009-MMVE-SPS.pdf
 
-Inquiries can be sent to the VAST mailing list:
-vast-tech@lists.sourceforge.net
+Inquiries can be sent to Shun-Yun Hu:
+syhu@ieee.org
 
 
 

@@ -219,11 +219,38 @@ public:
     {
         printf ("from [%llu] size: %d msg: %s\n", socket, size, msg);
 
+        /*
         // send back acknowledgment if not the same message
         char teststr[] = "hello world back!\0";
         if (strlen (teststr) + 1 != size)
         {
             g_world->sendSocket (socket, teststr, strlen (teststr)+1);
+        }
+        */
+
+        // re-direct client message to server
+        if (_clients.find (socket) != _clients.end ())
+        {
+            g_world->sendSocket (_clients[socket], msg, size);
+        }
+        // re-direct server message to its client
+        else if (_servers.find (socket) != _servers.end ())
+        {
+            g_world->sendSocket (_servers[socket], msg, size);
+        }
+        // otherwise it's a new client, establish server for it & check authentication
+        else 
+        {
+            // establish connection to server
+            id_t server_socket_id = g_world->openSocket (_socket_server);
+
+            // establish client <-> server mapping
+            _clients[socket] = server_socket_id;
+            _servers[server_socket_id] = socket;
+
+            // forward 1st message to server (to authenticate)
+            // TODO: check if we need to wait first (for socket connection to establish)
+            g_world->sendSocket (server_socket_id, msg, size);
         }
 
         return true;
@@ -343,6 +370,10 @@ public:
 
 private:
     int _report_countdown;      // # of seconds before reporting to gateway
+    
+    IPaddr          _socket_server; // IP address of socket server
+    map<id_t, id_t> _clients;    // record of active clients
+    map<id_t, id_t> _servers;    // record of active servers
 };
 
 int main (int argc, char *argv[])

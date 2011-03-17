@@ -660,7 +660,11 @@ namespace Vast
         if (per_sec != NULL)
             *per_sec = do_per_sec;
 
-        return TimeMonitor::instance ()->available ();
+        int time_left = TimeMonitor::instance ()->available ();
+
+        // record execution interval
+
+        return time_left;
     }
 
     // move logical clock forward (perform periodic stuff here)
