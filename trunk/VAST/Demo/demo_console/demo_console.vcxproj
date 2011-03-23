@@ -69,6 +69,7 @@
       <Command>copy "$(SolutionDir)\lib\*.dll" "$(SolutionDir)\bin"
 copy "$(SolutionDir)\lib\*.pdb" "$(SolutionDir)\bin"
 copy "$(SolutionDir)\Dependencies\lib\$(Configuration)\*.dll" "$(SolutionDir)\bin"
+copy "$(SolutionDir)\Dependencies\lib\Common\*.dll" "$(SolutionDir)\bin"
 </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -80,7 +81,7 @@ copy "$(SolutionDir)\Dependencies\lib\$(Configuration)\*.dll" "$(SolutionDir)\bi
       <AdditionalIncludeDirectories>..\..\common; ..\..\VASTsim; ..\..\VASTATEsim; ..\..\Dependencies\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <MinimalRebuild>false</MinimalRebuild>
-      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <StructMemberAlignment>8Bytes</StructMemberAlignment>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <PrecompiledHeader>
@@ -100,7 +101,7 @@ copy "$(SolutionDir)\Dependencies\lib\$(Configuration)\*.dll" "$(SolutionDir)\bi
     <PostBuildEvent>
       <Command>copy "$(SolutionDir)\lib\*.dll" "$(SolutionDir)\bin"
 copy "$(SolutionDir)\Dependencies\lib\$(Configuration)\*.dll" "$(SolutionDir)\bin"
-</Command>
+copy "$(SolutionDir)\Dependencies\lib\Common\*.dll" "$(SolutionDir)\bin"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>

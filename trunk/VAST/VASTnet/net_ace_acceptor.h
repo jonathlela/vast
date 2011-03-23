@@ -78,6 +78,7 @@ protected:
 
         // accept the connection, note that the handler object
         // is treated as a SOCK_Stream
+        // NOTE: currently we only take non-SSL incoming connections, note the handler used
         if (this->_acceptor.accept (*handler) == -1)
             ACE_ERROR_RETURN ((LM_ERROR,
                                "%p",
@@ -97,8 +98,6 @@ protected:
         // display message
         ACE_INET_Addr remote_addr;
         stream.get_remote_addr (remote_addr);
-
-//            this->_stream.get_remote_addr (remote_addr);
         printf ("connection accepted from remote addr: (%s, %d)\n", remote_addr.get_host_addr (), remote_addr.get_port_number ());
 
         return 0;

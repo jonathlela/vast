@@ -709,13 +709,13 @@ namespace Vast
 
     // open a new TCP socket
     id_t 
-    VASTVerse::openSocket (IPaddr &ip_port)
+    VASTVerse::openSocket (IPaddr &ip_port, bool is_secure)
     {
         VASTPointer *handlers = (VASTPointer *)_pointers;
         if (handlers->net == NULL)
             return NET_ID_UNASSIGNED;
 
-        return handlers->net->openSocket (ip_port);            
+        return handlers->net->openSocket (ip_port, is_secure);            
     }
 
     // close a TCP socket

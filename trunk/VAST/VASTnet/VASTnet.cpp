@@ -437,7 +437,7 @@ namespace Vast
 
     // open a new TCP socket, in string format "IP:port"
     id_t 
-    VASTnet::openSocket (IPaddr &ip_port)
+    VASTnet::openSocket (IPaddr &ip_port, bool is_secure)
     {
         // if we're not yet initialized, deny internally
         if (isJoined () == false)
@@ -458,7 +458,7 @@ namespace Vast
         // NOTE: we don't need to worry about cleanConnections () disconnect this connection, 
         //       as this socket will not have any time record
         // TODO: perhaps release socket_id if connection fails?
-        if (_manager->connect (socket_id, addr.publicIP.host, addr.publicIP.port) == false)
+        if (_manager->connect (socket_id, addr.publicIP.host, addr.publicIP.port, is_secure) == false)
             return NET_ID_UNASSIGNED;
                
         return socket_id;

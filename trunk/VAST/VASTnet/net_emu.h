@@ -73,7 +73,7 @@ namespace Vast {
         bool getRemoteAddress (id_t host_id, IPaddr &addr);
 
         // connect or disconnect a remote node (should check for redundency)       
-        virtual bool connect (id_t target, unsigned int host, unsigned short port);
+        virtual bool connect (id_t target, unsigned int host, unsigned short port, bool is_secure = false);
         virtual bool disconnect (id_t target);
 
         // send an outgoing message to a remote host
@@ -91,7 +91,7 @@ namespace Vast {
         // returns success or not
         bool msg_received (id_t fromhost, const char *message, size_t size, timestamp_t recvtime = 0, bool in_front = false);
 
-        bool socket_connected (id_t id, void *stream);
+        bool socket_connected (id_t id, void *stream, bool is_secure);
         bool socket_disconnected (id_t id);
 
         //

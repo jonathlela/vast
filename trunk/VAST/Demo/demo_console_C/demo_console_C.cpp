@@ -12,7 +12,10 @@
 #endif
 
 #include "ace/ACE.h"
-#include "ace/OS.h"
+//#include "ace/OS.h"
+#include "ace/OS_NS_unistd.h"       // ACE_OS::sleeps
+#include "ace/OS_NS_sys_time.h"     // gettimeofday
+
 
 
 // for getting keyboard inputs
@@ -27,6 +30,7 @@
 
 bool g_finished = false;
 
+int   g_world_id = 1;
 float g_x = 100;
 float g_y = 100;
 int   g_radius = 200;
@@ -131,7 +135,7 @@ void Init ()
     g_x = (float)(rand () % 100);
     g_y = (float)(rand () % 100);
 
-    VASTJoin (g_x, g_y, g_radius);
+    VASTJoin (g_world_id, g_x, g_y, g_radius);
 }
 
 void Loop ()
@@ -154,7 +158,7 @@ void Loop ()
         size_t size;
         uint64_t from;
     
-        while ((msg = VASTReceive (&size, &from)) != NULL)
+        while ((msg = VASTReceive (&from, &size)) != NULL)
         {
             printf ("received from: %llu size: %u msg: %s\n", from, size, msg);
         }

@@ -87,28 +87,33 @@ namespace Vast {
         {
             stream = NULL;
             lasttime = 0;
+            is_secure = false;
         }
 
-        ConnectInfo (void *s, timestamp_t time)
+        ConnectInfo (void *s, timestamp_t time, bool is_secure)
         {
             stream      = s;
             lasttime    = time;
+            is_secure   = is_secure;
         }
 
         ConnectInfo (const ConnectInfo &c)
         {
             this->stream   = c.stream;
             this->lasttime = c.lasttime;
+            this->is_secure = c.is_secure;
         }
 
         ConnectInfo &operator=(const ConnectInfo& c)
         {
             this->stream   = c.stream;
             this->lasttime = c.lasttime;
+            this->is_secure = c.is_secure;
     
             return *this;
         }
 
+        bool         is_secure;        // whether the stream is TLS-based
         void        *stream;        // stream object 
         timestamp_t  lasttime;      // last accessed time for this connection
     };
@@ -165,7 +170,7 @@ namespace Vast {
         virtual bool getRemoteAddress (id_t host_id, IPaddr &addr) = 0;
 
         // connect or disconnect a remote node (should check for redundency)
-        virtual bool connect (id_t target, unsigned int host, unsigned short port) = 0;
+        virtual bool connect (id_t target, unsigned int host, unsigned short port, bool is_secure = false) = 0;
         virtual bool disconnect (id_t target) = 0;
 
         // send an outgoing message to a remote host, if 'addr' is provided, the message is sent as UDP
@@ -187,7 +192,7 @@ namespace Vast {
         // returns success or not
         virtual bool msg_received (id_t fromhost, const char *message, size_t size, timestamp_t recvtime, bool in_front = false) = 0;
 
-        virtual bool socket_connected (id_t id, void *stream) = 0;
+        virtual bool socket_connected (id_t id, void *stream, bool is_secure) = 0;
         virtual bool socket_disconnected (id_t id) = 0;
 
         // 

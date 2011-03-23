@@ -48,8 +48,11 @@
 
 #define VAST_BUFSIZ     32000       // generic message buffer size, note that send/recv cannot exceed this size
 #define VAST_MSGSIZ     1024        // generic message size, can expand if not enough
-#define VON_MAX_MSG     20          // maximum number of VONpeer messages
+#define VON_MAX_MSG     30          // maximum number of VONpeer messages
 
+
+// whether SSL socket is support (NOTE: if defined, client sockets will have options to be SSL-based
+#define VAST_USE_SSL_
 
 // when only simulation is run
 #define SIMULATION_ONLY_

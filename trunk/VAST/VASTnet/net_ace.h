@@ -56,6 +56,11 @@
 #include "VASTnet.h"
 #include "net_ace_acceptor.h"
 
+#ifdef VAST_USE_SSL
+#include "ace/SSL/SSL_SOCK_Connector.h" // ACE_SSL_SOCK_Connector
+#include "ace/SSL/SSL_SOCK_Stream.h"    // ACE_SSL_SOCK_Stream
+#endif
+
 using namespace ACE;
 
 // attempts to try to re-connect to a node
@@ -102,7 +107,7 @@ namespace Vast {
         bool getRemoteAddress (id_t host_id, IPaddr &addr);
 
         // connect or disconnect a remote node
-        bool connect (id_t target, unsigned int host, unsigned short port);
+        bool connect (id_t target, unsigned int host, unsigned short port, bool is_secure = false);
         bool disconnect (id_t target);      
 
         // send an outgoing message to a remote host, if addr is specified, message is UDP
@@ -121,7 +126,7 @@ namespace Vast {
         bool msg_received (id_t fromhost, const char *message, size_t size, timestamp_t recvtime = 0, bool in_front = false);
 
         // methods to keep track of active connections
-        bool socket_connected (id_t id, void *stream);
+        bool socket_connected (id_t id, void *stream, bool is_secure);
         bool socket_disconnected (id_t id);
 
     private:
@@ -140,8 +145,11 @@ namespace Vast {
         // acceptor for listen for incoming connections
         net_ace_acceptor           *_acceptor;
 
-        // conncector initiates connections to remote hosts
+        // conncector initiates connections to remote hosts        
         ACE_SOCK_Connector          _connector;
+#ifdef VAST_USE_SSL
+        ACE_SSL_SOCK_Connector      _SSL_connector;
+#endif
 
         // UDP datagram wrapper
         ACE_SOCK_Dgram              *_udp;

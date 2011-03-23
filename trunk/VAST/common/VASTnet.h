@@ -196,7 +196,7 @@ namespace Vast {
         //
 
         // open a new TCP socket
-        id_t openSocket (IPaddr &ip_port);
+        id_t openSocket (IPaddr &ip_port, bool is_secure = false);
 
         // close a TCP socket
         bool closeSocket (id_t socket);

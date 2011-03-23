@@ -32,6 +32,7 @@ namespace Vast {
         _remote_id = NET_ID_UNASSIGNED;
         _reactor = NULL;
         _msghandler = NULL;
+        _secure = false;
     }
 
     int 
@@ -45,9 +46,22 @@ namespace Vast {
         // obtain remote host's detected IP for public IP check
         // TODO: should move this function elsewhere?
         ACE_INET_Addr remote_addr;
-        this->_stream.get_remote_addr (remote_addr);
+
+#ifdef VAST_USE_SSL
+        if (_secure)
+        {
+            printf ("\nnet_ace_handler::open () getting remote addr from secure stream, handle: %llu\n", _ssl_stream.get_handle ());
+            this->_ssl_stream.get_remote_addr (remote_addr);
+        }
+        else
+#endif
+            this->_stream.get_remote_addr (remote_addr);
         _remote_addr.host = remote_addr.get_ip_address ();
         _remote_addr.port = remote_addr.get_port_number ();
+
+        char remote_host[80];
+        _remote_addr.getString (remote_host);
+        printf ("\nnet_ace_handler::open () remote_addr: %s\n", remote_host);
 
         // if socket connection indeed exists, try to determine remote ID & register socket
         // otherwise (a UDP handler) simply skip this part
@@ -61,7 +75,7 @@ namespace Vast {
                 printf ("\nnet_ace_handler::open () detecting remote_id as: [%llu]\n", remote_id);
             }
         
-            if (((net_ace *)msghandler)->socket_connected (remote_id, this) == false)
+            if (((net_ace *)msghandler)->socket_connected (remote_id, this, _secure) == false)
             {
                 // possible a remote connection is already established (remote connect)
                 ACE_ERROR_RETURN ((LM_ERROR,
@@ -75,7 +89,7 @@ namespace Vast {
         // hook this handler to reactors to listen for events
         if (reactor->register_handler (this, ACE_Event_Handler::READ_MASK) == -1)
             ACE_ERROR_RETURN ((LM_ERROR,
-                               "(%5t) [%llu] cannot register with reactor\n", remote_id), 
+                               "(%5t) [%l] cannot register with reactor\n", remote_id), 
                                -1 );
 
         _reactor    = reactor;
@@ -158,60 +172,17 @@ namespace Vast {
         {                        
             // get message body 
             // TODO: make buffer to vary in size?
+#ifdef VAST_USE_SSL
+            switch (n = (_secure ? this->_ssl_stream.recv (_buf.data, VAST_BUFSIZ) : this->_stream.recv (_buf.data, VAST_BUFSIZ)))
+#else
             switch (n = this->_stream.recv (_buf.data, VAST_BUFSIZ))
+#endif
             {
             case -1:
                 ACE_ERROR_RETURN ((LM_ERROR, "(%5t) [tcp-body] bad read due to (%p) \n", "net_ace_handler"), -1);
             case 0:            
                 ACE_ERROR_RETURN ((LM_DEBUG, "(%5t) [tcp-body] remote close (fd = %d)\n", fd), -1);
             }
-
-            /*
-
-            size_t bytes_transferred = 0;
-
-            switch (n = this->_stream.recv_n (&header, sizeof (VASTHeader), 0, &bytes_transferred))
-            {
-            case -1:
-                ACE_ERROR_RETURN ((LM_ERROR, "(%5t) [tcp-size] bad read due to (%p) received_bytes: %d\n", "net_ace_handler", bytes_transferred), -1);
-            case 0:
-                ACE_ERROR_RETURN ((LM_DEBUG, "(%5t) [tcp-size] remote close (fd = %d)\n", this->get_handle() ), -1);
-            }
-            
-            
-            //ACE_DEBUG( (LM_DEBUG, "(%5t) handle_input: header.msgsize: %d, bytes_transferred: %u\n", header.msg_size, bytes_transferred) );
-            
-            // check if it's a VASTHeader
-            if (n == sizeof (VASTHeader) && header.start == 42 && header.end == '\n')
-            {
-                // make sure buffer is enough to receive content
-                _buf.reserve (header.msg_size);
-
-                // get message body
-                switch (n = this->_stream.recv_n (_buf.data, header.msg_size, 0, &bytes_transferred)) 
-                {
-                case -1:
-                    //ACE_ERROR_RETURN ((LM_ERROR, "(%5t) [tcp-body] bad read due to (%p) \n", "net_ace_handler"), -1);
-                    ACE_ERROR_RETURN ((LM_ERROR, "(%5t) [tcp-body] bad read due to (%p) received_bytes: %d\n", "net_ace_handler", bytes_transferred), -1);
-                case 0:            
-                    ACE_ERROR_RETURN ((LM_DEBUG, "(%5t) [tcp-body] remote close (fd = %d)\n", fd), -1);
-                default:
-                    if (n != header.msg_size)
-                        ACE_ERROR_RETURN ((LM_ERROR, "(%5t) [tcp-body] size mismatch (expected:%u actual:%u)\n", header.msg_size, n), -1);
-                }
-               
-                //printf ("msgsize: %lu bytes_transferred: %lu\n", n, bytes_transferred);        
-                
-                // handle raw message
-                id_t id = ((net_ace *)_msghandler)->processVASTMessage (header, _buf.data, _remote_id, &_remote_addr, this);
-            
-                if (id == NET_ID_UNASSIGNED)
-                    return (-1);
-                else
-                    _remote_id = id;
-            }
-            */
-
         }
         // for UDP packets
         else 
@@ -294,7 +265,12 @@ namespace Vast {
             _reactor->remove_handler (this, mask | ACE_Event_Handler::DONT_CALL);
      
         // IMPORTANT: close the socket so port can be released for re-use
-        _stream.close ();
+#ifdef VAST_USE_SSL
+        if (_secure)
+            _ssl_stream.close ();
+        else
+#endif
+            _stream.close ();
      
         ACE_DEBUG ((LM_DEBUG, "(%5t) handle_close (): [%d]\n", _remote_id));
         delete this;

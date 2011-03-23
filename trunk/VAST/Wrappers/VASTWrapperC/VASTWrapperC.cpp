@@ -349,16 +349,16 @@ VASTC_EXPORT const char * VAST_CALL VASTReceive (uint64_t *ret_from, size_t *ret
 
 
 // open a new TCP socket
-VASTC_EXPORT uint64_t VAST_CALL VASTOpenSocket (const char *ip_port)
+VASTC_EXPORT uint64_t VAST_CALL VASTOpenSocket (const char *ip_port, bool is_secure)
 {
     // convert IP_port
-    printf ("opening socket: %s\n", ip_port);
+    printf ("opening socket: %s (%s)\n", ip_port, (is_secure ? "secure" : "non-secure"));
     
     string host (ip_port);    
     Addr addr = *VASTVerse::translateAddress (host);
     
     if (g_world)
-        return g_world->openSocket (addr.publicIP);
+        return g_world->openSocket (addr.publicIP, is_secure);
     else
         return NET_ID_UNASSIGNED;
 }

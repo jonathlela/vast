@@ -134,7 +134,7 @@ namespace Vast
     //          connects to the node, and register addr.id to the address
     bool
     net_emu::
-    connect (id_t target, unsigned int host, unsigned short port)
+    connect (id_t target, unsigned int host, unsigned short port, bool is_secure)
     {
         if (_active == false)
             return false;
@@ -150,7 +150,7 @@ namespace Vast
             return false;
 
         // create a dummy connection record
-        this->socket_connected (target, NULL);
+        this->socket_connected (target, NULL, is_secure);
 
         // notify remote host of connection
         receiver->remoteConnect (_self_addr.host_id, _self_addr);
@@ -346,12 +346,12 @@ namespace Vast
     // methods to keep track of active connections (associate ID with connection stream)
     // returns NET_ID_UNASSIGNED if failed
     bool
-    net_emu::socket_connected (id_t id, void *stream)
+    net_emu::socket_connected (id_t id, void *stream, bool is_secure)
     {
         if (_id2conn.find (id) != _id2conn.end ())
             return false;
 
-        ConnectInfo info (stream, getTimestamp ());
+        ConnectInfo info (stream, getTimestamp (), is_secure);
         
         // make a record of connection
         _id2conn.insert (std::map<id_t, ConnectInfo>::value_type (id, info)); 
@@ -385,8 +385,8 @@ namespace Vast
         if (_active == false)
             return false;
 
-        // store dummy (NULL) stream connection
-        this->socket_connected (remote_id, NULL);
+        // store dummy (NULL) stream connection, note: by default assuming non-secure
+        this->socket_connected (remote_id, NULL, false);
         
         // TODO: move this to VASTnet
         //storeMapping (addr);

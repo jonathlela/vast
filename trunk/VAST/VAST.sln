@@ -2,6 +2,9 @@
 Microsoft Visual Studio Solution File, Format Version 11.00
 # Visual C++ Express 2010
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "VAST", "VAST\VAST_vc9.vcxproj", "{3AD53CEC-054A-41D6-9CBE-45FCD6831292}"
+	ProjectSection(ProjectDependencies) = postProject
+		{9259AB2F-86EB-46B6-9550-9105901C9698} = {9259AB2F-86EB-46B6-9550-9105901C9698}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "VASTsim", "VASTsim\VASTsim.vcxproj", "{AD82A8FD-855A-4E58-978F-3A15F8AF9919}"
 EndProject

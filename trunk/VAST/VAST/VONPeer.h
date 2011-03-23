@@ -78,11 +78,11 @@ namespace Vast
         VON_HELLO_R,        // VON's hello response
         VON_EN,             // VON's enclosing neighbor inquiry (to see if my knowledge of EN is complete)
         VON_MOVE,           // VON's move, to notify AOI neighbors of new/current position
-        VON_MOVE_F,         // VON's move, full notification with AOI
+        VON_MOVE_F,         // VON's move, full notification on AOI
         VON_MOVE_B,         // VON's move for boundary neighbors
         VON_MOVE_FB,        // VON's move for boundary neighbors with full notification on AOI
         VON_BYE,            // VON's disconnecting a remote node
-        VON_NODE            // discovery of new nodes 
+        VON_NODE            // notification of new nodes 
 
         // NOTE: to add new messag types, must modify starting number for VSO_Message as well
     } VON_Message;

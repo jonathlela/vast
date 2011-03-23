@@ -34,12 +34,15 @@
 #include "ace/Event_Handler.h"
 #include "ace/SOCK_Stream.h"
 #include "ace/SOCK_Dgram.h"         // ACE_INET_Dgram
-
 #include "ace/Reactor.h"
 
 #include "VASTTypes.h"
 #include "VASTBuffer.h"
 #include "net_manager.h"
+
+#ifdef VAST_USE_SSL
+#include "ace/SSL/SSL_SOCK_Stream.h"    // ACE_SSL_SOCK_Stream
+#endif
 
 namespace Vast {
 
@@ -54,12 +57,21 @@ public:
     // close connection & unregister from reactor
     int close (void);
 
+#ifdef VAST_USE_SSL
+    // a trick to let acceptor thinks this is a ACE_SOCK_Stream object
+    ACE_SSL_SOCK_Stream &getSSLStream ()
+    {
+        _secure = true;
+        return this->_ssl_stream;
+    }
+#endif
+
     // a trick to let acceptor thinks this is a ACE_SOCK_Stream object
     operator ACE_SOCK_Stream & ()
     {
         return this->_stream;
     }
-    
+
     // open a UDP sender / receiver at a given port
     ACE_SOCK_Dgram *openUDP (ACE_INET_Addr addr);
 
@@ -75,7 +87,14 @@ protected:
     ACE_HANDLE get_handle (void) const 
     {
         if (_udp == NULL)
-            return this->_stream.get_handle ();
+        {
+#ifdef VAST_USE_SSL
+            if (_secure)
+                return this->_ssl_stream.get_handle ();
+            else
+#endif
+                return this->_stream.get_handle ();
+        }
         else
             return this->_udp->get_handle ();
     }
@@ -102,6 +121,13 @@ private:
 
     // objects for send/recv TCP/UDP streams
     ACE_SOCK_Stream _stream;
+
+    // secure connection stream
+    bool                _secure;
+#ifdef VAST_USE_SSL
+    ACE_SSL_SOCK_Stream _ssl_stream;
+#endif
+    
     ACE_SOCK_Dgram  *_udp;
     ACE_INET_Addr   _local_addr;
 

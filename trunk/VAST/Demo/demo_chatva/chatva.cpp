@@ -70,7 +70,7 @@ Area            g_aoi;              // my AOI (with center as current position)
 world_t         g_world_id = 0;
 Vast::NodeState g_state = ABSENT;
 Voronoi      *  g_Voronoi = NULL;   // access to Voronoi class
-VASTPara_Net    g_netpara;          // network parameters
+VASTPara_Net    g_netpara (VAST_NET_ACE);          // network parameters
 
 // GUI-settings
 int     NODE_RADIUS     = 10;

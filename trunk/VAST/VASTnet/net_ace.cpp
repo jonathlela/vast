@@ -328,7 +328,7 @@ namespace Vast {
 
     bool
     net_ace::
-    connect (id_t target, unsigned int host, unsigned short port)
+    connect (id_t target, unsigned int host, unsigned short port, bool is_secure)
     {
         if (_active == false)
             return false;
@@ -351,22 +351,37 @@ namespace Vast {
         // NOTE 2nd parameter in ACE_Time_Value is in microsecond (not milli)        
         int attempt_count = 0;
         ACE_Time_Value sleeptime (0, 100000);
-        ACE_DEBUG ((LM_DEBUG, "connecting to %s:%u\n", target_addr.get_host_addr (), port));
+        ACE_DEBUG ((LM_DEBUG, "connecting to %s:%u (%s)\n", target_addr.get_host_addr (), port, (is_secure ? "secure" : "non-secure")));
         
         // three-second TCP connection timeout
         ACE_Time_Value timeout (3, 0);
 
-        while (_connector.connect (*handler, target_addr, &timeout) == -1)
+        while (attempt_count <= RECONNECT_ATTEMPT)
         {  
-            attempt_count++;
-            if (attempt_count >= RECONNECT_ATTEMPT)
+            int result;
+
+#ifdef VAST_USE_SSL
+            if (is_secure)
             {
-                ACE_ERROR_RETURN ((LM_ERROR, "connect to %s:%u failed after %d re-attempts\n", target_addr.get_host_addr (), target_addr.get_port_number (), attempt_count), false);
+                result = _SSL_connector.connect (handler->getSSLStream (), target_addr, &timeout);
+                printf ("making secure connection, result: %d\n", result);
             }
-                        
+            else
+#endif
+                result = _connector.connect (*handler, target_addr, &timeout);
+
+            // if attempt succeed
+            if (result == 0)
+                break;
+                            
+            attempt_count++;
             ACE_DEBUG ((LM_DEBUG, "connect %s:%d failed (try %d):\n", target_addr.get_host_addr (), target_addr.get_port_number (), attempt_count));
             ACE_OS::sleep (sleeptime);
         }
+
+        // see if we've failed
+        if (attempt_count > RECONNECT_ATTEMPT)
+            ACE_ERROR_RETURN ((LM_ERROR, "connect to %s:%u (%s) failed after %d re-attempts\n", target_addr.get_host_addr (), target_addr.get_port_number (), (is_secure ? "secure" : "normal"), attempt_count), false);
         
         // open the handler object, this will 
         // 1) register handler with reactor 2) cause socket_connected () be called
@@ -436,9 +451,20 @@ namespace Vast {
             if ((it = _id2conn.find (target)) != _id2conn.end ())
             {
                 // TODO: perhaps actual send can be done outside of mutex (avoid locking too long?)
-                ACE_SOCK_Stream &stream = *((net_ace_handler *)(it->second.stream));
-                size = stream.send_n (msg, size);
-
+#ifdef VAST_USE_SSL
+                if (it->second.is_secure)
+                {
+                    ACE_SSL_SOCK_Stream &stream = ((net_ace_handler *)(it->second.stream))->getSSLStream ();  
+                    size = stream.send_n (msg, size);
+                }
+                else
+                {
+#endif
+                    ACE_SOCK_Stream &stream = *((net_ace_handler *)(it->second.stream));
+                    size = stream.send_n (msg, size);
+#ifdef VAST_USE_SSL                    
+                }
+#endif                               
                 // update the last accessed time for this connection
                 it->second.lasttime = now;
             }
@@ -572,7 +598,7 @@ namespace Vast {
     // returns the id being assigned 
     bool
     net_ace::
-    socket_connected (id_t id, void *stream)
+    socket_connected (id_t id, void *stream, bool is_secure)
     {
         // if remote connection is without HostID, cannot record
         if (id == NET_ID_UNASSIGNED)
@@ -582,7 +608,7 @@ namespace Vast {
         }
 
         // store the connection info
-        ConnectInfo conn (stream, this->getTimestamp ());        
+        ConnectInfo conn (stream, this->getTimestamp (), is_secure);        
         bool stored = false;
 
         _conn_mutex.acquire ();

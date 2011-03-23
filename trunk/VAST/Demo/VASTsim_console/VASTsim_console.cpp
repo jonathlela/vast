@@ -26,7 +26,7 @@ using namespace Vast;
 int main (int argc, char *argv[])
 {    
     SimPara simpara;                       // simulation parameters
-    VASTPara_Net netpara;               // network parameter
+    VASTPara_Net netpara (VAST_NET_EMULATED);               // network parameter
     map<int, vector<Node *> *> nodes;   // neighbors of each node
    
     // read parameters and initialize simulations

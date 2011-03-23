@@ -72,7 +72,7 @@ VASTC_EXPORT bool     VAST_CALL     VASTPublish (const char *msg, size_t size, u
 VASTC_EXPORT const char* VAST_CALL  VASTReceive (uint64_t *from, size_t *size);                                 // receive any message received
 
 // socket messaging
-VASTC_EXPORT uint64_t VAST_CALL     VASTOpenSocket (const char *ip_port);                           // open a new TCP socket
+VASTC_EXPORT uint64_t VAST_CALL     VASTOpenSocket (const char *ip_port, bool is_secure = false);                           // open a new TCP socket
 VASTC_EXPORT bool     VAST_CALL     VASTCloseSocket (uint64_t socket);                              // close a TCP socket
 VASTC_EXPORT bool     VAST_CALL     VASTSendSocket (uint64_t socket, const char *msg, size_t size); // send a message to a socket
 VASTC_EXPORT const char * VAST_CALL VASTReceiveSocket (uint64_t *from, size_t *size);               // receive a message from socket, if any

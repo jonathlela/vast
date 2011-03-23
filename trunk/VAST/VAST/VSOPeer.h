@@ -68,7 +68,7 @@ namespace Vast
     {
         VSO_DISCONNECT = 0,     // VSO's disconnect
         VSO_CANDIDATE = 11,     // notify gateway of a candidate node    
-        VSO_PROMOTE,            // promotes a candidate to functional
+        VSO_PROMOTE,            // promote a candidate to be functional
         VSO_INSERT,             // overload request for insertion
         VSO_MOVE,               // overload request for movement
         VSO_JOINED,             // a new node has joined successfully
