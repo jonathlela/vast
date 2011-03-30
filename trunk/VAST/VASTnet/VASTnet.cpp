@@ -650,6 +650,13 @@ namespace Vast
         return true;
     }
 
+    // perform ticking at logical clock (only useful in simulated network)
+    void
+    VASTnet::tickLogicalClock ()
+    {
+        _manager->tickLogicalClock ();        
+    }
+
     //
     // getters & setters
     //
@@ -1175,6 +1182,15 @@ namespace Vast
                 _type2recvsize [msgtype] = 0;
             _type2recvsize[msgtype] += size;
         }
+    }
+
+    // obtain the port portion of the ID
+    id_t 
+    VASTnet::resolvePort (id_t host_id)
+    {
+        //id_t port = (host_id & 0x00000000FFFF0000);
+        //id_t tail = (host_id & 0x000000000000FFFF);
+        return ((host_id & 0x00000000FFFF0000) >> 16);
     }
 
 } // namespace Vast

@@ -2,35 +2,29 @@
 
 Overview
 ========
-VAST is a P2P network library that supports virtual environment
-applications such as Massively Multiplayer Online Games (MMOG) or
-large-scale simulations. It is scalable to millions of nodes,
-bandwidth-efficient, and simple to use.
+VAST is an open source software library (under LGPL license) that allows 
+you to build scalable virtual world applications based on P2P techniques. 
+It mainly supports Spatial Publish Subscribe (SPS) and is based on 
+Voronoi-based Overlay Network (VON). Additionally, Voronoi Self-organizing 
+Overlay (VSO) helps to perform load balancing, and VoroCast helps with 
+message forwarding to large areas.
 
 VAST is released under the GNU LESSER GENERAL PUBLIC LICENSE,
 see "LICENSE.txt" for more information.
 
 This release has been compiled and tested with the following compilers:
 
-    - Visual C++ 2008 Express
+    - Visual C++ 2010 Express
     - g++ (Ubuntu 4.4.3-4ubuntu5) 4.4.3
 
 For instructions on how to build VAST, please refer to the URL:
-http://vast.sourceforge.net/docs
+http://vastlib.wikispaces.com/Installation
 
 Additional information can be found at the VAST homepage:
 http://vast.sourceforge.net
 
-VAST is based on the research of Voronoi-based Overlay Network (VON)
-and Spatial Publish Subscribe (SPS). Basically, VAST can be seen as an
-implementation of SPS using VON.
-
-VON: http://vast.sourceforge.net/docs/pub/2006-hu-VON.pdf
-SPS: http://vast.sourceforge.net/docs/pub/2009-MMVE-SPS.pdf
-
-Inquiries can be sent to Shun-Yun Hu:
-syhu@ieee.org
-
+Inquiries can be sent to VAST mailing list:
+vast-tech@lists.sourceforge.net
 
 
 Functions
@@ -107,7 +101,6 @@ Directory structures
 /bin            default output directory for compiled binaries
 /build          temporary file holder during compiling
 /common         shared include files and common library
-/dataset        latency / bandwidth distribution dataset used by simulations
 /Demo           various demo programs:
                 "demo_chatva"       (Win32)             a movable client using ACE
                 "demo_console"      (Win32/Linux)       console (text-only) version

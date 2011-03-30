@@ -151,15 +151,6 @@ namespace Vast
         return VAST_EXTRACT_ASSIGNED_ID (host_id);
     }
 
-    // obtain the port portion of the ID
-    id_t 
-    net_manager::resolvePort (id_t host_id)
-    {
-        //id_t port = (host_id & 0x00000000FFFF0000);
-        //id_t tail = (host_id & 0x000000000000FFFF);
-        return ((host_id & 0x00000000FFFF0000) >> 16);
-    }
-
     // extract the ID group from an ID
     int 
     net_manager::extractIDGroup (id_t id)

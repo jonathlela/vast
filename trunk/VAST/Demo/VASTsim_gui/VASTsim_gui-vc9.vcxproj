@@ -142,6 +142,7 @@ copy "$(SolutionDir)\Dependencies\lib\$(Configuration)\*.dll" "$(SolutionDir)\bi
     </Link>
     <PostBuildEvent>
       <Command>copy "$(SolutionDir)\lib\*.dll" "$(SolutionDir)\bin"
+copy "$(SolutionDir)\lib\*.pdb" "$(SolutionDir)\bin"
 copy "$(SolutionDir)\Dependencies\lib\$(Configuration)\*.dll" "$(SolutionDir)\bin"
 </Command>
     </PostBuildEvent>

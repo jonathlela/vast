@@ -29,10 +29,9 @@ namespace Vast
     // TODO: once created, it will not be released until the program ends,
     //       a better mechanism?
     static net_emubridge *g_bridge     = NULL;
-    int            g_bridge_ref = 0;            // reference count for the bridge
+    int                   g_bridge_ref = 0;            // reference count for the bridge
 
     net_emu::net_emu (timestamp_t sec2timestamp)
-        //:_bridge (b)
     {
         // initialize rand generator (for node fail simulation, NOTE: same seed is used to produce exactly same results)
         //srand ((unsigned int)time (NULL));
@@ -121,7 +120,18 @@ namespace Vast
     bool 
     net_emu::getRemoteAddress (id_t host_id, IPaddr &addr)
     {
-        return true;
+        if (g_bridge)
+        {
+            net_emu *receiver = (net_emu *)g_bridge->getNetworkInterface (host_id);
+
+            if (receiver == NULL)
+                return false;
+
+            addr = receiver->getAddress ().publicIP;
+            return true;
+        }
+
+        return false;
     }
 
     // Note:
@@ -203,9 +213,10 @@ namespace Vast
 
         if ((recvtime = g_bridge->getArrivalTime (_id, target, size, reliable)) == (timestamp_t)(-1))
             return 0;
-
+        
         // TODO: try not to dual allocate message size?  
-        receiver->msg_received (_id, msg, size, recvtime);
+        //receiver->msg_received (_id, msg, size, recvtime);
+        receiver->msg_received (_self_addr.host_id, msg, size, recvtime);
 
         // update last access time for connection
         if (_id2conn.find (target) != _id2conn.end ())
@@ -307,6 +318,14 @@ namespace Vast
         _id2conn.erase (prevID);
 
         return true;
+    }
+
+    // perform a tick of the logical clock 
+    void 
+    net_emu::tickLogicalClock ()
+    {
+        if (g_bridge)
+            g_bridge->tick ();
     }
 
     // store a message into priority queue

@@ -20,7 +20,7 @@
 using namespace std;
 using namespace Vast;
 
-#define PRINT_MSG
+#define PRINT_MSG_
 
 
 int main (int argc, char *argv[])
@@ -29,6 +29,8 @@ int main (int argc, char *argv[])
     VASTPara_Net netpara (VAST_NET_EMULATED);               // network parameter
     map<int, vector<Node *> *> nodes;   // neighbors of each node
    
+    ReadPara (simpara);
+
     // read parameters and initialize simulations
     InitPara (VAST_NET_EMULATED, netpara, simpara);
     

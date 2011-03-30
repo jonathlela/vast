@@ -184,6 +184,9 @@ namespace Vast {
         // change the ID for a remote host
         virtual bool switchID (id_t prevID, id_t newID) = 0;
 
+        // perform a tick of the logical clock 
+        virtual void tickLogicalClock () = 0;
+
         //
         // callback services called by specific network binding (e.g. ACE or emulation)
         //
@@ -205,9 +208,6 @@ namespace Vast {
 
         // obtain the assigned number from a HostID;
         static id_t resolveAssignedID (id_t host_id);
-
-        // obtain the port portion of the ID
-        static id_t resolvePort (id_t host_id);
 
         // extract the ID group from an ID
         static int extractIDGroup (id_t);

@@ -671,17 +671,12 @@ namespace Vast
     void  
     VASTVerse::tickLogicalClock ()
     {
-        /* TO-DO: how to tick clock given that netbridge now is not really accessible from here
-
         // increase tick globally when the last node has processed its messages for this round
         // this will prevent its message be delayed one round in processing by other nodes
         // TODO: find a better way? 
-        if (g_bridge != NULL)
-        {
-            g_bridge->tick ();
-        }
-
-        */
+        VASTPointer *handlers = (VASTPointer *)_pointers;
+        if (handlers->net)
+            handlers->net->tickLogicalClock ();
     }
 
     // stop operations on this node

@@ -249,6 +249,9 @@ namespace Vast {
         // and attempt to connect if not (send handshake afterwards)
         bool validateConnection (id_t id);
 
+        // perform ticking at logical clock (only useful in simulated network)
+        void tickLogicalClock ();
+
         //
         // getters & setters
         //
@@ -300,6 +303,14 @@ namespace Vast {
         //       a cleaner way?
         void recordLocalTarget (id_t target);
 
+        //
+        // Static Methods
+        //
+
+        // obtain the port portion of the ID
+        // TODO: remove this so VASTnet's interface is cleaner?
+        static id_t resolvePort (id_t host_id);
+
     protected:
 
         //
@@ -346,7 +357,6 @@ namespace Vast {
         // update send/recv size statistics
         // type: 1 = send, type: 2 = receive
         void updateTransmissionStat (id_t target, msgtype_t msgtype, size_t total_size, int type);
-
 
         // 
         // member variables

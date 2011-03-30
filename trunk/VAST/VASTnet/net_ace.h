@@ -121,6 +121,9 @@ namespace Vast {
         // change the ID for a remote host
         bool switchID (id_t prevID, id_t newID);
 
+        // perform a tick of the logical clock 
+        void tickLogicalClock () {}
+
         // store a message into priority queue
         // returns success or not
         bool msg_received (id_t fromhost, const char *message, size_t size, timestamp_t recvtime = 0, bool in_front = false);

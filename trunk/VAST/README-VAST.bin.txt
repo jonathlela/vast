@@ -32,7 +32,7 @@ Real Network Demo
 
 In another demo, to see VAST with real networking. run the following batch files:
 
-run-gateway-gui.bat		(to start a gateway node in GUI mode)
+run-gateway-gui.bat		    (to start a gateway node in GUI mode)
 run-4-matchers-gui.bat		(to start 4 matcher nodes in GUI mode)
 run-10-clients-console.bat	(to start 10 clients in console mode)
 

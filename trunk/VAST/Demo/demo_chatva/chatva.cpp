@@ -633,8 +633,10 @@ INT WINAPI WinMain (HINSTANCE hInst, HINSTANCE, LPSTR lpCmdLine, INT)
     g_origin.x = g_origin.y = 0;
 
     // store default gateway address
-    string str ("127.0.0.1:1037");
-    g_gateway = *VASTVerse::translateAddress (str);
+    char GWstr[80];
+    strcpy (GWstr, "127.0.0.1:1037");
+    
+    //g_gateway = *VASTVerse::translateAddress (str);
 
     // initialize parameters
     SimPara simpara;
@@ -643,7 +645,7 @@ INT WINAPI WinMain (HINSTANCE hInst, HINSTANCE, LPSTR lpCmdLine, INT)
     bool is_gateway;
 
     // obtain parameters from command line and/or INI file
-    if ((g_node_no = InitPara (VAST_NET_ACE, g_netpara, simpara, lpCmdLine, &is_gateway, &g_world_id, &g_aoi, &g_gateway, &entries)) == (-1))
+    if ((g_node_no = InitPara (VAST_NET_ACE, g_netpara, simpara, lpCmdLine, &is_gateway, &g_world_id, &g_aoi, GWstr)) == (-1))
         exit (0);
 
     //bool simulate_behavior = (g_node_no > 0);
@@ -677,8 +679,8 @@ INT WINAPI WinMain (HINSTANCE hInst, HINSTANCE, LPSTR lpCmdLine, INT)
 #ifdef USE_VAST
 
     // create VAST node factory    
-    g_world = new VASTVerse (entries, &g_netpara, NULL);
-    g_world->createVASTNode (g_gateway.publicIP, g_aoi, VAST_EVENT_LAYER);
+    g_world = new VASTVerse (is_gateway, GWstr, &g_netpara, NULL);
+    g_world->createVASTNode (1, g_aoi, VAST_EVENT_LAYER);
 
 #else
     VASTATEPara para;
