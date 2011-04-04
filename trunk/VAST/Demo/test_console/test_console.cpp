@@ -378,6 +378,7 @@ int main (int argc, char *argv[])
     
     // sleep a little to let nodes move at different time  by lee
     ACE_Time_Value tv (0, 1000000 * interval * g_node_no);
+    printf ("g_node_no is: %d \n", g_node_no);
     printf ("interval to pause is: %d seconds\n", interval * g_node_no); 
     
     ACE_OS::sleep (tv);
@@ -439,7 +440,7 @@ int main (int argc, char *argv[])
     //else
         //g_message_log = LogManager::open ("client", "stat");
 
-    //LogManager::instance ()->setLogFile (g_message_log);
+    LogManager::instance ()->setLogFile (g_message_log);
 
     //
     // main loop
