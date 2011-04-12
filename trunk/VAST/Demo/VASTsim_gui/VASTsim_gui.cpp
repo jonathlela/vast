@@ -216,7 +216,7 @@ VOID Render (HWND hWnd)
         {
             // change color ?
             SelectObject (hdc, GetStockObject(HOLLOW_BRUSH));
-            Ellipse (hdc, x-aoi, y-aoi, x+aoi, y+aoi);
+            Ellipse (hdc, (int)(x-aoi), (int)(y-aoi), (int)(x+aoi), (int)(y+aoi));
         }
 
         if (i == g_selected)
@@ -233,7 +233,7 @@ VOID Render (HWND hWnd)
             if (show_self)
             {
                 //SelectObject( hdc, GetStockObject(HOLLOW_BRUSH) );
-                Ellipse (hdc, x-aoi, y-aoi, x+aoi, y+aoi);
+                Ellipse (hdc, (int)(x-aoi), (int)(y-aoi), (int)(x+aoi), (int)(y+aoi));
             }
 
             // draw neighbor dots
@@ -339,7 +339,7 @@ VOID Render (HWND hWnd)
              g_nodes_active, 
              selected_x, 
              selected_y, 
-             g_aoi, 
+             (int)g_aoi, 
              size_AN, 
              str2, 
              (follow_mode ? "[follow]" : ""), 

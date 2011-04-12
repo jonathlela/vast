@@ -56,12 +56,12 @@ namespace Vast {
         // copy constructor
         NetSocketMsg (const NetSocketMsg &m)
         {
-            fromhost = m.fromhost;
-            recvtime = m.recvtime;
-            size = m.size;
+            this->fromhost = m.fromhost;
+            this->recvtime = m.recvtime;
+            this->size = m.size;
 
-            msg = new char[m.size];
-            memcpy (msg, m.msg, size);
+            this->msg = new char[m.size];
+            memcpy (this->msg, m.msg, size);
         }
 
         ~NetSocketMsg ()
@@ -85,16 +85,16 @@ namespace Vast {
     public:
         ConnectInfo ()
         {
-            stream = NULL;
-            lasttime = 0;
-            is_secure = false;
+            this->stream = NULL;
+            this->lasttime = 0;
+            this->is_secure = false;
         }
 
         ConnectInfo (void *s, timestamp_t time, bool is_secure)
         {
-            stream      = s;
-            lasttime    = time;
-            is_secure   = is_secure;
+            this->stream      = s;
+            this->lasttime    = time;
+            this->is_secure   = is_secure;
         }
 
         ConnectInfo (const ConnectInfo &c)

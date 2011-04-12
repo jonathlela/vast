@@ -77,7 +77,8 @@ typedef uint16_t    word_t;
 typedef uint32_t    vsize_t;        // size_t used in VAST
 
 typedef float       coord_t;        // type of coordinates
-typedef uint16_t    length_t;       // type for a length, for radius or rectangle length
+//typedef uint16_t    length_t;       // type for a length, for radius or rectangle length
+typedef float       length_t;       // type for a length, for radius or rectangle length
 
 typedef uint16_t    msgtype_t;      // the types of messages (0 - 65535)
 typedef uint16_t    layer_t;        // the number of layers in the overlay (0 - 65535)
@@ -607,8 +608,8 @@ public:
     
     IPaddr (uint32_t i, uint16_t p)
     {
-        host = i;
-        port = p;
+        this->host = i;
+        this->port = p;
     }
     
     IPaddr (const char *ip_string, uint16_t p)
@@ -636,8 +637,8 @@ public:
         else
             i = 0;
 
-        host = i;
-        port = p;
+        this->host = i;
+        this->port = p;
     }
     
     ~IPaddr ()

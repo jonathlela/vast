@@ -52,7 +52,7 @@
 
 
 // whether SSL socket is support (NOTE: if defined, client sockets will have options to be SSL-based
-#define VAST_USE_SSL_
+#define VAST_USE_SSL
 
 // when only simulation is run
 #define SIMULATION_ONLY_

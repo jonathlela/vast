@@ -219,15 +219,15 @@ public:
     {
         printf ("from [%llu] size: %d msg: %s\n", socket, size, msg);
 
-        /*
+        
         // send back acknowledgment if not the same message
         char teststr[] = "hello world back!\0";
         if (strlen (teststr) + 1 != size)
         {
             g_world->sendSocket (socket, teststr, strlen (teststr)+1);
-        }
-        */
+        }        
 
+        /* proxy socket
         // re-direct client message to server
         if (_clients.find (socket) != _clients.end ())
         {
@@ -252,6 +252,7 @@ public:
             // TODO: check if we need to wait first (for socket connection to establish)
             g_world->sendSocket (server_socket_id, msg, size);
         }
+        */
 
         return true;
     }

@@ -216,7 +216,7 @@
             return;
 
         // record keeping
-        long aoi = _self.aoi.radius;
+        long aoi = (long)_self.aoi.radius;
         _total_aoi += aoi;
         
         if (aoi < _min_aoi)
