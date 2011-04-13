@@ -12,8 +12,8 @@ LIBS_DL     = -ldl
 
 ACE_PATH    = ../../../ACE_wrappers
 
-CFLAGS      = -Wall -static
-#CFLAGS      = -Wall -fPIC
+#CFLAGS      = -Wall -static
+CFLAGS      = -Wall -fPIC
 
 INC_PATHS   = -I../../common -I../../VASTsim -I$(ACE_PATH)
 

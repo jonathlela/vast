@@ -55,7 +55,7 @@
 #define VAST_USE_SSL_
 
 // when only simulation is run
-#define SIMULATION_ONLY_
+//#define SIMULATION_ONLY_
 
 // whether to record statistics during simulation runs (disable will run faster)
 #define SIM_RECORD_STAT
