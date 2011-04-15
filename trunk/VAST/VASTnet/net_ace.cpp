@@ -336,7 +336,7 @@ namespace Vast {
         // we're always connected to self
         if (target == _id || isConnected (target))
         {
-            printf ("net_ace::connect () connection for [%llu] already exists\n", target);
+            std::cout << "net_ace::connect () connection for [" << target << "] already exists" << std::endl;
             return true;
         }
 
@@ -523,11 +523,11 @@ namespace Vast {
         // new ID already in use
         if (_id2conn.find (newID) != _id2conn.end () || _id2conn.find (prevID) == _id2conn.end ())
         {
-            printf ("[%llu] net_ace::switchID () old ID not found or new ID already exists\n", _id);
+            std::cout << '[' << _id << "] net_ace::switchID () old ID not found or new ID already exists" << std::endl;
         }
         else
         {
-            printf ("[%llu] net_ace::switchID () replace [%llu] with [%llu]\n", _id, prevID, newID);
+            std::cout << '[' << _id << "] net_ace::switchID () replace [" << prevID << "] with [" << newID << ']' << std::endl;
 
             // copy to new ID
             _id2conn[newID] = _id2conn[prevID];

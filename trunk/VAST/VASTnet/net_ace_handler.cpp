@@ -72,7 +72,7 @@ namespace Vast {
             {
                 remote_id = ((net_manager *)msghandler)->resolveHostID (&_remote_addr);
                 //ACE_DEBUG ((LM_DEBUG, "\nnet_ace_handler::open () detecting remote_id as: [%llu]\n", remote_id));
-                printf ("\nnet_ace_handler::open () detecting remote_id as: [%llu]\n", remote_id);
+                std::cout << std::endl << "net_ace_handler::open () detecting remote_id as: [" << remote_id << ']' << std::endl;
             }
         
             if (((net_ace *)msghandler)->socket_connected (remote_id, this, _secure) == false)

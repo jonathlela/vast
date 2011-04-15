@@ -96,7 +96,7 @@ namespace Vast
 
         _world_id = 0;
 
-        printf ("VASTMatcher leave () called\n");
+        std::cout << "VASTMatcher leave () called" << std::endl;
         _state = ABSENT;
       
         return true;
@@ -249,7 +249,7 @@ namespace Vast
                          in_msg.msgtype == JOIN))
                 {
                     // NOTE: if a matcher just departs, it's possible it will still receive messages from neighbor Matcher temporarily
-                    printf ("[%llu] VASTMatcher::handleMessage () non-Matcher receives Matcher-specific message of type %d from [%llu]\n", _self.id, in_msg.msgtype, in_msg.from);
+                    std::cout << '[' << _self.id << "] VASTMatcher::handleMessage () non-Matcher receives Matcher-specific message of type " << in_msg.msgtype << " from [" << in_msg.from << ']' << std::endl;
                     return false;
                 }
             }                       
@@ -271,7 +271,7 @@ namespace Vast
         if (in_msg.msgtype < VON_MAX_MSG)
             ; //printf ("[%d] VASTMatcher::handleMessage from: %d msgtype: %d, to be handled by VONPeer, size: %d\n", _self.id, in_msg.from, in_msg.msgtype, in_msg.size);            
         else
-            printf ("[%d] VASTMatcher::handleMessage from: %d msgtype: %d appmsg: %d (%s) size: %d\n", _self.id, in_msg.from, in_msg.msgtype, app_msgtype, VAST_MESSAGE[in_msg.msgtype-VON_MAX_MSG], in_msg.size);
+            std::cout << '[' << _self.id << "] VASTMatcher::handleMessage from: " << in_msg.from << " msgtype: " << in_msg.msgtype << " appmsg: " << app_msgtype << " (" << VAST_MESSAGE[in_msg.msgtype-VON_MAX_MSG] << ") size: " << in_msg.size << std::endl;
 #endif
 
         switch (in_msg.msgtype)
@@ -566,7 +566,7 @@ namespace Vast
                 // TODO: send message to start up a new origin matcher, if the world is not instanced yet
                 if (_origins.find (world_id) == _origins.end ())
                 {
-                    printf ("Gateway [%llu] JOIN: creating origin matcher for world (%u)\n", _self.id, world_id);
+                    std::cout << "Gateway [" << _self.id << "] JOIN: creating origin matcher for world (" << world_id << ')' << std::endl;
 
                     // promote one of the spare potential nodes
                     Addr new_origin;
@@ -635,7 +635,7 @@ namespace Vast
                     msg.addTarget (in_msg.from);
                     sendMessage (msg);
 
-                    printf ("Gateway JOIN replies [%llu] with origin matcher [%llu] on world (%u)\n", in_msg.from, _origins[world_id], world_id);
+                    std::cout << "Gateway JOIN replies [" << in_msg.from << "] with origin matcher [" << _origins[world_id] << "] on world (" << world_id << ')' << std::endl;
                 }
             }
             break;
@@ -652,7 +652,7 @@ namespace Vast
                 // NOTE: we allow sending SUBSCRIBE for existing subscription if
                 //       the subscription has updated (for example, the relay has changed)
 
-                printf ("[%llu] VASTMatcher SUBSCRIBE from [%llu]\n", _self.id, in_msg.from);
+                std::cout << '[' << _self.id << "] VASTMatcher SUBSCRIBE from [" << in_msg.from << ']' << std::endl;
                 Subscription sub;
                 in_msg.extract (sub);
 
@@ -679,7 +679,7 @@ namespace Vast
                     if (sub.id == NET_ID_UNASSIGNED) 
                         sub.id = _net->getUniqueID (ID_GROUP_VON_VAST);
                     else
-                        printf ("VASTMatcher [%llu] using existing ID [%llu]\n", in_msg.from, sub.id);
+                        std::cout << "VASTMatcher [" << in_msg.from << "] using existing ID [" << sub.id << ']' << std::endl;
 
                     // by default we own the client subscriptions we create
                     // we may simply update existing subscription when clients re-subscribe due to matcher failure
@@ -828,7 +828,7 @@ namespace Vast
                 }
 #ifdef DEBUG_DETAIL
                 else
-                    printf ("VASTMatcher::handleMessage PUBLISH, no peer covers publication at (%d, %d)\n", (int)area.center.x, (int)area.center.y);
+                    std::cout << "VASTMatcher::handleMessage PUBLISH, no peer covers publication at (" << (int)area.center.x << ", " << (int)area.center.y << ')' << std::endl;
 #endif
                    
             }
@@ -922,7 +922,7 @@ namespace Vast
                     }
                 }
 #ifdef DEBUG_DETAIL
-                printf ("[%llu] VASTMatcher::handleMessage () SUBSCRIBE_TRANSFER %d sent %d success\n", _self.id, (int)n, success);
+                std::cout << '[' << _self.id << "] VASTMatcher::handleMessage () SUBSCRIBE_TRANSFER " << n << " sent " << success << " success" << std::endl;
 #endif
             }
             break;
@@ -1056,7 +1056,7 @@ namespace Vast
 
         default:            
             {
-                printf ("[%llu] VASTMatcher unrecognized msgtype: %d\n", _self.id, in_msg.msgtype);
+                std::cout << '[' << _self.id << "] VASTMatcher unrecognized msgtype: " <<  in_msg.msgtype << std::endl;
             }
             break;
         }
@@ -1585,7 +1585,7 @@ namespace Vast
                     // change neighbor info to DELETED if not exist (something's wrong here)
                     if (it_neighbor == _subscriptions.end ())
                     {
-                        printf ("neighbor [%llu] cannot be found when sending neighbor update\n", neighbor_id); 
+                        std::cout << "neighbor [" << neighbor_id << "] cannot be found when sending neighbor update" << std::endl;
                         status = DELETED;
                     }
                     else
@@ -1725,14 +1725,14 @@ namespace Vast
                 new_origin = info.addr;
                 info.state = PROMOTING;
 
-                printf ("[%llu] promoting [%llu] as new matcher\n\n", _self.id, new_origin.host_id);
+                std::cout << '[' << _self.id << "] promoting [" << new_origin.host_id << "] as new matcher" << std::endl << std::endl;
 
                 return true;
             }
         }
 
         // TODO: do something about it (e.g. create matcher node at gateway)
-        printf ("[%llu] no candidate matcher can be found\n", _self.id);
+        std::cout << '[' << _self.id << "] no candidate matcher can be found" << std::endl;
 
         return false;
     }
@@ -1748,7 +1748,7 @@ namespace Vast
             // perform error check, but note that connections may not be established for a gateway client
             if (msg.targets.size () != 0)
             {
-                printf ("VASTMatcher::sendClientMessage targets exist\n");
+                std::cout << "VASTMatcher::sendClientMessage targets exist" << std::endl;
                 return 0;
             }
 
@@ -1771,7 +1771,7 @@ namespace Vast
         // TODO: perhaps should check / wait? 
         if (list.size () > 0)
         {
-            printf ("VASTMatcher::removeFailedSubscribers () removing failed send targets\n");
+            std::cout << "VASTMatcher::removeFailedSubscribers () removing failed send targets" << std::endl;
            
             // remove failed targets
             for (size_t i=0; i < list.size (); i++)
@@ -1952,7 +1952,7 @@ namespace Vast
         map<id_t, Subscription>::iterator it = _subscriptions.find (sub_id);
         if (it == _subscriptions.end ())
         {
-            printf ("VASTMatcher::objectClaimed () subscription [%llu] not found\n", sub_id);
+            std::cout << "VASTMatcher::objectClaimed () subscription [" << sub_id << "] not found" << std::endl;
             return false;
         }
         else

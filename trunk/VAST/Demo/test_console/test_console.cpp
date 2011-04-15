@@ -163,7 +163,7 @@ bool recordJoinTime (FILE *fp, Vast::id_t nodeID)
 
 	// node ID
 	fprintf (fp, "# node ID\n");
-	fprintf (fp, "%llu\n", nodeID);
+	fprintf (fp, "%zu\n", (size_t)nodeID);
 	
 	fprintf (fp, "# Start date/time\n"); 
 	fprintf (fp, "# %s", asctime (timeinfo)); 
@@ -221,8 +221,8 @@ void checkJoin ()
             fprintf (g_position_log, "# millisec,\"posX,posY\",elapsed (per step)\n\n");
 
             // joinining & joined time
-            fprintf (g_position_log, "%llu,\"%llu,joining\",%d\n",joining_msec,nodeID,g_node_no);
-            fprintf (g_position_log, "%llu,\"%llu,joined\",%d\n",joined_msec,nodeID,g_node_no);
+            fprintf (g_position_log, "%zu,\"%zu,joining\",%d\n",(size_t)joining_msec,(size_t)nodeID,g_node_no);
+            fprintf (g_position_log, "%zu,\"%zu,joined\",%d\n",(size_t)joined_msec,(size_t)nodeID,g_node_no);
 
             fflush (g_position_log);
         }
@@ -234,8 +234,8 @@ void checkJoin ()
             fprintf (g_neighbor_log, "# millisec,\"nodeID,posX,posY\", ... (per step)\n\n");		
 
             // join & joining time
-            fprintf(g_neighbor_log, "%llu,\"%llu,joining\"\n",joining_msec,nodeID);
-            fprintf(g_neighbor_log, "%llu,\"%llu,joined\"\n",joined_msec,nodeID);
+            fprintf(g_neighbor_log, "%zu,\"%zu,joining\"\n",(size_t)joining_msec,(size_t)nodeID);
+            fprintf(g_neighbor_log, "%zu,\"%zu,joined\"\n",(size_t)joined_msec,(size_t)nodeID);
 
             fflush(g_neighbor_log);
         }
@@ -254,19 +254,19 @@ void printNeighbors (unsigned long long curr_msec, Vast::id_t selfID, bool scree
 		printf ("Neighbors:");
 
         if (g_neighbor_log != NULL && screen_only == false)
-		    fprintf (g_neighbor_log, "%llu,%llu,", curr_msec, selfID);
+		    fprintf (g_neighbor_log, "%zu,%zu,", (size_t)curr_msec, (size_t)selfID);
 
 		for (size_t i = 0; i < neighbors.size (); i++)
 		{
             if (i%2 == 0)
                 printf ("\n");
 
-			printf ("[%llu] (%d, %d) ", (neighbors[i]->id), 
+			printf ("[%zu] (%d, %d) ", (size_t)(neighbors[i]->id), 
 					(int)neighbors[i]->aoi.center.x, (int)neighbors[i]->aoi.center.y);
             
             if (g_neighbor_log && screen_only == false)
             {
-			    fprintf (g_neighbor_log, "\"%llu,%d,%d\"", (neighbors[i]->id), 
+			    fprintf (g_neighbor_log, "\"%zu,%d,%d\"", (size_t)(neighbors[i]->id), 
 				    	(int)neighbors[i]->aoi.center.x, (int)neighbors[i]->aoi.center.y);			
 
                 if (i != neighbors.size() - 1)
@@ -287,7 +287,7 @@ void printNeighbors (unsigned long long curr_msec, Vast::id_t selfID, bool scree
 void printSizes ()
 {    
     printf ("sizeof sizes:\n");
-    printf ("bool: %u, VASTheader: %u id_t: %u timestamp_t: %u length_t: %u coord_t: %u\nPosition: %u Area: %u IPaddr: %u Addr: %u Node: %u\n\n",
+    printf ("bool: %zu, VASTheader: %zu id_t: %zu timestamp_t: %zu length_t: %zu coord_t: %zu\nPosition: %zu Area: %zu IPaddr: %zu Addr: %zu Node: %zu\n\n",
         sizeof (bool),
         sizeof (VASTHeader),
         sizeof (Vast::id_t),
@@ -302,7 +302,7 @@ void printSizes ()
  
     Position a; Area b; IPaddr c; Addr d; Node e;
     printf ("transfer sizes:\n");
-    printf ("VASTheader: %u coord_t: %u Position: %u Area: %u IPaddr: %u Addr: %u Node: %u\n\n",
+    printf ("VASTheader: %zu coord_t: %zu Position: %zu Area: %zu IPaddr: %zu Addr: %zu Node: %zu\n\n",
         sizeof (VASTHeader),
         sizeof (coord_t),
         a.sizeOf (),
@@ -435,7 +435,7 @@ int main (int argc, char *argv[])
     
     // open message log (both gateway & client)
     if (is_gateway)
-        g_message_log = LogManager::open ("gateway", "stat");
+        g_message_log = LogManager::open (const_cast<char*>("gateway"), const_cast<char*>("stat"));
     //else
         //g_message_log = LogManager::open ("client", "stat");
 
@@ -486,7 +486,7 @@ int main (int argc, char *argv[])
 
         // if we should move in this frame
         bool to_move = false;
-        if (elapsed >= ms_per_move)
+        if (elapsed >= (long long)ms_per_move)
         {
             // re-record last_movement
             last_movement = curr_time;
@@ -553,9 +553,9 @@ int main (int argc, char *argv[])
                 // if I'm not gateway & need to record position
                 if (g_position_log != NULL)
                 {
-                    fprintf (g_position_log, "%llu,\"%llu,%d,%d\",%lld,%s,[%lu,%lu]\n", 
-                             curr_msec, 
-                             id,
+                    fprintf (g_position_log, "%zu,\"%zu,%d,%d\",%lld,%s,[%lu,%lu]\n", 
+                             (size_t)curr_msec, 
+                             (size_t)id,
                              (int)self->aoi.center.x, (int)self->aoi.center.y, 
                              elapsed, NODE_TYPE[self_type],
                              g_world->getSendStat ().total, g_world->getReceiveStat ().total);
@@ -568,7 +568,7 @@ int main (int argc, char *argv[])
 
                 // print out movement once per second
                 if (num_moves % simpara.STEPS_PERSEC == 0)
-                    printf ("[%llu] moves to (%d, %d)\n", id, (int)g_aoi.center.x, (int)g_aoi.center.y);
+                    printf ("[%zu] moves to (%d, %d)\n", (size_t)id, (int)g_aoi.center.x, (int)g_aoi.center.y);
             }
 
             // process input messages, if any
@@ -596,8 +596,8 @@ int main (int argc, char *argv[])
                     sendstat.calculateAverage ();
                     recvstat.calculateAverage ();
 
-                    LogManager::instance ()->writeLogFile ("[%llu] %s clients: %u send: (%u,%u,%.2f) recv: (%u,%u,%.2f)", 
-                                                            msg->from, NODE_TYPE[type], client_size, 
+                    LogManager::instance ()->writeLogFile ("[%zu] %s clients: %u send: (%u,%u,%.2f) recv: (%u,%u,%.2f)", 
+                                                            (size_t)msg->from, NODE_TYPE[type], client_size, 
                                                             sendstat.minimum, sendstat.maximum, sendstat.average, 
                                                             recvstat.minimum, recvstat.maximum, recvstat.average);
 
@@ -655,7 +655,7 @@ int main (int argc, char *argv[])
                 for (size_t i=0; i < remove_list.size (); i++)
                     last_update.erase (remove_list[i]);
 
-                LogManager::instance ()->writeLogFile ("GW-STAT: %lu concurrent at %llu\n", last_update.size (), curr_msec);
+                LogManager::instance ()->writeLogFile ("GW-STAT: %lu concurrent at %zu\n", last_update.size (), (size_t)curr_msec);
             }
 
             // show current neighbors (even if we have no movmment) debug purpose
@@ -688,7 +688,7 @@ int main (int argc, char *argv[])
         {
             
             fprintf(g_position_log, 
-                "%llu,\"%llu,leave\"\n",leave_msec,g_sub_no);
+                "%zu,\"%zu,leave\"\n",(size_t)leave_msec,(size_t)g_sub_no);
             fflush(g_position_log);
         }
       
@@ -696,7 +696,7 @@ int main (int argc, char *argv[])
         {
             
             fprintf(g_neighbor_log, 
-                "%llu,\"%llu,leave\"\n",leave_msec,g_sub_no);
+                "%zu,\"%zu,leave\"\n",(size_t)leave_msec,(size_t)g_sub_no);
             fflush(g_neighbor_log); 
         }
 

@@ -99,7 +99,7 @@ VASTC_EXPORT bool VAST_CALL InitVAST (bool is_gateway, const char *gateway)
     // store default gateway address
     string GWstr (gateway);
 
-    printf ("InitVAST called, gateway: %s, is_gateway: %s\n", gateway, (is_gateway ? "true" : "false"));
+    std::cout << "InitVAST called, gateway: " << gateway << ", is_gateway: " << is_gateway << std::endl;
 
     g_gateway = *VASTVerse::translateAddress (GWstr);
     
@@ -272,7 +272,7 @@ VASTC_EXPORT int VAST_CALL VASTTick (int time_budget)
     // NOTE: we assume this takes little time and does not currently count in as time spent in cycle       
     if (per_sec)
     {
-        //printf ("tick_count: %u, sleep: %lu ms\n", tick_count, sleep_time);
+        //std::cout << "tick_count: " << tick_count << ", sleep: " << sleep_time << " ms"" << std::endl;
         
         // just do some per second stat collection stuff
         g_world->tickLogicalClock ();
@@ -330,7 +330,7 @@ VASTC_EXPORT const char * VAST_CALL VASTReceive (uint64_t *ret_from, size_t *ret
         *ret_from = recvmsg.from;
         *ret_size = recvmsg.size;        
 
-        //printf ("VASTReceive () returns string of size: %d from %llu\n", size, msg->from);
+        //std::cout << "VASTReceive () returns string of size: " << size << " from " << msg->from << std::endl;
 
         return recvmsg.msg;        
     }
@@ -352,7 +352,7 @@ VASTC_EXPORT const char * VAST_CALL VASTReceive (uint64_t *ret_from, size_t *ret
 VASTC_EXPORT uint64_t VAST_CALL VASTOpenSocket (const char *ip_port, bool is_secure)
 {
     // convert IP_port
-    printf ("opening socket: %s (%s)\n", ip_port, (is_secure ? "secure" : "non-secure"));
+    std::cout << "opening socket: " << ip_port << " (" << (is_secure ? "secure" : "non-secure") << ')' << std::endl;
     
     string host (ip_port);    
     Addr addr = *VASTVerse::translateAddress (host);
@@ -420,7 +420,7 @@ VASTC_EXPORT const char * VAST_CALL VASTReceiveSocket (uint64_t *ret_from, size_
         *ret_from = recvmsg.from;
         *ret_size = recvmsg.size;        
 
-        //printf ("VASTReceive () returns string of size: %d from %llu\n", size, msg->from);
+        //std::cout << "VASTReceive () returns string of size: " << size << " from " << msg->from << std::endl;
 
         return recvmsg.msg;        
     }

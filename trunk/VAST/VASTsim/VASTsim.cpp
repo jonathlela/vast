@@ -521,7 +521,7 @@ int NextStep ()
 
         if (i > 0 && i < n)
         {
-            printf ("failing [%llu]..\n", g_nodes[i]->getPeerID ());
+            std::cout << "failing [" << g_nodes[i]->getPeerID () << "].." << std::endl;
             g_nodes[i]->fail ();
         }
     }

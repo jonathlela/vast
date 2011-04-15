@@ -113,7 +113,7 @@ namespace Vast
         {
             // error if cannot contact any relays
             if (_net->getEntries ().size () != 0)                        
-                printf ("VASTRelay::ping () no known relays to contact\n cannot determine physical coordinate, check if relays are valid\n");
+                std::cout << "VASTRelay::ping () no known relays to contact" << std::endl << " cannot determine physical coordinate, check if relays are valid" << std::endl;
             return false;
         }
         
@@ -221,7 +221,7 @@ namespace Vast
         case REQUEST:
             {
                 // send back a list of known relays
-                printf ("REQUEST received from [%llu]\n", in_msg.from);
+                std::cout << "REQUEST received from [" << in_msg.from << ']' << std::endl;
                 sendRelayList (in_msg.from, MAX_CONCURRENT_PING);
             }
             break;
@@ -237,7 +237,7 @@ namespace Vast
                 pong (in_msg.from, senttime, true);
 
                 // send back a list of known relays
-                //printf ("REQUEST received from [%llu]\n", in_msg.from);
+                //std::cout << "REQUEST received from [" << in_msg.from ']' << std::endl;
                 sendRelayList (in_msg.from, MAX_CONCURRENT_PING);
             }
             break;
@@ -260,7 +260,7 @@ namespace Vast
                 float rtt = (float)(current - querytime);
                 if (rtt == 0)
                 {
-                    printf ("[%llu] processing PONG: RTT = 0 error, removing neighbor [%llu] currtime: %lu querytime: %lu\n", _self.id, in_msg.from, current, querytime);
+                    std::cout << '[' << _self.id << "] processing PONG: RTT = 0 error, removing neighbor [" << in_msg.from << "] currtime: " << current << " querytime: " << querytime << std::endl;
                     removeRelay (in_msg.from);
                     //_relays.erase (in_msg.from);
                     break;
@@ -270,8 +270,7 @@ namespace Vast
                 vivaldi (rtt, _temp_coord, xj, _error, ej);
 
 #ifdef DEBUG_DETAIL
-                printf ("[%llu] physcoord (%.3f, %.3f) rtt to [%llu]: %.3f error: %.3f requests: %d\n", 
-                         _self.id, _temp_coord.x, _temp_coord.y, in_msg.from, rtt, _error, _request_times);
+                std::cout << '[' << _self.id << "] physcoord (" << _temp_coord.x << ", " << _temp_coord.y << ") rtt to [" << in_msg.from << "]: " << rtt << " error: " << _error << " requests: " << _request_times << std::endl;
 #endif
 
                 // if remote host is a relay, record its coordinates                
@@ -285,8 +284,7 @@ namespace Vast
                     // print a small message to show it
                     if (_request_times > 0)
                     {
-                        printf ("[%llu] physcoord (%.3f, %.3f) rtt to [%llu]: %.3f error: %.3f requests: %d\n", 
-                                _self.id, _temp_coord.x, _temp_coord.y, in_msg.from, rtt, _error, _request_times);
+                        std::cout << '[' << _self.id << "] physcoord (" << _temp_coord.x << ", " << _temp_coord.y << ") rtt to [" << in_msg.from << "]: " << rtt << " error: " << _error << " requests: " << _request_times << std::endl;
 
                         // reset
                         _request_times = 0;
@@ -367,7 +365,7 @@ namespace Vast
                         if (sendRelay (msg) == 0)
                         {
                             // if the relay provided cannot be reached, drop this request
-                            printf ("[%llu] VASTRelay::handleMessage () RELAY_QUERY relay supplied [%llu] is no longer valid\n", _self.id, relay.host_id);
+                            std::cout << '[' << _self.id << "] VASTRelay::handleMessage () RELAY_QUERY relay supplied [" << relay.host_id << "] is no longer valid" << std::endl;
                         }
                         // whether success or not, we have to leave the loop
                         break;
@@ -520,7 +518,7 @@ namespace Vast
                 // if a known relay leaves, remove it
                 if (_relays.find (in_msg.from) != _relays.end ())
                 {
-                    printf ("[%llu] VASTRelay::handleMessage () removes disconnected relay [%llu]\n", _self.id, in_msg.from);
+                    std::cout << '[' << _self.id << "] VASTRelay::handleMessage () removes disconnected relay [" << in_msg.from << ']' << std::endl;
                     
                     // remove the disconnecting relay from relay list
                     removeRelay (in_msg.from);
@@ -571,7 +569,7 @@ namespace Vast
                     else
                     {
                         // record unresolved client targets
-                        printf ("VASTRelay: cannot translate received subscriptionID [%llu] to clientID\n", target);
+                        std::cout << "VASTRelay: cannot translate received subscriptionID [" << target << "] to clientID" << std::endl;
                         unknown_clients.push_back (target);                        
                     }
                 }
@@ -600,7 +598,7 @@ namespace Vast
                 }
                 else
                 {
-                    printf ("VASTRelay: cannot forward message, message type: %d\n", in_msg.msgtype);
+                    std::cout << "VASTRelay: cannot forward message, message type: " << in_msg.msgtype << std::endl;
                     return false;                        
                 }
             }
@@ -642,7 +640,7 @@ namespace Vast
                 // if still no relays found
                 if (_relays.size () == 0)
                 {
-                    printf ("VASTRelay: relay list is empty, got none from network layer\n");
+                    std::cout << "VASTRelay: relay list is empty, got none from network layer" << std::endl;
                 }
             }
 
@@ -712,7 +710,7 @@ namespace Vast
                 // set a timeout of re-querying
                 _timeout_query = now + (TIMEOUT_RELAY_QUERY * _net->getTimestampPerSecond ());
         
-                printf ("VASTRelay::postHandling () sending query to find closest relay\n");
+                std::cout << "VASTRelay::postHandling () sending query to find closest relay" << std::endl;
 
                 Node *relay = nextRelay ();
 
@@ -768,7 +766,7 @@ namespace Vast
         // check if relay info exists
         if (relay == NULL && _relays.size () == 0)
         {
-            printf ("VASTRelay::joinRelay (): no known relay to contact\n");
+            std::cout << "VASTRelay::joinRelay (): no known relay to contact" << std::endl;
             return false;
         }
 
@@ -836,7 +834,7 @@ namespace Vast
         {
             if (_relays.size () == 0)
             {
-                printf ("VASTRelay::nextRelay () relay list is empty, no next relay available\n");
+                std::cout << "VASTRelay::nextRelay () relay list is empty, no next relay available" << std::endl;
                 return NULL;
             }
 
@@ -861,7 +859,7 @@ namespace Vast
             // loop from beginning
             if (it == _dist2relay.end ())
             {
-                printf ("VASTRelay::nextRelay () - last known relay reached, re-try first\n");
+                std::cout << "VASTRelay::nextRelay () - last known relay reached, re-try first" << std::endl;
                 it = _dist2relay.begin ();
             }
         
@@ -878,7 +876,7 @@ namespace Vast
     {
         if (relay.id == NET_ID_UNASSIGNED)
         {
-            printf ("VASTRelay::addRelay () relay's ID is unassigned\n");
+            std::cout << "VASTRelay::addRelay () relay's ID is unassigned" << std::endl;
             return;
         }
 
@@ -891,7 +889,7 @@ namespace Vast
         if (it != _relays.end ())
         {
 #ifdef DEBUG_DETAIL
-            printf ("[%llu] VASTRelay::addRelay () updating relay [%llu]..\n", _self.id, relay.id);
+            std::cout << '[' << _self.id << "] VASTRelay::addRelay () updating relay [" << relay.id << "].." << std::endl;
 #endif
 
             it->second = relay;
@@ -909,7 +907,7 @@ namespace Vast
         else
         {
 #ifdef DEBUG_DETAIL
-            printf ("[%llu] VASTRelay::addRelay () adding relay [%llu]..\n", _self.id, relay.id);
+            std::cout << '[' << _self.id << "] VASTRelay::addRelay () adding relay [" << relay.id << "].." << std::endl;
 #endif
             _relays[relay.id] = relay;            
         }
@@ -948,7 +946,7 @@ namespace Vast
             if (it->second->id == id)
             {
 #ifdef DEBUG_DETAIL
-                printf ("[%lld] VASTRelay::removeRelay () removing relay [%lld]..\n", _self.id, id);
+                std::cout << '[' << _self.id << "] VASTRelay::removeRelay () removing relay [" << id << "].." << std::endl;
 #endif
                 
                 _dist2relay.erase (it);                
@@ -963,7 +961,7 @@ namespace Vast
         // if no relays exist, need to re-create relays
         if (_relays.size () == 0)
         {
-            printf ("VASTRelay::removeRelay () no more relays known, need to re-query network\n");
+            std::cout << "VASTRelay::removeRelay () no more relays known, need to re-query network" << std::endl;
             _timeout_ping = 0;
         }
     }
@@ -983,7 +981,7 @@ namespace Vast
             // remove failed relays
             for (size_t i=0; i < failed.size (); i++)
             {
-                printf ("removing failed relay (%lld) ", failed[i]);
+                std::cout << "removing failed relay (" << failed[i] << ") ";
                 removeRelay (failed[i]);
             }
         
@@ -1024,7 +1022,7 @@ namespace Vast
                 rit++;
             }
 
-            printf ("[%llu] VASTRelay::cleanupRelays () remove %lu relays\n", _self.id, remove_list.size ());
+            std::cout << '[' << _self.id << "] VASTRelay::cleanupRelays () remove " << remove_list.size() << " relays" << std::endl;
             for (size_t i=0; i < remove_list.size (); i++)  
                 removeRelay (remove_list[i]);
         }
@@ -1057,13 +1055,13 @@ namespace Vast
              if (selected[i++] == true)
              {
 #ifdef DEBUG_DETAIL
-                 printf ("(%lld) ", it->first);
+                 std::cout << '(' << it->first << ") ";
 #endif
                  msg.store (it->second);
              }
          }
 
-         printf ("\n[%llu] responds with %d relays to [%llu]\n", _self.id, n, target);
+         std::cout << std::endl << '[' << _self.id << "] responds with " << n << " relays to [" << target << ']' << std::endl;
          
          msg.addTarget (target);                
          sendMessage (msg);
@@ -1138,7 +1136,7 @@ namespace Vast
         // estblish link to the joining client
         notifyMapping (client.id, &client.addr);
 
-        printf ("\n[%llu] VASTRelay accepts join request from [%llu]\n\n", _self.id, from_host); 
+        std::cout << std::endl << '[' << _self.id << "] VASTRelay accepts join request from [" << from_host << ']' << std::endl << std::endl;
     }
 
     // remove a client no longer connected
@@ -1240,7 +1238,7 @@ namespace Vast
     {        
         if (size > total)
         {
-            printf ("randomSet () # needed to select is greater than available\n");
+            std::cout << "randomSet () # needed to select is greater than available" << std::endl;
             return false;
         }
 

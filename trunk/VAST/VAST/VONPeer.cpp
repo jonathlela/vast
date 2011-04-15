@@ -149,7 +149,7 @@ namespace Vast
         updateNode (_self);
 
 #ifdef DEBUG_DETAIL
-        printf ("[%lu] VONPeer::move to (%d, %d)\n", _self.id, (int)_self.aoi.center.x, (int)_self.aoi.center.y);
+        std::cout << '[' << _self.id "] VONPeer::move to (" << (int)_self.aoi.center.x << ", " << (int)_self.aoi.center.y << ')' << std::endl;
 #endif            
         // notify all connected neighbors, pack my own node info & AOI info              
         id_t target;            
@@ -195,10 +195,10 @@ namespace Vast
             _net->sendVONMessage (msg, true, &failed_targets);       // MOVE is sent reliably
 
 #ifdef DEBUG_DETAIL
-            printf ("%s ", VON_MESSAGE[msg.msgtype]);
+            std::cout << VON_MESSAGE[msg.msgtype] << ' ';
             for (size_t i=0; i < msg.targets.size (); i++)
-                printf ("%d ", msg.targets[i]);
-            printf ("\n");
+                std::cout << msg.targets[i] << ' ';
+            std::cout << std::endl;
 #endif  
             // remove neighbors that have failed
             for (size_t i=0; i < failed_targets.size (); i++)
@@ -217,10 +217,10 @@ namespace Vast
             _net->sendVONMessage (msg, true, &failed_targets);       // MOVE is sent unreliably
 
 #ifdef DEBUG_DETAIL
-            printf ("%s ", VON_MESSAGE[msg.msgtype]);
+            std::cout << VON_MESSAGE[msg.msgtype] << ' ';
             for (size_t i=0; i < msg.targets.size (); i++)
-                printf ("%d ", msg.targets[i]);
-            printf ("\n");
+                std::cout << msg.targets[i] << ' ';
+            std::cout << std::endl;
 #endif  
             // remove neighbors that have failed
             for (size_t i=0; i < failed_targets.size (); i++)
@@ -312,7 +312,7 @@ namespace Vast
     VONPeer::handleMessage (Message &in_msg)
     {
 #ifdef DEBUG_DETAIL
-        printf ("[%lu] VONPeer::handleMessage from [%lu] msgtype: %d (%s) size:%d\n", _self.id, in_msg.from, in_msg.msgtype, VON_MESSAGE[in_msg.msgtype], in_msg.size);
+        std::cout << '[' << _self.id << "] VONPeer::handleMessage from [" << in_msg.from << "] msgtype: " << in_msg.msgtype << " (" << VON_MESSAGE[in_msg.msgtype] << ") size:" << in_msg.size << std::endl;
 #endif
         // if join is not even initiated, do not process any message 
         if (_state == ABSENT)
@@ -488,7 +488,7 @@ namespace Vast
                     }
                     else
                     {
-                        printf ("VONPeer::handleMessage () MOVE_x received from unknown neighbor %llu\n", in_msg.from);
+                        std::cout << "VONPeer::handleMessage () MOVE_x received from unknown neighbor " << in_msg.from << std::endl;
                         break;                      
                     }
                 }
@@ -502,7 +502,7 @@ namespace Vast
                 if (in_msg.msgtype == VON_MOVE_B || in_msg.msgtype == VON_MOVE_FB)
                     _req_nodes[in_msg.from] = true;
 
-                //printf ("[%d] learns of [%d] (%d, %d)\n", _self.id, node.id, (int)node.aoi.center.x, (int)node.aoi.center.y);
+                //std::cout << '[' << _self.id << "] learns of [" << node.id << "] (" << (int)node.aoi.center.x << ", " << (int)node.aoi.center.y << ')' << std::endl;
             }
             break;
 
@@ -561,7 +561,7 @@ namespace Vast
     {
         if (isJoined () && isTimelyNeighbor (_self.id, MAX_TIMELY_PERIOD/2) == false)
         {
-            printf ("[%llu] sendKeepAlive ()\n", _self.id);
+            std::cout << '[' << _self.id << "] sendKeepAlive ()" << std::endl;
             move (_self.aoi);
         }
     }
@@ -850,7 +850,7 @@ namespace Vast
             return false;        
         
 #ifdef DEBUG_DETAIL
-        printf ("[%lu] disconnecting [%lu]\n", _self.id, id);
+        std::cout << '[' << _self.id << "] disconnecting [" << id << ']' << std::endl;
 #endif
 
         _Voronoi->remove (id);
@@ -885,7 +885,7 @@ namespace Vast
             return false;
 
 #ifdef DEBUG_DETAIL
-            printf ("[%lu] updates [%lu] position: (%d, %d)\n", _self.id, node.id, (int)node.aoi.center.x, (int)node.aoi.center.y);
+            std::cout << '[' << _self.id << "] updates [" << node.id << "] position: (" <<  (int)node.aoi.center.x << ", " << (int)node.aoi.center.y << ')' << std::endl;
 #endif
 
         _Voronoi->update (node.id, node.aoi.center);
@@ -919,18 +919,18 @@ namespace Vast
         msg.store (n);
 
 #ifdef DEBUG_DETAIL
-        printf ("[%lu] sends [%lu] NEIGHBORS: ", _self.id, target);
+        std::cout << '[' << _self.id << "] sends [" << target << "] NEIGHBORS: ";
 #endif 
         // TODO: sort the notify list by distance from target's center (better performance?)
         for (int i=0; i<(int)n; ++i)
         {
 #ifdef DEBUG_DETAIL
-            printf (" (%lu)", list[i]);
+            std::cout << " (" << list[i] << ')';
 #endif
             msg.store (_id2node[list[i]]);
         }
 #ifdef DEBUG_DETAIL
-            printf ("\n");
+            std::cout << std::endl;
 #endif
 
 		// check whether to send the NEIGHBOR via TCP or UDP
@@ -953,17 +953,17 @@ namespace Vast
         msg.store (n);
 
 #ifdef DEBUG_DETAIL
-        printf ("[%lu] sends [%lu] IDs: ", _self.id, target);
+        std::cout << '[' << _self.id << "] sends [" << target << "] IDs: ";
 #endif 
         for (int i=0; i<(int)n; ++i)
         {
 #ifdef DEBUG_DETAIL
-            printf (" (%lu)", id_list[i]);
+            std::cout << " (" << id_list[i] << ')';
 #endif
             msg.store (id_list[i]);
         }
 #ifdef DEBUG_DETAIL
-        printf ("\n");
+        std::cout << std:endl;
 #endif
                 
         msg.addTarget (target);
@@ -983,17 +983,17 @@ namespace Vast
         msg.store (n);      
 
 #ifdef DEBUG_DETAIL
-        printf ("[%lu] sends [%lu] IDs: ", _self.id, target);
+        std::cout << '[' << _self.id << "] sends [" << target << "] IDs: ";
 #endif 
         for (size_t i=0; i<n; ++i)
         {
 #ifdef DEBUG_DETAIL
-            printf (" (%lu)", id_list[i]);
+            std::cout << " (" << id_list[i] << ')';
 #endif
             msg.store (id_list[i]);
         }
 #ifdef DEBUG_DETAIL
-        printf ("\n");
+        std::cout << std::endl;
 #endif
                 
         msg.addTarget (target);
@@ -1053,7 +1053,7 @@ namespace Vast
             return false;
 
         timestamp_t timeout = period * _net->getTimestampPerSecond ();   
-        //printf ("tick: %u last_acces: %u timeout: %u\n", _tick_count, _id2node[id].addr.lastAccessed, timeout);
+        //std::cout << "tick: " << _tick_count << " last_acces: " << id2node[id].addr.lastAccessed << " timeout: " << timeout << std::endl;
         return ((_tick_count - _id2node[id].addr.lastAccessed) < timeout);
 */
 

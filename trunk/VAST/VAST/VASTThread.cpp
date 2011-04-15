@@ -22,14 +22,14 @@ namespace Vast
         ACE_Thread_Mutex mutex;
         _up_cond = new ACE_Condition<ACE_Thread_Mutex>(mutex);
         
-        printf ("VASTThread::open (), before activate thread count: %lu\n", this->thr_count ()); 
+        std::cout << "VASTThread::open (), before activate thread count: " << this->thr_count () << std::endl; 
         
         // activate the ACE network layer as a thread
         // NOTE: _active should be set true by now, so that the loop in svc () may proceed correctly
         _active = true;
         this->activate (); 
 
-        printf ("after calling activate ()\n");
+        std::cout << "after calling activate ()" << std::endl;
             
         // wait until server is up and running (e.g. svc() is executing)
         mutex.acquire ();
@@ -39,7 +39,7 @@ namespace Vast
         delete _up_cond;
         _up_cond = NULL;
                     
-        printf ("VASTThread::open (), after activate thread count: %lu\n", this->thr_count ()); 
+        std::cout << "VASTThread::open (), after activate thread count: " << this->thr_count () << std::endl; 
 
         return 0;
     }
@@ -57,7 +57,7 @@ namespace Vast
             ACE_Thread_Mutex mutex;
             _down_cond = new ACE_Condition<ACE_Thread_Mutex>(mutex);
                    
-            printf ("VASTThread::close () thread count: %lu (before closing)\n", this->thr_count ()); 
+            std::cout << "VASTThread::close () thread count: " << this->thr_count() << " (before closing)" << std::endl;
 
             // allow the reactor to leave its event handling loop
             _active = false;
@@ -72,7 +72,7 @@ namespace Vast
 
             _world = NULL;
 
-            printf ("VASTThread::close (), thread count: %lu (after closing)\n", this->thr_count ()); 
+            std::cout << "VASTThread::close (), thread count: " << this->thr_count() << " (after closing)" << std::endl;
         }
 
         return 0;
@@ -83,7 +83,7 @@ namespace Vast
     VASTThread::svc (void)
     {
         // NEW_THREAD
-        printf ("VASTThread::svc () called\n");
+        std::cout << "VASTThread::svc () called" << std::endl;
 
         // wait a bit (doesn't seem necessary)
         // NOTE the 2nd parameter is specified in microseconds (us) not milliseconds
@@ -101,7 +101,7 @@ namespace Vast
         size_t  tick_per_sec = 0;       // tick count per second
         size_t  tick_count = 0;         // # of ticks so far (# of times the main loop has run)
  
-        printf ("\nVASTThread svc (): time_budget: %lu us ticks_persec: %d\n\n", time_budget, _ticks_persec);
+        std::cout << std::endl << "VASTThread svc (): time_budget: " << time_budget << " us ticks_persec: " << _ticks_persec << std::endl << std::endl;
 
         // entering main loop
         while (_active)
@@ -120,20 +120,20 @@ namespace Vast
             {
                 // print something to show liveness
                 //ACE_Time_Value curr_time = ACE_OS::gettimeofday ();
-                //printf ("%ld s, tick %lu, tick_persec %lu, sleep: %lu us\n", (long)curr_time.sec (), tick_count, tick_per_sec, sleep_time);
+                //std::cout << curr_time.sec() << " s, tick " << tick_count << ", tick_persec " << tick_per_sec << ", sleep: " << sleep_time << " us" << std::endl;
                 tick_per_sec = 0;
             }
 
             if (sleep_time > 0)
             {
-                //printf ("sleep %d\n", sleep_time);
+                //std::cout << "sleep " << sleep_time << std::endl;
                 // NOTE the 2nd parameter is specified in microseconds (us) not milliseconds
                 ACE_Time_Value duration (0, sleep_time);            
                 ACE_OS::sleep (duration); 
             }            
         }
 
-        printf ("VASTThread::svc () leave ticking loop\n");
+        std::cout << "VASTThread::svc () leave ticking loop" << std::endl;
 
         // continue execution of original thread in close ()
         // to ensure that svc () will exit

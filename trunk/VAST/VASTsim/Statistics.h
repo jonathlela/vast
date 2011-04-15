@@ -534,7 +534,7 @@ public:
             sendstat.calculateAverage ();
             recvstat.calculateAverage ();
 
-            fprintf (_fp, "[%llu, %llu] %10lu (%8lu/%8lu/%8lu) %10lu (%8lu/%8lu/%8lu)\t%s\t", host_id, id, sendstat.total, (size_t)sendstat.average, sendstat.maximum, sendstat.minimum, recvstat.total, (size_t)recvstat.average, recvstat.maximum, recvstat.minimum, str);
+            fprintf (_fp, "[%zu, %zu] %10lu (%8lu/%8lu/%8lu) %10lu (%8lu/%8lu/%8lu)\t%s\t", (size_t)host_id, (size_t)id, sendstat.total, (size_t)sendstat.average, sendstat.maximum, sendstat.minimum, recvstat.total, (size_t)recvstat.average, recvstat.maximum, recvstat.minimum, str);
 
             /*
             StatType *peersize = _simnodes[i]->vnode->getPeerStat ();

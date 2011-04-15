@@ -515,7 +515,7 @@ namespace Vast
         if (in_msg.msgtype < VON_MAX_MSG)
             ; //printf ("[%d] VASTClient::handleMessage from: %d msgtype: %d, to be handled by VONPeer, size: %d\n", _self.id, in_msg.from, in_msg.msgtype, in_msg.size);            
         else
-            printf ("[%d] VASTClient::handleMessage from: %d msgtype: %d appmsg: %d (%s) size: %d\n", _self.id, in_msg.from, in_msg.msgtype, app_msgtype, VAST_MESSAGE[in_msg.msgtype-VON_MAX_MSG], in_msg.size);
+            std::cout << '[' << _self.id << "] VASTClient::handleMessage from: " << in_msg.from << " msgtype: " << in_msg.msgtype << " appmsg: " << app_msgtype << " (" << VAST_MESSAGE[in_msg.msgtype-VON_MAX_MSG] << ") size: " << in_msg.size << std::endl;
 #endif
 
         switch (in_msg.msgtype)
@@ -536,7 +536,7 @@ namespace Vast
                 in_msg.extract (sub_no);
                 in_msg.extract (matcher_addr);
 
-                printf ("\n\n[%llu] VASTClient\n[%llu] Subscription ID obtained\n\n", _self.id, sub_no);
+                std::cout << std::endl << std::endl << '[' << _self.id << "] VASTClient" << std::endl << '[' << sub_no << "] Subscription ID obtained" << std::endl << std::endl;
 
                 _sub.id = sub_no;
                 _sub.active = true;
@@ -665,7 +665,7 @@ namespace Vast
                             {
                                 if ((*it)->id == neighbor_id)
                                 {                               
-                                    //printf ("[%d] Client updates neighbor [%d]'s position (%d, %d) to (%d, %d)\n", _self.id, neighbor_id, (int)(*it)->aoi.center.x, (int)(*it)->aoi.center.y, (int)aoi.center.x, (int)aoi.center.y);
+                                    //std::cout << '[' << _self.id << "] Client updates neighbor [" << neighbor_id << "]'s position (" << (int)(*it)->aoi.center.x << ", " <<  int)(*it)->aoi.center.y << ") to (" << (int)aoi.center.x << ", " << (int)aoi.center.y << ')' << std::endl;
                                     (*it)->aoi = aoi;
 #ifdef VAST_RECORD_LATENCY
                                     (*it)->time = time;
@@ -946,7 +946,7 @@ namespace Vast
     void 
     VASTClient::handleMatcherDisconnect ()
     {
-        printf ("VASTClient::handleMatcherDisconnect () switching from [%llu] to [%llu]\n", _matcher_id, _closest_id);
+        std::cout << "VASTClient::handleMatcherDisconnect () switching from [" << _matcher_id << "] to [" << _closest_id << ']' << std::endl;
 
         _matcher_id = _closest_id;
         _closest_id = 0;
@@ -987,7 +987,7 @@ namespace Vast
             // need to re-connect to matcher
             if (remove_list[i] == _sub.id)
             {
-                printf ("VASTClient::removeGhosts () no updates received for myself for over %d seconds\n", TIMEOUT_REMOVE_GHOST);
+                std::cout << "VASTClient::removeGhosts () no updates received for myself for over " << TIMEOUT_REMOVE_GHOST << " seconds" << std::endl;
                 handleMatcherDisconnect ();
             }
             else

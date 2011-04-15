@@ -307,7 +307,7 @@ namespace Vast
         // new ID already in use
         if (_id2conn.find (newID) != _id2conn.end () || _id2conn.find (prevID) == _id2conn.end ())
         {
-            printf ("[%llu] net_emu::switchID () old ID not found or new ID already exists\n");
+            std::cout << "net_emu::switchID () old ID not found or new ID already exists" << std::endl;
             return false;
         }
 

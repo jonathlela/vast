@@ -259,7 +259,7 @@ namespace Vast
                         local_targets.push_back (target);
                     else
                     {
-                        printf ("MessageQueue::processMessages () [%llu] received target [%llu] not for me\n", _net->getHostID (), target);
+                        std::cout << "MessageQueue::processMessages () [" << _net->getHostID() << "] received target [" << target << "] not for me" << std::endl;
                         //forward_targets.push_back (target);
                     }                        
                 }

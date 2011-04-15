@@ -45,6 +45,7 @@
 #endif
 
 #include <stdio.h>      // for printing out debug messages
+#include <iostream>
 
 #define VAST_BUFSIZ     32000       // generic message buffer size, note that send/recv cannot exceed this size
 #define VAST_MSGSIZ     1024        // generic message size, can expand if not enough

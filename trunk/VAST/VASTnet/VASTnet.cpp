@@ -578,7 +578,7 @@ namespace Vast
                 msg.store (self_addr.publicIP);
           
                 sendMessage (target, msg, true, ID_REQUEST);
-                printf ("VASTnet::isJoined () sending ID_REQUEST to gateway [%llu]\n", target);
+                std::cout << "VASTnet::isJoined () sending ID_REQUEST to gateway [" << target << ']' << std::endl;
             }
         }
 
@@ -747,7 +747,7 @@ namespace Vast
             return _id2addr[id];
         else
         {
-            printf ("VASTnet::getAddress (): address not found for [%llu]\n", id);
+            std::cout << "VASTnet::getAddress (): address not found for [" << id << ']' << std::endl;
             return null_addr;        
         }
     }
@@ -853,7 +853,7 @@ namespace Vast
         
         if (msg->deserialize (p, header.msg_size) == 0)
         {
-            printf ("VASTnet::processVASTMessage () deserialize message fail, from [%llu], size: %lu\n", remote_id, header.msg_size);
+            std::cout << "VASTnet::processVASTMessage () deserialize message fail, from [" << remote_id << "], size: " << header.msg_size << std::endl;
             delete msg;
             return false;
         }
@@ -880,11 +880,11 @@ namespace Vast
 
                     // send back reply to ID request
                     // NOTE: we need to use the new ID now, as the id to connection mapping has changed
-                    printf ("ID_ASSIGN remote host [%llu]\n", new_id);
+                    std::cout << "ID_ASSIGN remote host [" << new_id << ']' << std::endl;
                     sendMessage (new_id, *msg, true, ID_ASSIGN);
                 }
                 else
-                    printf ("processVASTMessage (): BUG new id [%llu] differs from detected id [%llu]\n", new_id, remote_id);
+                    std::cout << "processVASTMessage (): BUG new id [" << new_id << "] differs from detected id [" << remote_id << ']' << std::endl;
             }            
             break;
 
@@ -951,7 +951,7 @@ namespace Vast
         detectedIP.getString (ip);
         actualIP.getString (ip2);
         
-        printf ("[%llu] ID request from: [%llu] (%s) actual address (%s)\n", _manager->getID (), id, ip, ip2); 
+        std::cout << '[' << _manager->getID() << "] ID request from: [" << id << "] (" << ip << ") actual address (" << ip2 << ')' << std::endl;
         
         // whether the the actual & detected IP match determines if remote host is public
         // NOTE: we do no compare port as the remote host's listen port can be different from 

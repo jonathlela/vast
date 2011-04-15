@@ -39,7 +39,7 @@ namespace Vast
         if (_active == false)
             return;
 
-        printf ("net_manager::stop () for node [%llu]\n", _id);
+        std::cout << "net_manager::stop () for node [" << _id << ']' << std::endl;
 
         // close all active connections
         // NOTE: we still need the message receiving thread to be running 

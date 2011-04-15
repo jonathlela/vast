@@ -69,7 +69,7 @@ namespace Vast
     {
         if (step_persec == 0)
         {
-            printf ("VASTnet::createNet () steps per second not specified, set to default: 10\n");
+            std::cout << "VASTnet::createNet () steps per second not specified, set to default: 10" << std::endl;
             step_persec = 10;
         }
 
@@ -136,10 +136,10 @@ namespace Vast
         // start thread if both callback & tick_persec is specified
         if (callback && tick_persec > 0)
         {
-            printf ("starting thread..\n");
+            std::cout << "starting thread.." << std::endl;
             handlers->thread = new VASTThread (tick_persec);
             handlers->thread->open (this);
-            printf ("thread started...\n");
+            std::cout << "thread started..." << std::endl;
         }        
     }
 
@@ -232,7 +232,7 @@ namespace Vast
         //if (_is_gateway == false)
         //    _entries.push_back (gateway);        
 
-        printf ("VASTVerse::createVASTNode world_id: %u layer: %u\n", world_id, layer);
+        std::cout << "VASTVerse::createVASTNode world_id: " << world_id << " layer: " << layer << std::endl;
 
         return true;
     }
@@ -286,14 +286,14 @@ namespace Vast
         // create the basic network layer & message queue
         if (handlers->net == NULL)
         {
-            printf ("VASTVerse::isInitialized () creating VASTnet...\n");
+            std::cout << "VASTVerse::isInitialized () creating VASTnet..." << std::endl;
 
             // create network layer
             handlers->net = createNet (_netpara.port, _netpara, _entries, _simpara.step_persec);
             if (handlers->net == NULL)
                 return false;
 
-            printf ("VASTVerse::isInitialized () creating MessageQueue...\n");
+            std::cout << "VASTVerse::isInitialized () creating MessageQueue..." << std::endl;
             handlers->msgqueue = new MessageQueue (handlers->net);
         }
 
@@ -309,7 +309,7 @@ namespace Vast
                 return false;
 
             // create the Relay node and store potential overlay entries 
-            printf ("VASTVerse::isInitialized () creating VASTRelay...\n");
+            std::cout << "VASTVerse::isInitialized () creating VASTRelay..." << std::endl;
 
             id_t id = handlers->net->getHostID ();
 
@@ -317,8 +317,8 @@ namespace Vast
             // NOTE we will try to determine physical coordinate only after unique ID is gotten
             if (id != NET_ID_UNASSIGNED)
             {
-                printf ("unique ID obtained [%llu]\n", id);
-                printf ("if this hangs, check if physical coordinate is obtained correctly\n");
+                std::cout << "unique ID obtained [" << id << ']' << std::endl;
+                std::cout << "if this hangs, check if physical coordinate is obtained correctly" << std::endl;
 
                 bool hasPhysCoord = !(_netpara.phys_coord.x == 0 && _netpara.phys_coord.y == 0);
                 handlers->relay = new VASTRelay (_netpara.is_relay, _netpara.client_limit, _netpara.relay_limit, hasPhysCoord ? &_netpara.phys_coord : NULL);
@@ -335,7 +335,7 @@ namespace Vast
         {             
             // relay has just been properly created, get physical coordinates
             physcoord = handlers->relay->getPhysicalCoordinate ();
-            printf ("[%llu] physical coord: (%.3f, %.3f)\n", handlers->net->getHostID (), physcoord->x, physcoord->y);
+            std::cout << '[' << handlers->net->getHostID() << "] physical coord: (" << physcoord->x << ", " << physcoord->y << ')' << std::endl;
 
             // create (idle) 'matcher' instance
             handlers->matcher = new VASTMatcher (_netpara.is_matcher, _netpara.overload_limit, _netpara.is_static, (_netpara.matcher_coord.isEmpty () ? NULL : &_netpara.matcher_coord));
@@ -486,10 +486,10 @@ namespace Vast
                 // try to create VASTClient and let it start joining
                 case ABSENT:
                     {
-                        printf ("state = ABSENT\n");
+                        std::cout << "state = ABSENT" << std::endl;
                         if ((createClient (_gateway, info.world_id)) != NULL)
                         {                            
-                            printf ("VASTVerse::tick () VASTclient created\n");
+                            std::cout << "VASTVerse::tick () VASTclient created" << std::endl;
                             _state = JOINING;
                         }
                     }
@@ -498,10 +498,10 @@ namespace Vast
                 // try to perform subscription after the client has joined
                 case JOINING:
                     {
-                        printf ("state = JOINING\n");
+                        std::cout << "state = JOINING" << std::endl;
                         if (handlers->client->isJoined ())
                         {
-                            printf ("VASTVerse::tick () subscribing ... \n");
+                            std::cout << "VASTVerse::tick () subscribing ... " << std::endl;
                             handlers->client->subscribe (info.aoi, info.layer);
                             _state = JOINING_2;
                         }
@@ -509,7 +509,7 @@ namespace Vast
                         else
                         {
                             _timeout++;
-                            if (_timeout > timeout_period)
+                            if ((timestamp_t)_timeout > timeout_period)
                             {
                                 LogManager::instance ()->writeLogFile ("VASTVerse::tick () VASTClient join timeout after %d seconds, revert to ABSENT state", VASTVERSE_RETRY_PERIOD);
                                 _timeout = 0;
@@ -523,11 +523,11 @@ namespace Vast
                 // wait until subscription is successful
                 case JOINING_2:
                     {
-                        printf ("state = JOINING_2\n");
+                        std::cout << "state = JOINING_2" << std::endl;
                         if (handlers->client->getSubscriptionID () != NET_ID_UNASSIGNED)
                         {
-                            printf ("VASTVerse::getVASTNode () ID obtained\n");
-                            printf ("state = JOINED\n");
+                            std::cout << "VASTVerse::getVASTNode () ID obtained" << std::endl;
+                            std::cout << "state = JOINED" << std::endl;
                             _state = JOINED;
         
                             // call callback to notify for join
@@ -541,7 +541,7 @@ namespace Vast
                         {
                             _timeout++;
         
-                            if (_timeout > timeout_period)
+                            if ((timestamp_t)_timeout > timeout_period)
                             {
                                 LogManager::instance ()->writeLogFile ("VASTVerse::tick () wait for subscription ID timeout after %d seconds, revert to JOINING state", VASTVERSE_RETRY_PERIOD);
                                 _timeout = 0;
@@ -550,6 +550,8 @@ namespace Vast
                         }
                     }
                     break;
+                default:
+                  break;
                 }
             } // end creating VASTNode
 
@@ -557,7 +559,7 @@ namespace Vast
             else if (_state == JOINED && _vastinfo.size () == 0)
             {
                 _state = ABSENT;
-                printf ("Node left\nstate = ABSENT\n");
+                std::cout << "Node left" << std::endl << "state = ABSENT" << std::endl;
         
                 // call callback to notify for leave
                 if (handlers->callback)
@@ -887,7 +889,7 @@ namespace Vast
             size_t port_pos = address.find (":");
             if (port_pos == (unsigned)(-1))
             {
-                printf ("VASTVerse::translateAddress () address format incorrect, should be [numeric IP or hostname:port]\n");
+                std::cout << "VASTVerse::translateAddress () address format incorrect, should be [numeric IP or hostname:port]" << std::endl;
                 return NULL;
             }
 
@@ -897,7 +899,7 @@ namespace Vast
             // printout for debug purpose
             char converted[255];
             sprintf (converted, "%s:%s\0", IP, port);            
-            printf ("VASTVerse::translateAddress () convert hostname into: %s\n", converted);
+            std::cout << "VASTVerse::translateAddress () convert hostname into: " << converted << std::endl;
 
             // store numeric
             address = string (converted);            
@@ -907,7 +909,7 @@ namespace Vast
         // determine IP from string
         if (IPaddr::parseIP (addr.publicIP, address) != 0)
         {
-            printf ("VASTVerse::translateAddress () cannot resolve address: %s\n", str.c_str ());
+            std::cout << "VASTVerse::translateAddress () cannot resolve address: " << str << std::endl;
             return NULL;
         }
 
