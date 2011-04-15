@@ -8,4 +8,6 @@ target_link_libraries (vastsim ${ACE_LIBRARY})
 
 install(TARGETS vastsim LIBRARY DESTINATION lib)
 
+install(FILES VASTsim.h SimNode.h  DESTINATION "include/VAST")
+
 
