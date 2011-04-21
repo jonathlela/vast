@@ -1,6 +1,6 @@
 include_directories("${CMAKE_SOURCE_DIR}/common" "${CMAKE_SOURCE_DIR}/VASTsim" "${ACE_INCLUDE_DIR}")
 
-add_definitions("-Wall")
+add_definitions("-Wall -g")
 
 add_executable (test_console test_console.cpp) 
 
