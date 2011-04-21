@@ -149,7 +149,7 @@ namespace Vast
         updateNode (_self);
 
 #ifdef DEBUG_DETAIL
-        std::cout << '[' << _self.id "] VONPeer::move to (" << (int)_self.aoi.center.x << ", " << (int)_self.aoi.center.y << ')' << std::endl;
+        std::cout << '[' << _self.id "] VONPeer::move to (" << (int)_self.aoi.center.x << ", " << (int)_self.aoi.center.y << ", " << (int)_self.aoi.center.z << ')' << std::endl;
 #endif            
         // notify all connected neighbors, pack my own node info & AOI info              
         id_t target;            
@@ -165,6 +165,7 @@ namespace Vast
             VONPosition pos;
             pos.x = _self.aoi.center.x;
             pos.y = _self.aoi.center.y;
+	      pos.z = _self.aoi.center.z;
 
             // NOTE: we use an optimized version of position with only x & y
             msg.store ((char *)&pos, sizeof (VONPosition));                        
@@ -483,6 +484,7 @@ namespace Vast
                         in_msg.extract ((char *)&pos, sizeof (VONPosition));
                         node.aoi.center.x = pos.x;
                         node.aoi.center.y = pos.y;
+			  node.aoi.center.z = pos.z;
 
                         in_msg.extract (node.time);
                     }

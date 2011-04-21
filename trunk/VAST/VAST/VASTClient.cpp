@@ -209,6 +209,7 @@ namespace Vast
             VONPosition pos;
             pos.x = aoi.center.x;
             pos.y = aoi.center.y;
+	    pos.z = aoi.center.z;
             msg.store ((char *)&pos, sizeof (VONPosition));
 
             // if radius is also updated 

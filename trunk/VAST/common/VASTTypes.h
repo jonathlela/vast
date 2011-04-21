@@ -97,7 +97,7 @@ const double EQUAL_DISTANCE = 0.000001;
 // optimized data structure for positions (used by VON_MOVE)
 typedef struct 
 {
-    coord_t x, y;
+    coord_t x, y, z;
 
 } VONPosition;
 

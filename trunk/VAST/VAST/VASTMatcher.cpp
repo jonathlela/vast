@@ -768,6 +768,7 @@ namespace Vast
                 Area new_aoi; 
                 new_aoi.center.x = pos.x;
                 new_aoi.center.y = pos.y;
+		new_aoi.center.z = pos.z;
 
                 // if radius is also updated
                 if (in_msg.msgtype == MOVE_F)
